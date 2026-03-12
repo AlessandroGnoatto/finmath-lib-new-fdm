@@ -59,7 +59,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
  * @author Christian Fries
  * @author Jörg Kienitz
  */
-public class FDMThetaMethod1DStateVariableForm implements FDMSolver {
+public class FDMThetaMethod1D implements FDMSolver {
 
 	private final FiniteDifferenceEquityModel model;
 	private final FiniteDifferenceProduct product;
@@ -74,7 +74,7 @@ public class FDMThetaMethod1DStateVariableForm implements FDMSolver {
 	 * @param spaceTimeDiscretization The space-time discretization.
 	 * @param exercise The exercise type (European/American).
 	 */
-	public FDMThetaMethod1DStateVariableForm(
+	public FDMThetaMethod1D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,

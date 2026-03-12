@@ -57,7 +57,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
  * @author Enrico De Vecchi
  * @author Alessandro Gnoatto
  */
-public class FDMThetaMethod2DStateVariableForm implements FDMSolver {
+public class FDMThetaMethod2D implements FDMSolver {
 
 	private final FiniteDifferenceEquityModel model;
 	private final FiniteDifferenceProduct product;
@@ -72,7 +72,7 @@ public class FDMThetaMethod2DStateVariableForm implements FDMSolver {
 	 * @param spaceTimeDiscretization Space-time discretization (two space grids + time discretization).
 	 * @param exercise Exercise type (European/American).
 	 */
-	public FDMThetaMethod2DStateVariableForm(
+	public FDMThetaMethod2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
