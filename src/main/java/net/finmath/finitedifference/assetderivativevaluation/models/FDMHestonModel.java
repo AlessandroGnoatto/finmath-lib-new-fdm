@@ -348,10 +348,10 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 		final double dY = getDividendYieldCurve().getDiscountFactor(t);
 		final double q = -Math.log(dY) / t;
 
-		final double muSPercentage = r - q;		// percentage drift for S (to be multiplied by S in PDE operator)
+		final double mu = (r - q) * stateVariables[0];		// percentage drift for S (to be multiplied by S in PDE operator)
 		final double muV = kappa * (thetaV - v);	// drift of variance state
 
-		return new double[] {muSPercentage, muV};
+		return new double[] {mu, muV};
 	}
 
 	@Override
@@ -367,7 +367,7 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 		final double[][] b = new double[2][2];
 
 		// dS = ... + S * sqrt(v) dW1
-		b[0][0] = sqrtV;	// percentage loading for S: will be multiplied by S in PDE operator
+		b[0][0] = sqrtV * stateVariables[0];	// percentage loading for S: will be multiplied by S in PDE operator
 		b[0][1] = 0.0;
 
 		// dv = ... + sigma * sqrt(v) ( rho dW1 + sqrt(1-rho^2) dW2 )

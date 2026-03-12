@@ -232,14 +232,14 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel, Finite
 		final double dY = getDividendYieldCurve().getDiscountFactor(time);
 		final double dividendYieldRate = -Math.log(dY) / time;
 
-		result[0] = riskFreeRate - dividendYieldRate;
+		result[0] = (riskFreeRate - dividendYieldRate) * stateVariables[0];
 		return result;
 	}
 
 	@Override
 	public double[][] getFactorLoading(double time, double... stateVariables) {
 		final double[][] result = new double[1][1];
-		result[0][0] = volatility;
+		result[0][0] = volatility * stateVariables[0];
 		return result;
 	}
 

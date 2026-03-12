@@ -276,23 +276,22 @@ public class FDMCevModel implements FiniteDifferenceEquityModel, FiniteDifferenc
 		final double dY = dividendYieldCurve.getDiscountFactor(time);
 		final double dividendYieldRate = -Math.log(dY) / time;
 
-		return new double[] { riskFreeRate - dividendYieldRate };
+		return new double[] { (riskFreeRate - dividendYieldRate) * stateVariables[0] };
 	}
 
 	@Override
 	public double[][] getFactorLoading(final double time, final double... stateVariables) {
 		final double S = stateVariables.length > 0 ? stateVariables[0] : initialValue;
 
-		// Percentage loading so that (S * loading)^2 = sigma^2 * S^(2 beta).
-		final double percentageLoading;
+		final double loading;
 		if(S <= 0.0) {
-			percentageLoading = 0.0;
+			loading = 0.0;
 		}
 		else {
-			percentageLoading = sigma * Math.pow(S, beta - 1.0);
+			loading = sigma * Math.pow(S, beta);
 		}
 
-		return new double[][] { { percentageLoading } };
+		return new double[][] { { loading } };
 	}
 
 	@Override
