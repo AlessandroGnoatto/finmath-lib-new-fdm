@@ -23,11 +23,11 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  * </p>
  *
  * <p>
- * In this finite-difference framework, {@link #getDrift(double, double...)} returns the
- * <em>percentage drift</em> (to be multiplied by {@code S} in the PDE operator),
- * and {@link #getFactorLoading(double, double...)} returns the <em>percentage factor loading</em>
- * (to be multiplied by {@code S} in the PDE operator). Hence, for CEV we return
- * {@code sigma * S^(beta-1)} so that {@code (S * loading)^2 = sigma^2 * S^(2 beta)}.
+ * In this class, {@link #getDrift(double, double...)} returns the
+ * <em>absolute drift</em>,
+ * and {@link #getFactorLoading(double, double...)} returns the <em>absolute factor loading</em>.
+ * Hence, for CEV we return
+ * {@code sigma * S^(beta)}.
  * </p>
  *
  * @author Alessandro Gnoatto

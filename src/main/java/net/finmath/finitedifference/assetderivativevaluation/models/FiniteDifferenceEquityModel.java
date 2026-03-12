@@ -13,10 +13,8 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
  * </p>
  *
  * <p>
- * The current finite difference framework assumes discretization of the spot price {@code S}
- * (not {@code log(S)}). Hence, drift and factor loadings are interpreted as percentage
- * coefficients that are typically combined with the diagonal matrix of spot values when
- * constructing the discrete operator.
+ * The finite difference framework does not assume discretization of the spot price {@code S}
+ * or {@code log(S)}. It is agnostic. It is the task of the user to provide coherent drifts and factor loadings.
  * </p>
  *
  * @author Alessandro Gnoatto
