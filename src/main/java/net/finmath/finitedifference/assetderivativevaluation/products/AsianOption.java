@@ -8,7 +8,7 @@ import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDi
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
-import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
+import net.finmath.finitedifference.solvers.FDMThetaMethod2DStateVariableForm;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.modelling.products.CallOrPut;
 
@@ -119,8 +119,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 		final FiniteDifferenceEquityModel liftedModel =
 				new LiftedFDMBlackScholesModelDecorator(bsModel, liftedDiscretization);
 
-		final FDMThetaMethod2D solver =
-				new FDMThetaMethod2D(liftedModel, this, liftedDiscretization, exercise);
+		final FDMThetaMethod2DStateVariableForm solver =
+				new FDMThetaMethod2DStateVariableForm(liftedModel, this, liftedDiscretization, exercise);
 
 		final DoubleBinaryOperator payoffAtMaturity = (S, I) -> {
 			final double average = I / maturity;

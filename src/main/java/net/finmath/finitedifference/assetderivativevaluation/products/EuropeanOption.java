@@ -4,9 +4,7 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScho
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.solvers.FDMSolver;
-import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1DStateVariableForm;
-import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2DStateVariableForm;
 import net.finmath.modelling.products.CallOrPut;
 
