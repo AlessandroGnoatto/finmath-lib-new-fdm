@@ -1,5 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
@@ -164,6 +165,9 @@ public class AmericanOption implements FiniteDifferenceProduct {
 		else if(model instanceof FDMCevModel) {
 			solver = new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
+		else if(model instanceof FDMBachelierModel) {
+			solver = new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
 		else if(model instanceof FDMHestonModel) {
 			solver = new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
@@ -188,6 +192,9 @@ public class AmericanOption implements FiniteDifferenceProduct {
 			solver = new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else if(model instanceof FDMCevModel) {
+			solver = new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
+		else if(model instanceof FDMBachelierModel) {
 			solver = new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else if(model instanceof FDMHestonModel) {
