@@ -348,8 +348,8 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 		final double dY = getDividendYieldCurve().getDiscountFactor(t);
 		final double q = -Math.log(dY) / t;
 
-		final double mu = (r - q) * stateVariables[0];		// percentage drift for S (to be multiplied by S in PDE operator)
-		final double muV = kappa * (thetaV - v);	// drift of variance state
+		final double mu = (r - q) * stateVariables[0];		// drift for S
+		final double muV = kappa * (thetaV - v);	// drift of the CIR
 
 		return new double[] {mu, muV};
 	}
@@ -357,7 +357,7 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 	@Override
 	public double[][] getFactorLoading(final double time, final double... stateVariables) {
 		// Factors are independent. Correlation rho is embedded in the second row.
-		//final double S = stateVariables.length > 0 ? stateVariables[0] : initialSpot;
+		final double S = stateVariables.length > 0 ? stateVariables[0] : initialSpot;
 		final double v = Math.max(0.0, stateVariables.length > 1 ? stateVariables[1] : initialVariance);
 		final double sqrtV = Math.sqrt(v);
 
@@ -367,7 +367,7 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 		final double[][] b = new double[2][2];
 
 		// dS = ... + S * sqrt(v) dW1
-		b[0][0] = sqrtV * stateVariables[0];	// percentage loading for S: will be multiplied by S in PDE operator
+		b[0][0] = sqrtV * S;	// percentage loading for S: will be multiplied by S in PDE operator
 		b[0][1] = 0.0;
 
 		// dv = ... + sigma * sqrt(v) ( rho dW1 + sqrt(1-rho^2) dW2 )
