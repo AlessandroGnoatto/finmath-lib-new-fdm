@@ -56,7 +56,7 @@ public class BachelierEuropeanOptionFdmVsMonteCarloTest {
 		final double q = 0.0;
 
 		// Normal volatility (units of underlying per sqrt(year))
-		final double sigmaN = 10.0;
+		final double sigmaN = s0 * 0.25;
 
 		// --- Curves for the FD model ---
 		final DiscountCurve riskFreeCurve = createFlatDiscountCurve("r", r);
