@@ -1,4 +1,4 @@
-package net.finmath.finitedifference;
+package net.finmath.finitedifference.assetderivativevaluation.models;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
