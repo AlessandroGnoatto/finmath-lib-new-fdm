@@ -228,10 +228,10 @@ public class BarrierOption implements FiniteDifferenceProduct {
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 
-		if(!(model instanceof FDMBlackScholesModel)) {
+		/*if(!(model instanceof FDMBlackScholesModel)) {
 			throw new IllegalArgumentException(
 					"BarrierOption currently supports only FDMBlackScholesModel.");
-		}
+		}*/
 
 		if(exercise != ExerciseType.EUROPEAN) {
 			throw new IllegalArgumentException(
@@ -252,7 +252,7 @@ public class BarrierOption implements FiniteDifferenceProduct {
 			return getOutValues(model);
 		}
 		else {
-			return getInValuesByParity((FDMBlackScholesModel) model);
+			return getInValuesByParity(model);
 		}
 	}
 
