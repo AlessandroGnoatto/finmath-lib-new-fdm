@@ -1,6 +1,7 @@
 package net.finmath.finitedifference.assetderivativevaluation.models;
 
 import net.finmath.finitedifference.FiniteDifferenceModel;
+import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 
 /**
@@ -65,5 +66,21 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
 	 * @return The factor loading matrix.
 	 */
 	double[][] getFactorLoading(double time, double... stateVariables);
+
+	/**
+	 * Method that returns a clone of this model for a different choice
+	 * of the space-time discretization.
+	 * 
+	 * @param newSpaceTimeDiscretization
+	 * @return the same model with a new SpaceTimeDiscretization
+	 */
+	FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+			SpaceTimeDiscretization newSpaceTimeDiscretization);
+
+	/**
+	 * Returns the initial value of the system of SDE.
+	 * @return the initial value of the system of SDEs.
+	 */
+	public double[] getInitialValue();
 
 }

@@ -215,8 +215,8 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel, Finite
 	 *
 	 * @return The initial value.
 	 */
-	public double getInitialValue() {
-		return initialValue;
+	public double[] getInitialValue() {
+		return new double[] {initialValue};
 	}
 
 	@Override
@@ -275,5 +275,17 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel, Finite
 				FDBoundaryFactory.createBoundary(this, product);
 
 		return boundary.getValueAtUpperBoundary(product, time, riskFactors);
+	}
+
+	@Override
+	public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+			final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+		return new FDMBlackScholesModel(
+				initialValue,
+				riskFreeCurve,
+				dividendYieldCurve,
+				volatility,
+				newSpaceTimeDiscretization
+		);
 	}
 }

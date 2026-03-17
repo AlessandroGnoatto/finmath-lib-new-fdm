@@ -149,8 +149,8 @@ public class FDMBachelierModel implements FiniteDifferenceEquityModel, FiniteDif
 	 *
 	 * @return Initial underlying value.
 	 */
-	public double getInitialValue() {
-		return initialValue;
+	public double[] getInitialValue() {
+		return new double[] {initialValue};
 	}
 
 	/**
@@ -230,5 +230,17 @@ public class FDMBachelierModel implements FiniteDifferenceEquityModel, FiniteDif
 				interpolationMethod,
 				extrapolationMethod,
 				interpolationEntity);
+	}
+
+	@Override
+	public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+			final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+		return new FDMBachelierModel(
+				initialValue,
+				riskFreeCurve,
+				dividendYieldCurve,
+				volatility,
+				newSpaceTimeDiscretization
+		);
 	}
 }

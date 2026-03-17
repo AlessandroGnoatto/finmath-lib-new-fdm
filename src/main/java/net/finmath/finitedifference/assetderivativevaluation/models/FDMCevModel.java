@@ -237,8 +237,8 @@ public class FDMCevModel implements FiniteDifferenceEquityModel, FiniteDifferenc
 	 *
 	 * @return The initial spot.
 	 */
-	public double getInitialValue() {
-		return initialValue;
+	public double[] getInitialValue() {
+		return new double[] {initialValue};
 	}
 
 	/**
@@ -312,5 +312,18 @@ public class FDMCevModel implements FiniteDifferenceEquityModel, FiniteDifferenc
 
 		final FiniteDifferenceBoundary boundary = FDBoundaryFactory.createBoundary(this, product);
 		return boundary.getValueAtUpperBoundary(product, time, riskFactors);
+	}
+
+	@Override
+	public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+			final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+		return new FDMCevModel(
+				initialValue,
+				riskFreeCurve,
+				dividendYieldCurve,
+				sigma,
+				beta,
+				newSpaceTimeDiscretization
+		);
 	}
 }

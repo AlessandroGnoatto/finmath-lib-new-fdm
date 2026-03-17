@@ -1,5 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import java.util.Arrays;
 import java.util.function.DoubleBinaryOperator;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
@@ -113,7 +114,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 				new Grid[] { sGrid, iGrid },
 				baseDiscretization.getTimeDiscretization(),
 				baseDiscretization.getTheta(),
-				new double[] { bsModel.getInitialValue(), 0.0 }
+				new double[] { bsModel.getInitialValue()[0], 0.0 }
 		);
 
 		final FiniteDifferenceEquityModel liftedModel =
@@ -191,8 +192,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 				time = 1e-6;
 			}
 
-			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue();
-			final double I = stateVariables.length > 0 ? stateVariables[1] : delegate.getInitialValue();
+			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+			final double I = stateVariables.length > 0 ? stateVariables[1] : delegate.getInitialValue()[0];
 
 			// percentage drift for S (same convention as existing BS model)
 			final double muS = delegate.getDrift(time, S)[0];
@@ -205,13 +206,21 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public double[][] getFactorLoading(final double time, final double... stateVariables) {
-			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue();
+			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
 			// percentage loading for S from base BS model
 			final double sigma = delegate.getFactorLoading(time, S)[0][0];
 
 			// I has no diffusion
 			return new double[][] { { sigma, 0.0 }, { 0.0, 0.0 } };
+		}
+
+		@Override
+		public double[] getInitialValue() {
+			double[] oldArray = delegate.getInitialValue();
+			double[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
+			newArray[newArray.length - 1] = 0.0;
+			return newArray;
 		}
 
 		@Override
@@ -278,6 +287,13 @@ public class AsianOption implements FiniteDifferenceProduct {
 			result[1] = intrinsic * discount;
 
 			return result;
+		}
+
+		@Override
+		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+				SpaceTimeDiscretization newSpaceTimeDiscretization) {
+			
+			return new LiftedFDMBlackScholesModelDecorator(delegate, newSpaceTimeDiscretization);
 		}
 	}
 }

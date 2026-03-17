@@ -274,12 +274,12 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 	}
 
 	/**
-	 * Returns the initial spot value.
+	 * Returns the initial value of the system of SDEs.
 	 *
 	 * @return The initial spot.
 	 */
-	public double getInitialSpot() {
-		return initialSpot;
+	public double[] getInitialValue() {
+		return new double[] {initialSpot, initialVariance};
 	}
 
 	/**
@@ -287,9 +287,9 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 	 *
 	 * @return The initial variance.
 	 */
-	public double getInitialVariance() {
+	/*public double getInitialVariance() {
 		return initialVariance;
-	}
+	}*/
 
 	/**
 	 * Returns the mean reversion speed of variance.
@@ -420,5 +420,21 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel, FiniteDiffer
 				FDBoundaryFactory.createBoundary(this, product);
 
 		return boundary.getValueAtUpperBoundary(product, time, riskFactors);
+	}
+
+	@Override
+	public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+			final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+		return new FDMHestonModel(
+				initialSpot,
+				initialVariance,
+				riskFreeCurve,
+				dividendYieldCurve,
+				kappa,
+				thetaV,
+				sigma,
+				rho,
+				newSpaceTimeDiscretization
+		);
 	}
 }
