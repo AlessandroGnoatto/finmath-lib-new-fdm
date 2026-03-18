@@ -11,10 +11,10 @@ import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.ExerciseType;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.modelling.Exercise;
 
 /**
  * Theta-method solver for two-dimensional PDEs in <em>state-variable form</em>.
@@ -62,7 +62,7 @@ public class FDMThetaMethod2D implements FDMSolver {
 	private final FiniteDifferenceEquityModel model;
 	private final FiniteDifferenceProduct product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
-	private final ExerciseType exercise;
+	private final Exercise exercise;
 
 	/**
 	 * Creates a 2D theta method solver in state-variable form.
@@ -70,13 +70,13 @@ public class FDMThetaMethod2D implements FDMSolver {
 	 * @param model Finite difference equity model providing drift, factor loadings, and boundary conditions.
 	 * @param product Product used for boundary value queries.
 	 * @param spaceTimeDiscretization Space-time discretization (two space grids + time discretization).
-	 * @param exercise Exercise type (European/American).
+	 * @param exercise Exercise specification.
 	 */
 	public FDMThetaMethod2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final ExerciseType exercise) {
+			final Exercise exercise) {
 		this.model = model;
 		this.product = product;
 		this.spaceTimeDiscretization = spaceTimeDiscretization;
@@ -349,12 +349,12 @@ public class FDMThetaMethod2D implements FDMSolver {
 				}
 			}
 
-			if (exercise == ExerciseType.EUROPEAN) {
+			if (exercise.isEuropean()) {
 				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
 				U = solver.solve(rhs);
 				z.setColumnMatrix(m + 1, U);
 			}
-			else if (exercise == ExerciseType.AMERICAN) {
+			else if (exercise.isAmerican()) {
 				final double omega = 1.2;
 				final SORDecomposition sor = new SORDecomposition(H);
 				final RealMatrix zz = sor.getSol(U, rhs, omega, 500);
@@ -367,6 +367,10 @@ public class FDMThetaMethod2D implements FDMSolver {
 					}
 				}
 				z.setColumnMatrix(m + 1, U);
+			}
+			else {
+				throw new UnsupportedOperationException(
+						"FDMThetaMethod2D does not yet support Bermudan exercise.");
 			}
 		}
 

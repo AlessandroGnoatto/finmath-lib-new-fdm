@@ -1,6 +1,5 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -10,6 +9,8 @@ import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
+import net.finmath.modelling.Exercise;
+import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
 import net.finmath.time.TimeDiscretization;
@@ -18,9 +19,9 @@ import net.finmath.time.TimeDiscretization;
  * Implements valuation of a standard single-barrier option on one asset.
  *
  * <p>
- * The class currently supports finite-difference valuation under
- * {@link FDMBlackScholesModel}. The barrier type is specified through
- * {@link BarrierType}.
+ * The class currently supports one-dimensional finite-difference valuation
+ * for models whose first state variable represents the underlying level
+ * and whose spatial grid boundary coincides with the barrier.
  * </p>
  *
  * <p>
@@ -58,7 +59,7 @@ public class BarrierOption implements FiniteDifferenceProduct {
 	private final double rebate;
 	private final CallOrPut callOrPutSign;
 	private final BarrierType barrierType;
-	private final ExerciseType exercise;
+	private final Exercise exercise;
 
 	/**
 	 * Creates a barrier option.
@@ -98,7 +99,7 @@ public class BarrierOption implements FiniteDifferenceProduct {
 			throw new IllegalArgumentException("Unknown option type.");
 		}
 
-		this.exercise = ExerciseType.EUROPEAN;
+		this.exercise = new EuropeanExercise(maturity);
 	}
 
 	/**
@@ -128,7 +129,7 @@ public class BarrierOption implements FiniteDifferenceProduct {
 		this.rebate = rebate;
 		this.callOrPutSign = callOrPutSign;
 		this.barrierType = barrierType;
-		this.exercise = ExerciseType.EUROPEAN;
+		this.exercise = new EuropeanExercise(maturity);
 	}
 
 	/**
@@ -228,12 +229,7 @@ public class BarrierOption implements FiniteDifferenceProduct {
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 
-		/*if(!(model instanceof FDMBlackScholesModel)) {
-			throw new IllegalArgumentException(
-					"BarrierOption currently supports only FDMBlackScholesModel.");
-		}*/
-
-		if(exercise != ExerciseType.EUROPEAN) {
+		if(!exercise.isEuropean()) {
 			throw new IllegalArgumentException(
 					"BarrierOption currently supports only European exercise.");
 		}
@@ -326,9 +322,13 @@ public class BarrierOption implements FiniteDifferenceProduct {
 		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
 			for(int i = 0; i < barrierGrid.length; i++) {
 				final double stock = barrierGrid[i];
-				RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(vanillaGrid, getColumn(vanillaValues, timeIndex),
-						InterpolationMethod.LINEAR, ExtrapolationMethod.CONSTANT);
-				final double vanillaValue = interpolator.getValue(stock);//interpolateLinear(vanillaGrid, getColumn(vanillaValues, timeIndex), stock);
+				final RationalFunctionInterpolation interpolator =
+						new RationalFunctionInterpolation(
+								vanillaGrid,
+								getColumn(vanillaValues, timeIndex),
+								InterpolationMethod.LINEAR,
+								ExtrapolationMethod.CONSTANT);
+				final double vanillaValue = interpolator.getValue(stock);
 				inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
 			}
 		}
@@ -356,20 +356,12 @@ public class BarrierOption implements FiniteDifferenceProduct {
 
 		/*
 		 * Build a wider auxiliary grid for the vanilla problem.
-		 *
-		 * Since we no longer want to hard-code a volatility, choose a simple symmetric
-		 * enlargement around the initial value, based on the current grid width.
-		 * This avoids introducing model-specific assumptions here.
 		 */
 		final double initialValue = barrierModel.getInitialValue()[0];
 		final double currentMin = barrierGrid[0];
 		final double currentMax = barrierGrid[barrierGrid.length - 1];
 		final double currentHalfWidth = Math.max(initialValue - currentMin, currentMax - initialValue);
 
-		/*
-		 * Enlarge the domain symmetrically. A factor of 2 is a reasonable default and
-		 * avoids embedding model-specific volatility logic into the product class.
-		 */
 		final double targetMin = Math.max(1E-8, initialValue - 2.0 * currentHalfWidth);
 		final double targetMax = initialValue + 2.0 * currentHalfWidth;
 
@@ -551,11 +543,11 @@ public class BarrierOption implements FiniteDifferenceProduct {
 	}
 
 	/**
-	 * Returns the exercise type.
+	 * Returns the exercise specification.
 	 *
-	 * @return Exercise type.
+	 * @return Exercise specification.
 	 */
-	public ExerciseType getExercise() {
+	public Exercise getExercise() {
 		return exercise;
 	}
 }

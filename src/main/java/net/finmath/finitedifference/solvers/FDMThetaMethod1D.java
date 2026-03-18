@@ -10,9 +10,9 @@ import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.ExerciseType;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.modelling.Exercise;
 
 /**
  * Theta-method solver for a one-dimensional PDE in <em>state-variable form</em>.
@@ -64,7 +64,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 	private final FiniteDifferenceEquityModel model;
 	private final FiniteDifferenceProduct product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
-	private final ExerciseType exercise;
+	private final Exercise exercise;
 
 	/**
 	 * Creates a theta-method solver for a one-dimensional PDE in state-variable form.
@@ -72,13 +72,13 @@ public class FDMThetaMethod1D implements FDMSolver {
 	 * @param model The finite difference equity model providing drift, factor loadings, and boundary conditions.
 	 * @param product The product used for boundary value queries.
 	 * @param spaceTimeDiscretization The space-time discretization.
-	 * @param exercise The exercise type (European/American).
+	 * @param exercise The exercise specification.
 	 */
 	public FDMThetaMethod1D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final ExerciseType exercise) {
+			final Exercise exercise) {
 		this.model = model;
 		this.product = product;
 		this.spaceTimeDiscretization = spaceTimeDiscretization;
@@ -105,14 +105,14 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 		// Initial condition at maturity (tau = 0): payoff on full grid.
 		RealMatrix U = MatrixUtils.createRealMatrix(nX, 1);
-		for (int i = 0; i < nX; i++) {
+		for(int i = 0; i < nX; i++) {
 			U.setEntry(i, 0, valueAtMaturity.applyAsDouble(xGrid[i]));
 		}
 
 		final RealMatrix z = MatrixUtils.createRealMatrix(nX, timeLength);
 		z.setColumnMatrix(0, U);
 
-		for (int m = 0; m < M; m++) {
+		for(int m = 0; m < M; m++) {
 
 			final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
@@ -136,7 +136,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final double[] a_m = new double[nX];
 			final double[] a_mp1 = new double[nX];
 
-			for (int i = 0; i < nX; i++) {
+			for(int i = 0; i < nX; i++) {
 				final double x = xGrid[i];
 
 				mu_m[i] = model.getDrift(t_m, x)[0];
@@ -146,13 +146,13 @@ public class FDMThetaMethod1D implements FDMSolver {
 				final double[][] b_mp1 = model.getFactorLoading(t_mp1, x);
 
 				double am = 0.0;
-				for (int f = 0; f < b_m[0].length; f++) {
+				for(int f = 0; f < b_m[0].length; f++) {
 					final double b = b_m[0][f];
 					am += b * b;
 				}
 
 				double ap = 0.0;
-				for (int f = 0; f < b_mp1[0].length; f++) {
+				for(int f = 0; f < b_mp1[0].length; f++) {
 					final double b = b_mp1[0][f];
 					ap += b * b;
 				}
@@ -173,7 +173,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final RealMatrix diffTerm_m = A_m.scalarMultiply(0.5 * deltaTau).multiply(T2);
 			final RealMatrix diffTerm_mp1 = A_mp1.scalarMultiply(0.5 * deltaTau).multiply(T2);
 
-			// F and G in theta scheme (mirrors FDMThetaMethod1D).
+			// F and G in theta scheme.
 			final RealMatrix F = I.scalarMultiply(1.0 - r_m * deltaTau).add(driftTerm_m).add(diffTerm_m);
 			final RealMatrix G = I.scalarMultiply(1.0 + r_mp1 * deltaTau).subtract(driftTerm_mp1).subtract(diffTerm_mp1);
 
@@ -184,8 +184,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 			// Dirichlet boundary enforcement (first and last grid point).
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
-			for (int i = 0; i < nX; i++) {
-				if (i != 0 && i != nX - 1) {
+			for(int i = 0; i < nX; i++) {
+				if(i != 0 && i != nX - 1) {
 					continue;
 				}
 
@@ -193,33 +193,37 @@ public class FDMThetaMethod1D implements FDMSolver {
 						? timeReversedLowerBoundary(xGrid[i], tau_mp1)
 						: timeReversedUpperBoundary(xGrid[i], tau_mp1);
 
-				for (int col = 0; col < nX; col++) {
+				for(int col = 0; col < nX; col++) {
 					H.setEntry(i, col, 0.0);
 				}
 				H.setEntry(i, i, 1.0);
 				rhs.setEntry(i, 0, boundaryValue);
 			}
 
-			if (exercise == ExerciseType.EUROPEAN) {
+			if(exercise.isEuropean()) {
 				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
 				U = solver.solve(rhs);
 			}
-			else if (exercise == ExerciseType.AMERICAN) {
+			else if(exercise.isAmerican()) {
 				final double omega = 1.2;
 				final SORDecomposition sor = new SORDecomposition(H);
 				final RealMatrix zz = sor.getSol(U, rhs, omega, 500);
 
-				for (int i = 0; i < nX; i++) {
-					if (i == 0) {
+				for(int i = 0; i < nX; i++) {
+					if(i == 0) {
 						U.setEntry(i, 0, timeReversedLowerBoundary(xGrid[i], tau_mp1));
 					}
-					else if (i == nX - 1) {
+					else if(i == nX - 1) {
 						U.setEntry(i, 0, timeReversedUpperBoundary(xGrid[i], tau_mp1));
 					}
 					else {
 						U.setEntry(i, 0, Math.max(zz.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
 					}
 				}
+			}
+			else {
+				throw new UnsupportedOperationException(
+						"FDMThetaMethod1D does not yet support Bermudan exercise.");
 			}
 
 			z.setColumnMatrix(m + 1, U);

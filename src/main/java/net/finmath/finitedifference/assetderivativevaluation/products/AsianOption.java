@@ -3,27 +3,35 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
 import java.util.Arrays;
 import java.util.function.DoubleBinaryOperator;
 
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.marketdata.model.curves.DiscountCurve;
+import net.finmath.modelling.Exercise;
+import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
  * Fixed-strike arithmetic Asian option priced via a Markov lift.
  *
- * <p>We lift the 1D Black-Scholes state S to the 2D Markov state (S, I) where
- * I(t) = integral_0^t S(u) du, and solve a 2D PDE.</p>
+ * <p>
+ * We lift the 1D Black-Scholes state S to the 2D Markov state (S, I) where
+ * I(t) = integral_0^t S(u) du, and solve a 2D PDE.
+ * </p>
  *
- * <p>Payoff at maturity T:
+ * <p>
+ * Payoff at maturity T:
  * Call: max(I(T)/T - K, 0)
- * Put : max(K - I(T)/T, 0)</p>
+ * Put : max(K - I(T)/T, 0)
+ * </p>
  *
- * <p>Assumption: averaging times coincide with the PDE grid's time discretization.</p>
+ * <p>
+ * Assumption: averaging times coincide with the PDE grid's time discretization.
+ * </p>
  */
 public class AsianOption implements FiniteDifferenceProduct {
 
@@ -31,7 +39,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 	private final double maturity;
 	private final double strike;
 	private final CallOrPut callOrPutSign;
-	private final ExerciseType exercise;
+	private final Exercise exercise;
 
 	public AsianOption(final String underlyingName, final double maturity, final double strike, final double callOrPutSign) {
 		this.underlyingName = underlyingName;
@@ -48,7 +56,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 			throw new IllegalArgumentException("Unknown option type.");
 		}
 
-		this.exercise = ExerciseType.EUROPEAN;
+		this.exercise = new EuropeanExercise(maturity);
 	}
 
 	public AsianOption(final String underlyingName, final double maturity, final double strike, final CallOrPut callOrPutSign) {
@@ -56,7 +64,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 		this.maturity = maturity;
 		this.strike = strike;
 		this.callOrPutSign = callOrPutSign;
-		this.exercise = ExerciseType.EUROPEAN;
+		this.exercise = new EuropeanExercise(maturity);
 	}
 
 	public AsianOption(final double maturity, final double strike, final double callOrPutSign) {
@@ -98,6 +106,10 @@ public class AsianOption implements FiniteDifferenceProduct {
 			throw new IllegalArgumentException("AsianOption currently supports only FDMBlackScholesModel.");
 		}
 
+		if(!exercise.isEuropean()) {
+			throw new IllegalArgumentException("AsianOption currently supports only European exercise.");
+		}
+
 		final FDMBlackScholesModel bsModel = (FDMBlackScholesModel) model;
 
 		final SpaceTimeDiscretization baseDiscretization = bsModel.getSpaceTimeDiscretization();
@@ -133,7 +145,6 @@ public class AsianOption implements FiniteDifferenceProduct {
 			}
 		};
 
-		// Uses the new overload in FDMThetaMethod2D
 		return solver.getValues(maturity, payoffAtMaturity);
 	}
 
@@ -153,7 +164,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 		return callOrPutSign;
 	}
 
-	public ExerciseType getExercise() {
+	public Exercise getExercise() {
 		return exercise;
 	}
 
@@ -193,9 +204,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 			}
 
 			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
-			final double I = stateVariables.length > 0 ? stateVariables[1] : delegate.getInitialValue()[0];
 
-			// percentage drift for S (same convention as existing BS model)
+			// drift for S in the chosen state variable
 			final double muS = delegate.getDrift(time, S)[0];
 
 			// drift for I: dI = S dt
@@ -208,7 +218,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 		public double[][] getFactorLoading(final double time, final double... stateVariables) {
 			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-			// percentage loading for S from base BS model
+			// loading for S from base BS model
 			final double sigma = delegate.getFactorLoading(time, S)[0][0];
 
 			// I has no diffusion
@@ -217,8 +227,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public double[] getInitialValue() {
-			double[] oldArray = delegate.getInitialValue();
-			double[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
+			final double[] oldArray = delegate.getInitialValue();
+			final double[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
 			newArray[newArray.length - 1] = 0.0;
 			return newArray;
 		}
@@ -246,7 +256,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 			// S -> 0
 			result[0] = (callOrPut == CallOrPut.CALL) ? 0.0 : strike * discount;
 
-			// I -> 0 (average -> 0)
+			// I -> 0
 			result[1] = Double.NaN;
 
 			return result;
@@ -275,10 +285,10 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			final double[] result = new double[2];
 
-			// S -> infinity (simple asymptotic bound, consistent with vanilla style)
+			// S -> infinity
 			result[0] = (callOrPut == CallOrPut.CALL) ? (S - strike * discount) : 0.0;
 
-			// I -> infinity: payoff dominated by average = I/T
+			// I -> infinity
 			final double average = I / maturity;
 			final double intrinsic = (callOrPut == CallOrPut.CALL)
 					? Math.max(average - strike, 0.0)
@@ -291,8 +301,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
-				SpaceTimeDiscretization newSpaceTimeDiscretization) {
-			
+				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+
 			return new LiftedFDMBlackScholesModelDecorator(delegate, newSpaceTimeDiscretization);
 		}
 	}

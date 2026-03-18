@@ -8,6 +8,8 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDiffer
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
+import net.finmath.modelling.AmericanExercise;
+import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
@@ -32,16 +34,16 @@ public class AmericanOption implements FiniteDifferenceProduct {
 	private final double maturity;
 	private final double strike;
 	private final CallOrPut callOrPutSign;
-	private final ExerciseType exercise;
+	private final Exercise exercise;
 
 	/**
 	 * Creates an American option for a named underlying.
 	 *
 	 * @param underlyingName Name of the underlying.
-	 * @param maturity       Maturity {@code T}.
-	 * @param strike         Strike {@code K}.
-	 * @param callOrPutSign  Payoff sign, where {@code 1.0} corresponds to a call and
-	 *                       {@code -1.0} corresponds to a put.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call and
+	 *        {@code -1.0} corresponds to a put.
 	 */
 	public AmericanOption(
 			final String underlyingName,
@@ -64,16 +66,16 @@ public class AmericanOption implements FiniteDifferenceProduct {
 			throw new IllegalArgumentException("Unknown option type");
 		}
 
-		this.exercise = ExerciseType.AMERICAN;
+		this.exercise = new AmericanExercise(maturity);
 	}
 
 	/**
 	 * Creates an American option for a named underlying.
 	 *
 	 * @param underlyingName Name of the underlying.
-	 * @param maturity       Maturity {@code T}.
-	 * @param strike         Strike {@code K}.
-	 * @param callOrPutSign  Option type.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Option type.
 	 */
 	public AmericanOption(
 			final String underlyingName,
@@ -86,16 +88,16 @@ public class AmericanOption implements FiniteDifferenceProduct {
 		this.maturity = maturity;
 		this.strike = strike;
 		this.callOrPutSign = callOrPutSign;
-		this.exercise = ExerciseType.AMERICAN;
+		this.exercise = new AmericanExercise(maturity);
 	}
 
 	/**
 	 * Creates an American option (single-asset case, unnamed underlying).
 	 *
-	 * @param maturity      Maturity {@code T}.
-	 * @param strike        Strike {@code K}.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
 	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call and
-	 *                      {@code -1.0} corresponds to a put.
+	 *        {@code -1.0} corresponds to a put.
 	 */
 	public AmericanOption(final double maturity, final double strike, final double callOrPutSign) {
 
@@ -114,14 +116,14 @@ public class AmericanOption implements FiniteDifferenceProduct {
 		}
 
 		this.underlyingName = null;
-		this.exercise = ExerciseType.AMERICAN;
+		this.exercise = new AmericanExercise(maturity);
 	}
 
 	/**
 	 * Creates an American option (single-asset case, unnamed underlying).
 	 *
-	 * @param maturity      Maturity {@code T}.
-	 * @param strike        Strike {@code K}.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
 	 * @param callOrPutSign Option type.
 	 */
 	public AmericanOption(final double maturity, final double strike, final CallOrPut callOrPutSign) {
@@ -131,15 +133,15 @@ public class AmericanOption implements FiniteDifferenceProduct {
 		this.strike = strike;
 		this.callOrPutSign = callOrPutSign;
 		this.underlyingName = null;
-		this.exercise = ExerciseType.AMERICAN;
+		this.exercise = new AmericanExercise(maturity);
 	}
 
 	/**
 	 * Creates an American call option for a named underlying.
 	 *
 	 * @param underlyingName Name of the underlying.
-	 * @param maturity       Maturity {@code T}.
-	 * @param strike         Strike {@code K}.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
 	 */
 	public AmericanOption(final String underlyingName, final double maturity, final double strike) {
 		this(underlyingName, maturity, strike, 1.0);
@@ -149,7 +151,7 @@ public class AmericanOption implements FiniteDifferenceProduct {
 	 * Creates an American call option (single-asset case, unnamed underlying).
 	 *
 	 * @param maturity Maturity {@code T}.
-	 * @param strike   Strike {@code K}.
+	 * @param strike Strike {@code K}.
 	 */
 	public AmericanOption(final double maturity, final double strike) {
 		this(maturity, strike, 1.0);
@@ -177,10 +179,10 @@ public class AmericanOption implements FiniteDifferenceProduct {
 		}
 
 		if(callOrPutSign == CallOrPut.CALL) {
-			return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(assetValue - strike, 0));
+			return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(assetValue - strike, 0.0));
 		}
 		else {
-			return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(strike - assetValue, 0));
+			return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(strike - assetValue, 0.0));
 		}
 	}
 
@@ -206,10 +208,10 @@ public class AmericanOption implements FiniteDifferenceProduct {
 		}
 
 		if(callOrPutSign == CallOrPut.CALL) {
-			return solver.getValues(maturity, assetValue -> Math.max(assetValue - strike, 0));
+			return solver.getValues(maturity, assetValue -> Math.max(assetValue - strike, 0.0));
 		}
 		else {
-			return solver.getValues(maturity, assetValue -> Math.max(strike - assetValue, 0));
+			return solver.getValues(maturity, assetValue -> Math.max(strike - assetValue, 0.0));
 		}
 	}
 
@@ -250,11 +252,11 @@ public class AmericanOption implements FiniteDifferenceProduct {
 	}
 
 	/**
-	 * Returns the exercise type.
+	 * Returns the exercise specification.
 	 *
-	 * @return The exercise type.
+	 * @return The exercise specification.
 	 */
-	public ExerciseType getExercise() {
+	public Exercise getExercise() {
 		return exercise;
 	}
 }

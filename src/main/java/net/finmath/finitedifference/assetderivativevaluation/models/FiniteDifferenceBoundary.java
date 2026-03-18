@@ -3,8 +3,13 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 
 /**
- * Interface for boundaries conditions provided to finite difference solvers.
+ * Interface for boundary conditions provided to finite-difference solvers.
  *
+ * <p>
+ * Boundary values are given in the coordinates of the state variables used
+ * by the PDE discretization.
+ * </p>
+ * 
  * @author Christian Fries
  * @version 1.0
  */

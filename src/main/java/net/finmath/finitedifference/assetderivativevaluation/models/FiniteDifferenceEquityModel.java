@@ -5,18 +5,36 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 
 /**
- * Interface for a (possibly multi-dimensional) finite difference equity model for option pricing.
+ * Interface for a finite-difference equity model.
  *
  * <p>
- * Implementations provide the ingredients required by finite difference schemes, in particular
- * access to discounting curves and model coefficients (drift and factor loadings) used to
- * assemble the PDE operator.
+ * Implementations provide the ingredients required by the finite-difference solvers,
+ * in particular discount curves, drift coefficients, factor loadings, boundary values,
+ * and the initial state.
  * </p>
  *
  * <p>
- * The finite difference framework does not assume discretization of the spot price {@code S}
- * or {@code log(S)}. It is agnostic. It is the task of the user to provide coherent drifts and factor loadings.
+ * The framework is formulated in terms of the <i>chosen state variables</i> of the PDE.
+ * It does <b>not</b> assume that the first spatial coordinate is necessarily the spot
+ * price {@code S}. It may instead be {@code S}, {@code log(S)}, or any other state variable
+ * for which the model provides consistent coefficients.
  * </p>
+ *
+ * <p>
+ * Therefore, {@link #getDrift(double, double...)} and
+ * {@link #getFactorLoading(double, double...)} must return coefficients that are
+ * consistent with the very same state variables on which the PDE is discretized.
+ * </p>
+ *
+ * <p>
+ * Example:
+ * </p>
+ * <ul>
+ *   <li>if the grid variable is {@code S}, then the drift and factor loadings should
+ *       correspond to the SDE for {@code S},</li>
+ *   <li>if the grid variable is {@code log(S)}, then the drift and factor loadings should
+ *       correspond to the SDE for {@code log(S)}.</li>
+ * </ul>
  *
  * @author Alessandro Gnoatto
  */
@@ -37,50 +55,75 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
 	DiscountCurve getDividendYieldCurve();
 
 	/**
-	 * Returns the drift coefficients for the state variables.
+	 * Returns the drift vector of the model state variables.
 	 *
 	 * <p>
-	 * The framework assumes discretization in the spot coordinate {@code S}. Therefore, the drift
-	 * is returned as a percentage coefficient. When assembling the finite difference operator, it
-	 * is typically combined with the current state value (e.g., multiplied by the spot grid).
+	 * The returned coefficients must be expressed in the same coordinates as the PDE
+	 * state variables used by the finite-difference solver.
 	 * </p>
 	 *
-	 * @param time          The evaluation time.
-	 * @param stateVariables The state variables (varargs to support multi-dimensional models).
+	 * <p>
+	 * For example, if the first state variable is {@code X}, then the first component
+	 * of the returned vector is the drift of {@code X} in the SDE
+	 * </p>
+	 *
+	 * <p>
+	 * {@code dX_t = mu_X(t, X_t, ...) dt + ...}
+	 * </p>
+	 *
+	 * @param time The evaluation time.
+	 * @param stateVariables The current values of the model state variables.
 	 * @return The drift vector.
 	 */
 	double[] getDrift(double time, double... stateVariables);
 
 	/**
-	 * Returns the matrix of factor loadings for the state variables.
+	 * Returns the factor loading matrix of the model state variables.
 	 *
 	 * <p>
-	 * The framework assumes discretization in the spot coordinate {@code S}. Therefore, the factor
-	 * loadings are returned as percentage coefficients. When assembling the finite difference
-	 * operator, they are typically combined with the current state value (e.g., multiplied by the
-	 * spot grid).
+	 * The returned coefficients must be expressed in the same coordinates as the PDE
+	 * state variables used by the finite-difference solver.
 	 * </p>
 	 *
-	 * @param time          The evaluation time.
-	 * @param stateVariables The state variables (varargs to support multi-dimensional models).
+	 * <p>
+	 * If the state vector is {@code X = (X1, ..., Xn)}, then this method returns the
+	 * matrix {@code b(t, X)} in
+	 * </p>
+	 *
+	 * <p>
+	 * {@code dX_i(t) = mu_i(t, X_t) dt + sum_j b_{i,j}(t, X_t) dW_j(t)}.
+	 * </p>
+	 *
+	 * @param time The evaluation time.
+	 * @param stateVariables The current values of the model state variables.
 	 * @return The factor loading matrix.
 	 */
 	double[][] getFactorLoading(double time, double... stateVariables);
 
 	/**
-	 * Method that returns a clone of this model for a different choice
-	 * of the space-time discretization.
-	 * 
-	 * @param newSpaceTimeDiscretization
-	 * @return the same model with a new SpaceTimeDiscretization
+	 * Returns a clone of this model with a modified space-time discretization.
+	 *
+	 * <p>
+	 * The returned model should represent the same stochastic dynamics and market data
+	 * as the original one, but on the provided discretization.
+	 * </p>
+	 *
+	 * @param newSpaceTimeDiscretization The new space-time discretization.
+	 * @return A clone of this model with the modified discretization.
 	 */
 	FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
 			SpaceTimeDiscretization newSpaceTimeDiscretization);
 
 	/**
-	 * Returns the initial value of the system of SDE.
-	 * @return the initial value of the system of SDEs.
+	 * Returns the initial state vector of the model.
+	 *
+	 * <p>
+	 * The returned values must be consistent with the state variables used by the PDE.
+	 * For example, if the first spatial coordinate is {@code log(S)}, then the first
+	 * component should be {@code log(S0)} rather than {@code S0}.
+	 * </p>
+	 *
+	 * @return The initial state vector.
 	 */
-	public double[] getInitialValue();
-
+	double[] getInitialValue();
 }
