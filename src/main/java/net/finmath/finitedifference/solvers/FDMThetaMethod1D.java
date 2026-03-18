@@ -9,6 +9,7 @@ import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -200,30 +201,48 @@ public class FDMThetaMethod1D implements FDMSolver {
 				rhs.setEntry(i, 0, boundaryValue);
 			}
 
-			if(exercise.isEuropean()) {
-				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
-				U = solver.solve(rhs);
-			}
-			else if(exercise.isAmerican()) {
+			final boolean isExerciseDate =
+					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
+
+			if(exercise.isAmerican()) {
 				final double omega = 1.2;
 				final SORDecomposition sor = new SORDecomposition(H);
 				final RealMatrix zz = sor.getSol(U, rhs, omega, 500);
 
-				for(int i = 0; i < nX; i++) {
-					if(i == 0) {
-						U.setEntry(i, 0, timeReversedLowerBoundary(xGrid[i], tau_mp1));
+				if(isExerciseDate) {
+					for(int i = 0; i < nX; i++) {
+						if(i == 0) {
+							U.setEntry(i, 0, timeReversedLowerBoundary(xGrid[i], tau_mp1));
+						}
+						else if(i == nX - 1) {
+							U.setEntry(i, 0, timeReversedUpperBoundary(xGrid[i], tau_mp1));
+						}
+						else {
+							U.setEntry(i, 0, Math.max(zz.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
+						}
 					}
-					else if(i == nX - 1) {
-						U.setEntry(i, 0, timeReversedUpperBoundary(xGrid[i], tau_mp1));
-					}
-					else {
-						U.setEntry(i, 0, Math.max(zz.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
-					}
+				}
+				else {
+					U = zz;
 				}
 			}
 			else {
-				throw new UnsupportedOperationException(
-						"FDMThetaMethod1D does not yet support Bermudan exercise.");
+				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
+				U = solver.solve(rhs);
+
+				if(isExerciseDate) {
+					for(int i = 0; i < nX; i++) {
+						if(i == 0) {
+							U.setEntry(i, 0, timeReversedLowerBoundary(xGrid[i], tau_mp1));
+						}
+						else if(i == nX - 1) {
+							U.setEntry(i, 0, timeReversedUpperBoundary(xGrid[i], tau_mp1));
+						}
+						else {
+							U.setEntry(i, 0, Math.max(U.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
+						}
+					}
+				}
 			}
 
 			z.setColumnMatrix(m + 1, U);

@@ -10,6 +10,7 @@ import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.grids.Grid;
@@ -349,28 +350,43 @@ public class FDMThetaMethod2D implements FDMSolver {
 				}
 			}
 
-			if (exercise.isEuropean()) {
-				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
-				U = solver.solve(rhs);
-				z.setColumnMatrix(m + 1, U);
-			}
-			else if (exercise.isAmerican()) {
+			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+			final boolean isExerciseDate =
+					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
+
+			if (exercise.isAmerican()) {
 				final double omega = 1.2;
 				final SORDecomposition sor = new SORDecomposition(H);
 				final RealMatrix zz = sor.getSol(U, rhs, omega, 500);
 
-				for (int j = 0; j < n1; j++) {
-					for (int i = 0; i < n0; i++) {
-						final int k = i + j * n0;
-						final double payoff = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
-						U.setEntry(k, 0, Math.max(zz.getEntry(k, 0), payoff));
+				if(isExerciseDate) {
+					for (int j = 0; j < n1; j++) {
+						for (int i = 0; i < n0; i++) {
+							final int k = i + j * n0;
+							final double payoff = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
+							U.setEntry(k, 0, Math.max(zz.getEntry(k, 0), payoff));
+						}
 					}
+				}
+				else {
+					U = zz;
 				}
 				z.setColumnMatrix(m + 1, U);
 			}
 			else {
-				throw new UnsupportedOperationException(
-						"FDMThetaMethod2D does not yet support Bermudan exercise.");
+				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
+				U = solver.solve(rhs);
+
+				if(isExerciseDate) {
+					for (int j = 0; j < n1; j++) {
+						for (int i = 0; i < n0; i++) {
+							final int k = i + j * n0;
+							final double payoff = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
+							U.setEntry(k, 0, Math.max(U.getEntry(k, 0), payoff));
+						}
+					}
+				}
+				z.setColumnMatrix(m + 1, U);
 			}
 		}
 
