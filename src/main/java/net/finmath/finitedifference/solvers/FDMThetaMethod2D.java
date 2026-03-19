@@ -11,8 +11,10 @@ import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundaryConditionAdapter;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
@@ -40,19 +42,9 @@ import net.finmath.modelling.Exercise;
  * </ul>
  *
  * <p>
- * This makes the solver agnostic to whether {@code X0} is {@code S}, {@code log S}, an integral state variable, etc.,
- * as long as the model provides consistent drifts and factor loadings in that coordinate system.
- * </p>
- *
- * <p>
- * Boundary conditions: candidate boundary rows are overwritten as Dirichlet rows only if the model provides a finite
- * boundary value for the corresponding dimension (via {@code getValueAtLowerBoundary}/{@code getValueAtUpperBoundary}).
- * If a boundary value is {@link Double#NaN}, the row is left intact so the PDE operator / inflow handling applies.
- * </p>
- *
- * <p>
- * The solver returns the full time history as a flattened matrix of dimension {@code (n0*n1) x (nT+1)}.
- * Flattening convention: {@code k = i0 + i1*n0} where {@code i0} is the fastest index.
+ * Boundary conditions are enforced via explicit {@link BoundaryCondition} objects.
+ * Dirichlet rows are overwritten only if the corresponding boundary condition is of Dirichlet type.
+ * If the boundary condition type is NONE, the PDE row is left intact.
  * </p>
  *
  * @author Enrico De Vecchi
@@ -65,14 +57,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
 
-	/**
-	 * Creates a 2D theta method solver in state-variable form.
-	 *
-	 * @param model Finite difference equity model providing drift, factor loadings, and boundary conditions.
-	 * @param product Product used for boundary value queries.
-	 * @param spaceTimeDiscretization Space-time discretization (two space grids + time discretization).
-	 * @param exercise Exercise specification.
-	 */
 	public FDMThetaMethod2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -84,25 +68,11 @@ public class FDMThetaMethod2D implements FDMSolver {
 		this.exercise = exercise;
 	}
 
-	/**
-	 * Backward-compatible overload: terminal payoff depends on the first state variable only.
-	 *
-	 * @param time Maturity of the product.
-	 * @param valueAtMaturity Terminal payoff as a function of the first state variable.
-	 * @return Full time history on the flattened space-time grid: (n0*n1) x (nT+1).
-	 */
 	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 		return getValues(time, (x0, x1) -> valueAtMaturity.applyAsDouble(x0));
 	}
 
-	/**
-	 * Returns the full time history on the 2D space-time grid using a payoff depending on both state variables.
-	 *
-	 * @param time Maturity of the product.
-	 * @param valueAtMaturity Terminal payoff as a function of both state variables.
-	 * @return Full time history on the flattened space-time grid: (n0*n1) x (nT+1).
-	 */
 	public double[][] getValues(final double time, final DoubleBinaryOperator valueAtMaturity) {
 
 		final Grid x0GridObj = spaceTimeDiscretization.getSpaceGrid(0);
@@ -124,7 +94,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 		final int M = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
 
-		// 1D derivative matrices on FULL grids (including boundary points).
 		final FiniteDifferenceMatrixBuilder b0 = new FiniteDifferenceMatrixBuilder(x0Grid);
 		final RealMatrix T1_0 = b0.getFirstDerivativeMatrix();
 		final RealMatrix T2_0 = b0.getSecondDerivativeMatrix();
@@ -133,14 +102,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 		final RealMatrix T1_1 = b1.getFirstDerivativeMatrix();
 		final RealMatrix T2_1 = b1.getSecondDerivativeMatrix();
 
-		/*
-		 * Build 2D differential operators on flattened state (x0 fastest, then x1).
-		 *   D0  = I1 ⊗ T1_0
-		 *   D00 = I1 ⊗ T2_0
-		 *   D1  = T1_1 ⊗ I0
-		 *   D11 = T2_1 ⊗ I0
-		 *   D01 = T1_1 ⊗ T1_0
-		 */
 		final RealMatrix D0 = buildBlockDiagonal(T1_0, n1);
 		final RealMatrix D00 = buildBlockDiagonal(T2_0, n1);
 
@@ -149,7 +110,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 		final RealMatrix D01 = buildKron(T1_1, T1_0);
 
-		// Identify boundary nodes (Dirichlet enforcement candidates).
 		final boolean[] isBoundary = new boolean[n];
 		for (int j = 0; j < n1; j++) {
 			for (int i = 0; i < n0; i++) {
@@ -158,7 +118,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 			}
 		}
 
-		// Initial condition at maturity (tau=0): payoff on full grid.
 		RealMatrix U = MatrixUtils.createRealMatrix(n, 1);
 		for (int j = 0; j < n1; j++) {
 			for (int i = 0; i < n0; i++) {
@@ -170,27 +129,19 @@ public class FDMThetaMethod2D implements FDMSolver {
 		final RealMatrix z = MatrixUtils.createRealMatrix(n, timeLength);
 		z.setColumnMatrix(0, U);
 
-		// Time stepping backward in calendar time, forward in tau (time-to-maturity).
 		for (int m = 0; m < M; m++) {
 
 			final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-			// Calendar time t (not tau), consistent with other solvers.
 			final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(M - m);
 			final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(M - (m + 1));
 
 			final double tSafe_m = (t_m == 0.0 ? 1e-6 : t_m);
 			final double tSafe_mp1 = (t_mp1 == 0.0 ? 1e-6 : t_mp1);
 
-			// Risk-free rates from discount curve (same convention as 1D/2D solvers).
 			final double r_m = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_m)) / tSafe_m;
 			final double r_mp1 = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_mp1)) / tSafe_mp1;
 
-			/*
-			 * Build diagonal coefficient vectors:
-			 *  - mu0, mu1 (drifts of X0 and X1)
-			 *  - a00, a11, a01 (entries of covariance matrix a = b b^T)
-			 */
 			final double[] mu0_m = new double[n];
 			final double[] mu0_mp1 = new double[n];
 			final double[] mu1_m = new double[n];
@@ -271,7 +222,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 			final RealMatrix I = MatrixUtils.createRealIdentityMatrix(n);
 
-			// Drift terms: dt * (mu0 * d/dx0 + mu1 * d/dx1)
 			final RealMatrix driftTerm_m =
 					Mu0_m.scalarMultiply(deltaTau).multiply(D0)
 					.add(Mu1_m.scalarMultiply(deltaTau).multiply(D1));
@@ -280,7 +230,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 					Mu0_mp1.scalarMultiply(deltaTau).multiply(D0)
 					.add(Mu1_mp1.scalarMultiply(deltaTau).multiply(D1));
 
-			// Diffusion terms: dt * 0.5*(a00*d2/dx0^2 + a11*d2/dx1^2) + dt*(a01*d2/dx0dx1)
 			final RealMatrix diffTerm_m =
 					A00_m.multiply(D00.scalarMultiply(0.5 * deltaTau))
 					.add(A11_m.multiply(D11.scalarMultiply(0.5 * deltaTau)))
@@ -299,7 +248,10 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 			RealMatrix rhs = A.multiply(U);
 
-			// Boundary enforcement: only when boundary provides a finite value for the chosen dimension.
+			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+			final double boundaryTime =
+					spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
+
 			for (int j = 0; j < n1; j++) {
 				for (int i = 0; i < n0; i++) {
 					final int k = i + j * n0;
@@ -310,47 +262,52 @@ public class FDMThetaMethod2D implements FDMSolver {
 					final double x0 = x0Grid[i];
 					final double x1 = x1Grid[j];
 
-					final double boundaryTime =
-							spaceTimeDiscretization.getTimeDiscretization().getLastTime()
-							- spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+					final BoundaryCondition[] lowerConditions =
+							FiniteDifferenceBoundaryConditionAdapter.getLowerBoundaryConditions(
+									(net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary) model,
+									product,
+									boundaryTime,
+									2,
+									x0,
+									x1);
+					final BoundaryCondition[] upperConditions =
+							FiniteDifferenceBoundaryConditionAdapter.getUpperBoundaryConditions(
+									(net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary) model,
+									product,
+									boundaryTime,
+									2,
+									x0,
+									x1);
 
-					final double[] lowerBounds = model.getValueAtLowerBoundary(product, boundaryTime, x0, x1);
-					final double[] upperBounds = model.getValueAtUpperBoundary(product, boundaryTime, x0, x1);
+					final BoundaryCondition x0Lower = lowerConditions[0];
+					final BoundaryCondition x0Upper = upperConditions[0];
+					final BoundaryCondition x1Lower = lowerConditions[1];
+					final BoundaryCondition x1Upper = upperConditions[1];
 
-					final double x0Lower = safeBound(lowerBounds, 0);
-					final double x0Upper = safeBound(upperBounds, 0);
-					final double x1Lower = safeBound(lowerBounds, 1);
-					final double x1Upper = safeBound(upperBounds, 1);
-
-					/*
-					 * Choose which boundary value applies at this node.
-					 * If we are at a corner (two boundaries), prioritize dimension 0 for backward compatibility.
-					 */
-					double chosenBoundaryValue = Double.NaN;
+					BoundaryCondition chosenCondition = null;
 					if (i == 0) {
-						chosenBoundaryValue = x0Lower;
+						chosenCondition = x0Lower;
 					}
 					else if (i == n0 - 1) {
-						chosenBoundaryValue = x0Upper;
+						chosenCondition = x0Upper;
 					}
 					else if (j == 0) {
-						chosenBoundaryValue = x1Lower;
+						chosenCondition = x1Lower;
 					}
 					else if (j == n1 - 1) {
-						chosenBoundaryValue = x1Upper;
+						chosenCondition = x1Upper;
 					}
 
-					if (Double.isFinite(chosenBoundaryValue)) {
+					if (chosenCondition != null && chosenCondition.isDirichlet()) {
 						for (int col = 0; col < n; col++) {
 							H.setEntry(k, col, 0.0);
 						}
 						H.setEntry(k, k, 1.0);
-						rhs.setEntry(k, 0, chosenBoundaryValue);
+						rhs.setEntry(k, 0, chosenCondition.getValue());
 					}
 				}
 			}
 
-			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
 			final boolean isExerciseDate =
 					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
 
@@ -401,28 +358,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
-	/**
-	 * Returns {@code arr[idx]} or {@link Double#NaN} if {@code arr} is null or too short.
-	 *
-	 * @param arr Boundary array (may be null).
-	 * @param idx Index to access.
-	 * @return Boundary value or NaN if not available.
-	 */
-	private static double safeBound(final double[] arr, final int idx) {
-		if (arr == null || idx < 0 || idx >= arr.length) {
-			return Double.NaN;
-		}
-		return arr[idx];
-	}
-
-	/**
-	 * Builds a block diagonal matrix with the given block repeated {@code numBlocks} times.
-	 * Blocks are placed along the diagonal.
-	 *
-	 * @param block Block matrix.
-	 * @param numBlocks Number of repetitions.
-	 * @return Block diagonal matrix.
-	 */
 	private static RealMatrix buildBlockDiagonal(final RealMatrix block, final int numBlocks) {
 		final int n = block.getRowDimension();
 		final int N = n * numBlocks;
@@ -443,15 +378,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 		return out;
 	}
 
-	/**
-	 * Builds the Kronecker product {@code kron(A, B)} for banded matrices produced by
-	 * {@link FiniteDifferenceMatrixBuilder}. This method assumes both {@code A} and {@code B} are at most 5-banded
-	 * and iterates only over a small band.
-	 *
-	 * @param A Left matrix.
-	 * @param B Right matrix.
-	 * @return Kronecker product {@code kron(A, B)}.
-	 */
 	private static RealMatrix buildKron(final RealMatrix A, final RealMatrix B) {
 		final int aR = A.getRowDimension();
 		final int aC = A.getColumnDimension();
@@ -484,14 +410,6 @@ public class FDMThetaMethod2D implements FDMSolver {
 		return out;
 	}
 
-	/**
-	 * Builds {@code kron(A, I_n)} where {@code I_n} is the identity matrix of size {@code nIdentity}.
-	 * Matrix {@code A} acts on the "slow" index.
-	 *
-	 * @param A Left matrix.
-	 * @param nIdentity Size of the identity.
-	 * @return Kronecker product {@code kron(A, I_nIdentity)}.
-	 */
 	private static RealMatrix buildKronWithIdentityLeft(final RealMatrix A, final int nIdentity) {
 		final int aR = A.getRowDimension();
 		final int aC = A.getColumnDimension();

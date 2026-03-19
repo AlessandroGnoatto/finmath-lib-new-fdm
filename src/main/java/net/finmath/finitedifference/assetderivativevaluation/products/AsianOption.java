@@ -4,8 +4,11 @@ import java.util.Arrays;
 import java.util.function.DoubleBinaryOperator;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundaryConditions;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
+import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
@@ -172,12 +175,15 @@ public class AsianOption implements FiniteDifferenceProduct {
 	 * Decorator that lifts a 1D Black-Scholes model to a 2D model with state (S, I),
 	 * where I(t) = integral_0^t S(u) du.
 	 */
-	private static final class LiftedFDMBlackScholesModelDecorator implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
+	private static final class LiftedFDMBlackScholesModelDecorator
+			implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary, FiniteDifferenceBoundaryConditions {
 
 		private final FDMBlackScholesModel delegate;
 		private final SpaceTimeDiscretization liftedDiscretization;
 
-		private LiftedFDMBlackScholesModelDecorator(final FDMBlackScholesModel delegate, final SpaceTimeDiscretization liftedDiscretization) {
+		private LiftedFDMBlackScholesModelDecorator(
+				final FDMBlackScholesModel delegate,
+				final SpaceTimeDiscretization liftedDiscretization) {
 			this.delegate = delegate;
 			this.liftedDiscretization = liftedDiscretization;
 		}
@@ -205,10 +211,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-			// drift for S in the chosen state variable
 			final double muS = delegate.getDrift(time, S)[0];
-
-			// drift for I: dI = S dt
 			final double muI = S;
 
 			return new double[] { muS, muI };
@@ -218,10 +221,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 		public double[][] getFactorLoading(final double time, final double... stateVariables) {
 			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-			// loading for S from base BS model
 			final double sigma = delegate.getFactorLoading(time, S)[0][0];
 
-			// I has no diffusion
 			return new double[][] { { sigma, 0.0 }, { 0.0, 0.0 } };
 		}
 
@@ -234,10 +235,10 @@ public class AsianOption implements FiniteDifferenceProduct {
 		}
 
 		@Override
-		public double[] getValueAtLowerBoundary(
+		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
 				final FiniteDifferenceProduct product,
 				double time,
-				final double... riskFactors) {
+				final double... stateVariables) {
 
 			if(time == 0.0) {
 				time = 1e-6;
@@ -251,22 +252,24 @@ public class AsianOption implements FiniteDifferenceProduct {
 			final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
 			final double discount = Math.exp(-r * (maturity - time));
 
-			final double[] result = new double[2];
+			final BoundaryCondition[] result = new BoundaryCondition[2];
 
 			// S -> 0
-			result[0] = (callOrPut == CallOrPut.CALL) ? 0.0 : strike * discount;
+			result[0] = StandardBoundaryCondition.dirichlet(
+					(callOrPut == CallOrPut.CALL) ? 0.0 : strike * discount
+			);
 
-			// I -> 0
-			result[1] = Double.NaN;
+			// I -> 0 : leave PDE row intact
+			result[1] = StandardBoundaryCondition.none();
 
 			return result;
 		}
 
 		@Override
-		public double[] getValueAtUpperBoundary(
+		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
 				final FiniteDifferenceProduct product,
 				double time,
-				final double... riskFactors) {
+				final double... stateVariables) {
 
 			if(time == 0.0) {
 				time = 1e-6;
@@ -280,13 +283,15 @@ public class AsianOption implements FiniteDifferenceProduct {
 			final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
 			final double discount = Math.exp(-r * (maturity - time));
 
-			final double S = riskFactors.length > 0 ? riskFactors[0] : 0.0;
-			final double I = riskFactors.length > 1 ? riskFactors[1] : 0.0;
+			final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
 
-			final double[] result = new double[2];
+			final BoundaryCondition[] result = new BoundaryCondition[2];
 
 			// S -> infinity
-			result[0] = (callOrPut == CallOrPut.CALL) ? (S - strike * discount) : 0.0;
+			result[0] = StandardBoundaryCondition.dirichlet(
+					(callOrPut == CallOrPut.CALL) ? (S - strike * discount) : 0.0
+			);
 
 			// I -> infinity
 			final double average = I / maturity;
@@ -294,9 +299,37 @@ public class AsianOption implements FiniteDifferenceProduct {
 					? Math.max(average - strike, 0.0)
 					: Math.max(strike - average, 0.0);
 
-			result[1] = intrinsic * discount;
+			result[1] = StandardBoundaryCondition.dirichlet(intrinsic * discount);
 
 			return result;
+		}
+
+		@Override
+		public double[] getValueAtLowerBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			return toLegacyArray(getBoundaryConditionsAtLowerBoundary(product, time, stateVariables));
+		}
+
+		@Override
+		public double[] getValueAtUpperBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			return toLegacyArray(getBoundaryConditionsAtUpperBoundary(product, time, stateVariables));
+		}
+
+		private static double[] toLegacyArray(final BoundaryCondition[] boundaryConditions) {
+			final double[] values = new double[boundaryConditions.length];
+			for(int i = 0; i < boundaryConditions.length; i++) {
+				values[i] = boundaryConditions[i].isDirichlet()
+						? boundaryConditions[i].getValue()
+						: Double.NaN;
+			}
+			return values;
 		}
 
 		@Override

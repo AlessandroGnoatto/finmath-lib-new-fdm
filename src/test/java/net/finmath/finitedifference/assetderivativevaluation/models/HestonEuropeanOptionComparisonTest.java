@@ -66,8 +66,8 @@ public class HestonEuropeanOptionComparisonTest {
 				new TimeDiscretizationFromArray(0.0, nTimeSteps, maturity / nTimeSteps);
 
 		// Pick ranges wide enough so boundaries don't dominate
-		final int nS = 24;
-		final int nV = 24;
+		final int nS = 30;
+		final int nV = 30;
 		final Grid sGrid = new UniformGrid(nS - 1, 0.0, 4.0 * s0);
 		final Grid vGrid = new UniformGrid(nV - 1, 0.0, 0.50);
 

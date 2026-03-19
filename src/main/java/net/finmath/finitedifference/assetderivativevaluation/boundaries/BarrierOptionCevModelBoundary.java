@@ -3,6 +3,8 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.BarrierOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
+import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
 
@@ -10,78 +12,47 @@ import net.finmath.modelling.products.CallOrPut;
  * Boundary conditions for {@link BarrierOption} under the {@link FDMCevModel}.
  *
  * <p>
- * This implementation is intended for the original one-dimensional theta solver,
- * which expects finite Dirichlet values on both sides of the spatial domain.
+ * This class supports both the legacy boundary API returning {@code double[]}
+ * and the newer explicit boundary-condition API returning
+ * {@link BoundaryCondition} objects.
  * </p>
- *
- * <p>
- * Conventions:
- * </p>
- * <ul>
- *   <li>For knock-out options, the rebate is paid at hit.</li>
- *   <li>For knock-in options, the product is priced by parity in {@link BarrierOption},
- *       so this boundary class mainly matters for knock-out options.</li>
- *   <li>The barrier is assumed to coincide with one spatial boundary of the grid:
- *       down barriers at the lower boundary, up barriers at the upper boundary.</li>
- * </ul>
- *
- * <p>
- * Therefore:
- * </p>
- * <ul>
- *   <li>at the barrier boundary of an OUT option, the value is the rebate itself,</li>
- *   <li>at the opposite far boundary, the standard CEV vanilla asymptotic
- *       boundary condition is used.</li>
- * </ul>
  *
  * @author Alessandro Gnoatto
  */
-public class BarrierOptionCevModelBoundary implements FiniteDifferenceBoundary {
+public class BarrierOptionCevModelBoundary
+		implements FiniteDifferenceBoundary, FiniteDifferenceBoundaryConditions {
 
 	private static final double EPSILON = 1E-6;
 
 	private final FDMCevModel model;
 
-	/**
-	 * Creates the boundary condition associated with a given
-	 * {@link FDMCevModel}.
-	 *
-	 * @param model The CEV finite difference model.
-	 */
 	public BarrierOptionCevModelBoundary(final FDMCevModel model) {
 		this.model = model;
 	}
 
 	@Override
-	public double[] getValueAtLowerBoundary(
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
 			final FiniteDifferenceProduct product,
 			double time,
-			final double... riskFactors) {
+			final double... stateVariables) {
 
-		final double[] result = new double[1];
 		final BarrierOption option = (BarrierOption) product;
 		final BarrierType barrierType = option.getBarrierType();
 		final CallOrPut sign = option.getCallOrPut();
 
-		/*
-		 * Down-and-out: lower boundary is the barrier.
-		 * Rebate is paid at hit, hence no discounting here.
-		 */
 		if(barrierType == BarrierType.DOWN_OUT) {
-			result[0] = option.getRebate();
-			return result;
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(option.getRebate())
+			};
 		}
 
-		/*
-		 * Otherwise use vanilla lower-boundary asymptotics.
-		 */
 		if(sign == CallOrPut.CALL) {
-			result[0] = 0.0;
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
 		}
 		else {
-			if(time == 0.0) {
-				time = EPSILON;
-			}
+			time = Math.max(time, EPSILON);
 
 			final double discountFactorRiskFree =
 					model.getRiskFreeCurve().getDiscountFactor(time);
@@ -91,40 +62,33 @@ public class BarrierOptionCevModelBoundary implements FiniteDifferenceBoundary {
 			final double strike = option.getStrike();
 			final double maturity = option.getMaturity();
 
-			result[0] =
+			final double value =
 					strike * Math.exp(-riskFreeRate * (maturity - time));
-		}
 
-		return result;
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
+		}
 	}
 
 	@Override
-	public double[] getValueAtUpperBoundary(
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
 			final FiniteDifferenceProduct product,
 			double time,
-			final double... riskFactors) {
+			final double... stateVariables) {
 
-		final double[] result = new double[1];
 		final BarrierOption option = (BarrierOption) product;
 		final BarrierType barrierType = option.getBarrierType();
 		final CallOrPut sign = option.getCallOrPut();
 
-		/*
-		 * Up-and-out: upper boundary is the barrier.
-		 * Rebate is paid at hit, hence no discounting here.
-		 */
 		if(barrierType == BarrierType.UP_OUT) {
-			result[0] = option.getRebate();
-			return result;
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(option.getRebate())
+			};
 		}
 
-		/*
-		 * Otherwise use vanilla upper-boundary asymptotics.
-		 */
 		if(sign == CallOrPut.CALL) {
-			if(time == 0.0) {
-				time = EPSILON;
-			}
+			time = Math.max(time, EPSILON);
 
 			final double discountFactorRiskFree =
 					model.getRiskFreeCurve().getDiscountFactor(time);
@@ -138,18 +102,51 @@ public class BarrierOptionCevModelBoundary implements FiniteDifferenceBoundary {
 
 			final double strike = option.getStrike();
 			final double maturity = option.getMaturity();
+			final double stateVariable = stateVariables[0];
 
 			final double dividendAdjustedStockPrice =
-					riskFactors[0] * Math.exp(-dividendYieldRate * (maturity - time));
+					stateVariable * Math.exp(-dividendYieldRate * (maturity - time));
 
-			result[0] =
+			final double value =
 					dividendAdjustedStockPrice
 					- strike * Math.exp(-riskFreeRate * (maturity - time));
+
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
 		}
 		else {
-			result[0] = 0.0;
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
 		}
+	}
 
-		return result;
+	@Override
+	public double[] getValueAtLowerBoundary(
+			final FiniteDifferenceProduct product,
+			final double time,
+			final double... stateVariables) {
+
+		return toLegacyArray(getBoundaryConditionsAtLowerBoundary(product, time, stateVariables));
+	}
+
+	@Override
+	public double[] getValueAtUpperBoundary(
+			final FiniteDifferenceProduct product,
+			final double time,
+			final double... stateVariables) {
+
+		return toLegacyArray(getBoundaryConditionsAtUpperBoundary(product, time, stateVariables));
+	}
+
+	private static double[] toLegacyArray(final BoundaryCondition[] boundaryConditions) {
+		final double[] values = new double[boundaryConditions.length];
+		for(int i = 0; i < boundaryConditions.length; i++) {
+			values[i] = boundaryConditions[i].isDirichlet()
+					? boundaryConditions[i].getValue()
+					: Double.NaN;
+		}
+		return values;
 	}
 }
