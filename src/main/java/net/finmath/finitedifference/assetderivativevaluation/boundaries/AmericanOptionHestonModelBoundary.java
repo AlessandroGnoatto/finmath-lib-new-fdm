@@ -3,144 +3,133 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.AmericanOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
+import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link AmericanOption} under the
- * {@link FDMHestonModel}.
+ * Boundary conditions for {@link AmericanOption} under the {@link FDMHestonModel}.
  *
  * <p>
- * This class mirrors the boundary logic currently used in the project.
- * It provides Dirichlet-type bounds based on discounted intrinsic
- * values and asymptotic behavior.
+ * State variables are assumed to be (S, v), where S is the asset level and v the variance.
+ * Dirichlet conditions are imposed in the asset direction, while the variance-direction
+ * boundaries are left untouched via {@link StandardBoundaryCondition#none()}.
  * </p>
- *
- * <p>
- * Convention for returned arrays in 2D:
- * </p>
- * <ul>
- *   <li>{@code result[0]}: boundary value for the S-dimension</li>
- *   <li>{@code result[1]}: boundary value for the v-dimension</li>
- * </ul>
  *
  * @author Alessandro Gnoatto
  */
-public class AmericanOptionHestonModelBoundary implements FiniteDifferenceBoundary {
+public class AmericanOptionHestonModelBoundary
+		implements FiniteDifferenceBoundary, FiniteDifferenceBoundaryConditions {
+
+	private static final double EPSILON = 1E-6;
 
 	private final FDMHestonModel model;
 
-	/**
-	 * Creates the boundary condition for a given Heston model.
-	 *
-	 * @param model The Heston model providing risk-free and dividend curves.
-	 */
 	public AmericanOptionHestonModelBoundary(final FDMHestonModel model) {
 		this.model = model;
+	}
+
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceProduct product,
+			double time,
+			final double... stateVariables) {
+
+		final AmericanOption option = (AmericanOption) product;
+		final CallOrPut sign = option.getCallOrPut();
+
+		time = Math.max(time, EPSILON);
+
+		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
+		final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
+
+		final double strike = option.getStrike();
+		final double maturity = option.getMaturity();
+
+		final BoundaryCondition[] result = new BoundaryCondition[2];
+
+		// S -> 0
+		if(sign == CallOrPut.CALL) {
+			result[0] = StandardBoundaryCondition.dirichlet(0.0);
+		}
+		else {
+			result[0] = StandardBoundaryCondition.dirichlet(
+					strike * Math.exp(-riskFreeRate * (maturity - time))
+			);
+		}
+
+		// v -> lower boundary: leave PDE row intact
+		result[1] = StandardBoundaryCondition.none();
+
+		return result;
+	}
+
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceProduct product,
+			double time,
+			final double... stateVariables) {
+
+		final AmericanOption option = (AmericanOption) product;
+		final CallOrPut sign = option.getCallOrPut();
+
+		time = Math.max(time, EPSILON);
+
+		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
+		final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
+
+		final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(time);
+		final double dividendYieldRate = -Math.log(discountFactorDividend) / time;
+
+		final double strike = option.getStrike();
+		final double maturity = option.getMaturity();
+
+		final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+
+		final BoundaryCondition[] result = new BoundaryCondition[2];
+
+		// S -> infinity
+		if(sign == CallOrPut.CALL) {
+			final double dividendAdjustedStockPrice =
+					S * Math.exp(-dividendYieldRate * (maturity - time));
+			result[0] = StandardBoundaryCondition.dirichlet(
+					dividendAdjustedStockPrice
+					- strike * Math.exp(-riskFreeRate * (maturity - time))
+			);
+		}
+		else {
+			result[0] = StandardBoundaryCondition.dirichlet(0.0);
+		}
+
+		// v -> upper boundary: leave PDE row intact
+		result[1] = StandardBoundaryCondition.none();
+
+		return result;
 	}
 
 	@Override
 	public double[] getValueAtLowerBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
-			final double... riskFactors) {
-
-		final AmericanOption option = (AmericanOption) product;
-		final CallOrPut callOrPut = option.getCallOrPut();
-		final double strike = option.getStrike();
-		final double maturity = option.getMaturity();
-
-		if(riskFactors == null || riskFactors.length < 1) {
-			throw new IllegalArgumentException(
-					"Heston boundary requires at least S as risk factor.");
-		}
-		final double S = riskFactors[0];
-
-		double t = time;
-		if(t == 0) {
-			t = 0.000001;
-		}
-
-		final double r =
-				-Math.log(model.getRiskFreeCurve().getDiscountFactor(t)) / t;
-		final double q =
-				-Math.log(model.getDividendYieldCurve().getDiscountFactor(t)) / t;
-
-		final double discountR = Math.exp(-r * (maturity - time));
-		final double discountQ = Math.exp(-q * (maturity - time));
-
-		final double[] result = new double[2];
-
-		// S -> 0
-		if(callOrPut == CallOrPut.CALL) {
-			result[0] = 0.0;
-		}
-		else {
-			result[0] = strike * discountR;
-		}
-
-		// v -> 0
-		if(callOrPut == CallOrPut.CALL) {
-			result[1] = Math.max(
-					S * discountQ - strike * discountR,
-					0.0);
-		}
-		else {
-			result[1] = Math.max(
-					strike * discountR - S * discountQ,
-					0.0);
-		}
-
-		return result;
+			final double... stateVariables) {
+		return toLegacyArray(getBoundaryConditionsAtLowerBoundary(product, time, stateVariables));
 	}
 
 	@Override
 	public double[] getValueAtUpperBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
-			final double... riskFactors) {
+			final double... stateVariables) {
+		return toLegacyArray(getBoundaryConditionsAtUpperBoundary(product, time, stateVariables));
+	}
 
-		final AmericanOption option = (AmericanOption) product;
-		final CallOrPut callOrPut = option.getCallOrPut();
-		final double strike = option.getStrike();
-		final double maturity = option.getMaturity();
-
-		if(riskFactors == null || riskFactors.length < 1) {
-			throw new IllegalArgumentException(
-					"Heston boundary requires at least S as risk factor.");
+	private static double[] toLegacyArray(final BoundaryCondition[] boundaryConditions) {
+		final double[] values = new double[boundaryConditions.length];
+		for(int i = 0; i < boundaryConditions.length; i++) {
+			values[i] = boundaryConditions[i].isDirichlet()
+					? boundaryConditions[i].getValue()
+					: Double.NaN;
 		}
-		final double S = riskFactors[0];
-
-		double t = time;
-		if(t == 0) {
-			t = 0.000001;
-		}
-
-		final double r =
-				-Math.log(model.getRiskFreeCurve().getDiscountFactor(t)) / t;
-		final double q =
-				-Math.log(model.getDividendYieldCurve().getDiscountFactor(t)) / t;
-
-		final double discountR = Math.exp(-r * (maturity - time));
-		final double discountQ = Math.exp(-q * (maturity - time));
-
-		final double[] result = new double[2];
-
-		// S -> infinity
-		if(callOrPut == CallOrPut.CALL) {
-			result[0] = S * discountQ - strike * discountR;
-		}
-		else {
-			result[0] = 0.0;
-		}
-
-		// v -> infinity
-		if(callOrPut == CallOrPut.CALL) {
-			result[1] = S * discountQ;
-		}
-		else {
-			result[1] = strike * discountR;
-		}
-
-		return result;
+		return values;
 	}
 }

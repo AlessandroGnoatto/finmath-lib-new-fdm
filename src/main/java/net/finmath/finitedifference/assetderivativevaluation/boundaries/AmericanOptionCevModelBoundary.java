@@ -3,91 +3,129 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.AmericanOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
+import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for American options under the CEV model.
+ * Boundary conditions for {@link AmericanOption} under the
+ * {@link FDMCevModel}.
  *
  * <p>
- * The boundary logic mirrors the corresponding Black-Scholes boundary implementation used in this project.
+ * This class supports both the legacy boundary API returning {@code double[]}
+ * and the newer explicit boundary-condition API returning
+ * {@link BoundaryCondition} objects.
  * </p>
  *
- * @author Andrea Mazzon
+ * @author Alessandro Gnoatto
  */
-public class AmericanOptionCevModelBoundary implements FiniteDifferenceBoundary {
+public class AmericanOptionCevModelBoundary
+		implements FiniteDifferenceBoundary, FiniteDifferenceBoundaryConditions {
+
+	private static final double EPSILON = 1E-6;
 
 	private final FDMCevModel model;
 
-	/**
-	 * Creates the boundary provider for the given model.
-	 *
-	 * @param model The CEV model instance.
-	 */
 	public AmericanOptionCevModelBoundary(final FDMCevModel model) {
 		this.model = model;
 	}
 
 	@Override
-	public double[] getValueAtUpperBoundary(
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
 			final FiniteDifferenceProduct product,
 			double time,
-			final double... riskFactors) {
+			final double... stateVariables) {
 
-		final double[] result = new double[1];
-		final CallOrPut sign = ((AmericanOption) product).getCallOrPut();
+		final AmericanOption option = (AmericanOption) product;
+		final CallOrPut sign = option.getCallOrPut();
 
-		if(sign == CallOrPut.PUT) {
-			result[0] = 0.0;
-			return result;
+		if(sign == CallOrPut.CALL) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
 		}
+		else {
+			time = Math.max(time, EPSILON);
 
-		// Call
-		if(time == 0.0) {
-			time = 1e-6;
+			final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
+			final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
+
+			final double strike = option.getStrike();
+			final double maturity = option.getMaturity();
+
+			final double value = strike * Math.exp(-riskFreeRate * (maturity - time));
+
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
 		}
+	}
 
-		final double rF = model.getRiskFreeCurve().getDiscountFactor(time);
-		final double riskFreeRate = -Math.log(rF) / time;
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceProduct product,
+			double time,
+			final double... stateVariables) {
 
-		final double dY = model.getDividendYieldCurve().getDiscountFactor(time);
-		final double dividendYieldRate = -Math.log(dY) / time;
+		final AmericanOption option = (AmericanOption) product;
+		final CallOrPut sign = option.getCallOrPut();
 
-		final double strike = ((AmericanOption) product).getStrike();
-		final double maturity = ((AmericanOption) product).getMaturity();
+		if(sign == CallOrPut.CALL) {
+			time = Math.max(time, EPSILON);
 
-		final double dividendAdjustedStockPrice =
-				riskFactors[0] * Math.exp(-dividendYieldRate * (maturity - time));
+			final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
+			final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
 
-		result[0] = dividendAdjustedStockPrice - strike * Math.exp(-riskFreeRate * (maturity - time));
-		return result;
+			final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(time);
+			final double dividendYieldRate = -Math.log(discountFactorDividend) / time;
+
+			final double strike = option.getStrike();
+			final double maturity = option.getMaturity();
+			final double stateVariable = stateVariables[0];
+
+			final double dividendAdjustedStockPrice =
+					stateVariable * Math.exp(-dividendYieldRate * (maturity - time));
+
+			final double value =
+					dividendAdjustedStockPrice
+					- strike * Math.exp(-riskFreeRate * (maturity - time));
+
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
+		}
+		else {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		}
 	}
 
 	@Override
 	public double[] getValueAtLowerBoundary(
 			final FiniteDifferenceProduct product,
-			double time,
-			final double... riskFactors) {
+			final double time,
+			final double... stateVariables) {
 
-		final double[] result = new double[1];
-		final CallOrPut sign = ((AmericanOption) product).getCallOrPut();
+		return toLegacyArray(getBoundaryConditionsAtLowerBoundary(product, time, stateVariables));
+	}
 
-		if(sign == CallOrPut.CALL) {
-			result[0] = 0.0;
-			return result;
+	@Override
+	public double[] getValueAtUpperBoundary(
+			final FiniteDifferenceProduct product,
+			final double time,
+			final double... stateVariables) {
+
+		return toLegacyArray(getBoundaryConditionsAtUpperBoundary(product, time, stateVariables));
+	}
+
+	private static double[] toLegacyArray(final BoundaryCondition[] boundaryConditions) {
+		final double[] values = new double[boundaryConditions.length];
+		for(int i = 0; i < boundaryConditions.length; i++) {
+			values[i] = boundaryConditions[i].isDirichlet()
+					? boundaryConditions[i].getValue()
+					: Double.NaN;
 		}
-
-		// Put
-		if(time == 0.0) {
-			time = 1e-6;
-		}
-
-		final double rF = model.getRiskFreeCurve().getDiscountFactor(time);
-		final double riskFreeRate = -Math.log(rF) / 1.0;
-
-		final double strike = ((AmericanOption) product).getStrike();
-		final double maturity = ((AmericanOption) product).getMaturity();
-
-		result[0] = strike * Math.exp(-riskFreeRate * (maturity - time));
-		return result;
+		return values;
 	}
 }
