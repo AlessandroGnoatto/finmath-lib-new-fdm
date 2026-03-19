@@ -30,20 +30,20 @@ import net.finmath.time.TimeDiscretization;
  * <ul>
  *   <li>knock-out options are priced directly by the finite-difference solver, using
  *       internal state constraints,</li>
- *   <li>knock-in options are currently priced by an internal parity helper:
- *       in = vanilla - out,</li>
+ *   <li>knock-in options are priced through an internal activation policy, which
+ *       currently uses parity but is intentionally encapsulated so that it may later
+ *       be replaced by a direct solver formulation,</li>
  *   <li>exercise is currently European only.</li>
  * </ul>
- *
- * <p>
- * This class no longer assumes that the barrier must coincide with the outer grid
- * boundary. For knock-out options, barrier enforcement is performed through
- * {@link FiniteDifferenceInternalStateConstraint}.
- * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint {
+
+	private enum PricingMode {
+		DIRECT_OUT,
+		ACTIVATION_POLICY_IN
+	}
 
 	private final String underlyingName;
 	private final double maturity;
@@ -155,14 +155,21 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 
 		if(isDegenerateVanillaCase()) {
-			return getVanillaValues(model);
+			return createVanillaOption().getValues(model);
 		}
 
-		if(isOutOption()) {
+		switch(getPricingMode()) {
+		case DIRECT_OUT:
 			return priceOutOptionDirectly(model);
+		case ACTIVATION_POLICY_IN:
+			return priceInOptionThroughActivationPolicy(model);
+		default:
+			throw new IllegalStateException("Unsupported pricing mode.");
 		}
+	}
 
-		return priceInOptionByInternalParity(model);
+	private PricingMode getPricingMode() {
+		return isOutOption() ? PricingMode.DIRECT_OUT : PricingMode.ACTIVATION_POLICY_IN;
 	}
 
 	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
@@ -184,29 +191,43 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 				zeroValues[i][j] = 0.0;
 			}
 		}
-
 		return zeroValues;
-	}
-
-	private double[][] getVanillaValues(final FiniteDifferenceEquityModel model) {
-		return createVanillaOption().getValues(model);
 	}
 
 	private double[][] priceOutOptionDirectly(final FiniteDifferenceEquityModel model) {
 		return createSolver(model).getValues(maturity, this::getTerminalPayoffForDirectOutPricing);
 	}
 
-	private double[][] priceInOptionByInternalParity(final FiniteDifferenceEquityModel model) {
+	/**
+	 * Prices a knock-in option through the current activation policy.
+	 *
+	 * <p>
+	 * Today this activation policy is implemented by the identity
+	 * </p>
+	 * <p>
+	 * knock-in = vanilla - corresponding knock-out.
+	 * </p>
+	 * <p>
+	 * This is intentionally encapsulated here so that a future direct coupled-PDE
+	 * treatment of knock-in activation can replace this implementation without
+	 * changing the public semantics of the product class.
+	 * </p>
+	 */
+	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
+		return priceInOptionByParity(model);
+	}
+
+	private double[][] priceInOptionByParity(final FiniteDifferenceEquityModel barrierModel) {
 
 		final EuropeanOption vanillaOption = createVanillaOption();
 		final BarrierOption correspondingOutOption = createCorrespondingOutOption();
 
-		final double[][] outValues = correspondingOutOption.getValues(model);
+		final double[][] outValues = correspondingOutOption.getValues(barrierModel);
 
-		final FiniteDifferenceEquityModel vanillaModel = createAuxiliaryVanillaModel(model);
+		final FiniteDifferenceEquityModel vanillaModel = createAuxiliaryVanillaModel(barrierModel);
 		final double[][] vanillaValues = vanillaOption.getValues(vanillaModel);
 
-		final double[] barrierGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+		final double[] barrierGrid = barrierModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		final double[] vanillaGrid = vanillaModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 
 		final int numberOfColumns = outValues[0].length;
@@ -424,10 +445,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			throw new IllegalStateException("Internal constrained value requested for a non out-option.");
 		}
 
-		/*
-		 * Current convention:
-		 * knock-out rebate is paid at hit.
-		 */
 		return rebate;
 	}
 
