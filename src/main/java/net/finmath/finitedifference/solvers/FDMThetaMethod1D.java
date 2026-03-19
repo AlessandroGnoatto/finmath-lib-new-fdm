@@ -10,7 +10,6 @@ import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
-import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundaryConditionAdapter;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
@@ -163,10 +162,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
 			final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
 
-			// Lower boundary
 			final BoundaryCondition lowerCondition =
-					FiniteDifferenceBoundaryConditionAdapter.getLowerBoundaryConditions(
-							model, product, boundaryTime, 1, xGrid[0])[0];
+					model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, xGrid[0])[0];
 
 
 			if(lowerCondition.isDirichlet()) {
@@ -177,11 +174,9 @@ public class FDMThetaMethod1D implements FDMSolver {
 				rhs.setEntry(0, 0, lowerCondition.getValue());
 			}
 
-			// Upper boundary
 			final BoundaryCondition upperCondition =
-					FiniteDifferenceBoundaryConditionAdapter.getUpperBoundaryConditions(
-							model, product, boundaryTime, 1, xGrid[nX - 1])[0];
-
+					model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, xGrid[nX - 1])[0];
+			
 			if(upperCondition.isDirichlet()) {
 				for(int col = 0; col < nX; col++) {
 					H.setEntry(nX - 1, col, 0.0);

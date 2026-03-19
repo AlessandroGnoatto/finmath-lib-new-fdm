@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FDBoundaryFactory;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.marketdata.model.curves.CurveInterpolation.ExtrapolationMethod;
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationEntity;
@@ -19,7 +20,7 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  * @author Alessandro Gnoatto (this version)
  * @author Christian Fries, Ralph Rudd, Jörg Kienitz (original version)
  */
-public class FDMBlackScholesModel implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
+public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 
 	private final double initialValue;
 	private final DiscountCurve riskFreeCurve;
@@ -254,7 +255,7 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel, Finite
 	}
 
 	@Override
-	public double[] getValueAtLowerBoundary(
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
 			final double... riskFactors) {
@@ -262,11 +263,11 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel, Finite
 		final FiniteDifferenceBoundary boundary =
 				FDBoundaryFactory.createBoundary(this, product);
 
-		return boundary.getValueAtLowerBoundary(product, time, riskFactors);
+		return boundary.getBoundaryConditionsAtLowerBoundary(product, time, riskFactors);
 	}
 
 	@Override
-	public double[] getValueAtUpperBoundary(
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
 			final double... riskFactors) {
@@ -274,7 +275,7 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel, Finite
 		final FiniteDifferenceBoundary boundary =
 				FDBoundaryFactory.createBoundary(this, product);
 
-		return boundary.getValueAtUpperBoundary(product, time, riskFactors);
+		return boundary.getBoundaryConditionsAtUpperBoundary(product, time, riskFactors);
 	}
 
 	@Override

@@ -1,6 +1,7 @@
 package net.finmath.finitedifference.assetderivativevaluation.models;
 
 import net.finmath.finitedifference.FiniteDifferenceModel;
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 

@@ -20,7 +20,7 @@ import net.finmath.modelling.products.CallOrPut;
  * @author Alessandro Gnoatto
  */
 public class AmericanOptionCevModelBoundary
-		implements FiniteDifferenceBoundary, FiniteDifferenceBoundaryConditions {
+		implements FiniteDifferenceBoundary {
 
 	private static final double EPSILON = 1E-6;
 
@@ -101,31 +101,4 @@ public class AmericanOptionCevModelBoundary
 		}
 	}
 
-	@Override
-	public double[] getValueAtLowerBoundary(
-			final FiniteDifferenceProduct product,
-			final double time,
-			final double... stateVariables) {
-
-		return toLegacyArray(getBoundaryConditionsAtLowerBoundary(product, time, stateVariables));
-	}
-
-	@Override
-	public double[] getValueAtUpperBoundary(
-			final FiniteDifferenceProduct product,
-			final double time,
-			final double... stateVariables) {
-
-		return toLegacyArray(getBoundaryConditionsAtUpperBoundary(product, time, stateVariables));
-	}
-
-	private static double[] toLegacyArray(final BoundaryCondition[] boundaryConditions) {
-		final double[] values = new double[boundaryConditions.length];
-		for(int i = 0; i < boundaryConditions.length; i++) {
-			values[i] = boundaryConditions[i].isDirichlet()
-					? boundaryConditions[i].getValue()
-					: Double.NaN;
-		}
-		return values;
-	}
 }

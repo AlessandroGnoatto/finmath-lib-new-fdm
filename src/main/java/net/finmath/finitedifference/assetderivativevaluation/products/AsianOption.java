@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.function.DoubleBinaryOperator;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
-import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundaryConditions;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
@@ -176,7 +175,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 	 * where I(t) = integral_0^t S(u) du.
 	 */
 	private static final class LiftedFDMBlackScholesModelDecorator
-			implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary, FiniteDifferenceBoundaryConditions {
+			implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
 		private final FDMBlackScholesModel delegate;
 		private final SpaceTimeDiscretization liftedDiscretization;
@@ -302,34 +301,6 @@ public class AsianOption implements FiniteDifferenceProduct {
 			result[1] = StandardBoundaryCondition.dirichlet(intrinsic * discount);
 
 			return result;
-		}
-
-		@Override
-		public double[] getValueAtLowerBoundary(
-				final FiniteDifferenceProduct product,
-				final double time,
-				final double... stateVariables) {
-
-			return toLegacyArray(getBoundaryConditionsAtLowerBoundary(product, time, stateVariables));
-		}
-
-		@Override
-		public double[] getValueAtUpperBoundary(
-				final FiniteDifferenceProduct product,
-				final double time,
-				final double... stateVariables) {
-
-			return toLegacyArray(getBoundaryConditionsAtUpperBoundary(product, time, stateVariables));
-		}
-
-		private static double[] toLegacyArray(final BoundaryCondition[] boundaryConditions) {
-			final double[] values = new double[boundaryConditions.length];
-			for(int i = 0; i < boundaryConditions.length; i++) {
-				values[i] = boundaryConditions[i].isDirichlet()
-						? boundaryConditions[i].getValue()
-						: Double.NaN;
-			}
-			return values;
 		}
 
 		@Override

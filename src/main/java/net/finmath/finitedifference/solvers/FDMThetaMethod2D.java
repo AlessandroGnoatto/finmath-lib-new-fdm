@@ -11,7 +11,6 @@ import org.apache.commons.math3.linear.OpenMapRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
-import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundaryConditionAdapter;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
@@ -263,13 +262,11 @@ public class FDMThetaMethod2D implements FDMSolver {
 					final double x1 = x1Grid[j];
 
 					final BoundaryCondition[] lowerConditions =
-							FiniteDifferenceBoundaryConditionAdapter.getLowerBoundaryConditions(
-									model, product, boundaryTime, 2, x0, x1);
+							model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, x0, x1);
 
 					final BoundaryCondition[] upperConditions =
-							FiniteDifferenceBoundaryConditionAdapter.getUpperBoundaryConditions(
-									model, product, boundaryTime, 2, x0, x1);
-
+							model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, x0, x1);
+					
 					final BoundaryCondition x0Lower = lowerConditions[0];
 					final BoundaryCondition x0Upper = upperConditions[0];
 					final BoundaryCondition x1Lower = lowerConditions[1];

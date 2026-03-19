@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FDBoundaryFactory;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.marketdata.model.curves.CurveInterpolation.ExtrapolationMethod;
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationEntity;
@@ -32,7 +33,7 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  *
  * @author Alessandro Gnoatto
  */
-public class FDMCevModel implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
+public class FDMCevModel implements FiniteDifferenceEquityModel {
 
 	private final double initialValue;
 	private final DiscountCurve riskFreeCurve;
@@ -295,23 +296,23 @@ public class FDMCevModel implements FiniteDifferenceEquityModel, FiniteDifferenc
 	}
 
 	@Override
-	public double[] getValueAtLowerBoundary(
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
 			final double... riskFactors) {
 
 		final FiniteDifferenceBoundary boundary = FDBoundaryFactory.createBoundary(this, product);
-		return boundary.getValueAtLowerBoundary(product, time, riskFactors);
+		return boundary.getBoundaryConditionsAtLowerBoundary(product, time, riskFactors);
 	}
 
 	@Override
-	public double[] getValueAtUpperBoundary(
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
 			final double... riskFactors) {
 
 		final FiniteDifferenceBoundary boundary = FDBoundaryFactory.createBoundary(this, product);
-		return boundary.getValueAtUpperBoundary(product, time, riskFactors);
+		return boundary.getBoundaryConditionsAtUpperBoundary(product, time, riskFactors);
 	}
 
 	@Override

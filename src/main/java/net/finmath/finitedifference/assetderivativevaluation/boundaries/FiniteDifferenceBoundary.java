@@ -1,33 +1,47 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
 
 /**
  * Interface for boundaries conditions provided to finite difference solvers.
- *
+ * 
  * @author Christian Fries
  * @version 1.0
  */
 public interface FiniteDifferenceBoundary {
 
 	/**
-	 * Return the value of the value process at the lower boundary for a given time and asset value.
-	 * @param product The product which uses the boundary condition
-	 * @param time The time at which the boundary is observed.
-	 * @param riskFactors The value of the assets or risk factors specifying the location of the boundary.
+	 * Returns the boundary conditions at the lower boundary.
 	 *
-	 * @return the value process at the lower boundary
+	 * <p>
+	 * The returned array is indexed by state-variable dimension.
+	 * </p>
+	 *
+	 * @param product The product being valued.
+	 * @param time The running time.
+	 * @param stateVariables The state variables specifying the boundary location.
+	 * @return The lower-boundary conditions by dimension.
 	 */
-	double[] getValueAtLowerBoundary(FiniteDifferenceProduct product, double time, double... riskFactors);
+	BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			FiniteDifferenceProduct product,
+			double time,
+			double... stateVariables);
 
 	/**
-	 * Return the value of the value process at the upper boundary for a given time and asset value.
-	 * @param product The product which uses the boundary condition
-	 * @param time The time at which the boundary is observed.
-	 * @param riskFactors The value of the assets or risk factors specifying the location of the boundary.
+	 * Returns the boundary conditions at the upper boundary.
 	 *
-	 * @return the value process at the upper boundary
+	 * <p>
+	 * The returned array is indexed by state-variable dimension.
+	 * </p>
+	 *
+	 * @param product The product being valued.
+	 * @param time The running time.
+	 * @param stateVariables The state variables specifying the boundary location.
+	 * @return The upper-boundary conditions by dimension.
 	 */
-	double[] getValueAtUpperBoundary(FiniteDifferenceProduct product, double time, double... riskFactors);
-
+	BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			FiniteDifferenceProduct product,
+			double time,
+			double... stateVariables);
 }
