@@ -1,8 +1,9 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
+import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 
 /**
  * Utility methods converting legacy double[] boundary values into explicit
@@ -46,7 +47,7 @@ public final class FiniteDifferenceBoundaryConditionAdapter {
 	/**
 	 * Converts the result of the legacy lower-boundary method into explicit boundary conditions.
 	 *
-	 * @param boundary Legacy boundary provider.
+	 * @param boundaryProvider Boundary provider.
 	 * @param product The product.
 	 * @param time The running time.
 	 * @param dimension Number of state variables.
@@ -54,19 +55,19 @@ public final class FiniteDifferenceBoundaryConditionAdapter {
 	 * @return Boundary conditions.
 	 */
 	public static BoundaryCondition[] getLowerBoundaryConditions(
-			final FiniteDifferenceBoundary boundary,
+			final FiniteDifferenceEquityModel boundaryProvider,
 			final FiniteDifferenceProduct product,
 			final double time,
 			final int dimension,
 			final double... stateVariables) {
 
-		return fromLegacyArray(boundary.getValueAtLowerBoundary(product, time, stateVariables), dimension);
+		return fromLegacyArray(boundaryProvider.getValueAtLowerBoundary(product, time, stateVariables), dimension);
 	}
 
 	/**
 	 * Converts the result of the legacy upper-boundary method into explicit boundary conditions.
 	 *
-	 * @param boundary Legacy boundary provider.
+	 * @param boundaryProvider Boundary provider.
 	 * @param product The product.
 	 * @param time The running time.
 	 * @param dimension Number of state variables.
@@ -74,12 +75,12 @@ public final class FiniteDifferenceBoundaryConditionAdapter {
 	 * @return Boundary conditions.
 	 */
 	public static BoundaryCondition[] getUpperBoundaryConditions(
-			final FiniteDifferenceBoundary boundary,
+			final FiniteDifferenceEquityModel boundaryProvider,
 			final FiniteDifferenceProduct product,
 			final double time,
 			final int dimension,
 			final double... stateVariables) {
 
-		return fromLegacyArray(boundary.getValueAtUpperBoundary(product, time, stateVariables), dimension);
+		return fromLegacyArray(boundaryProvider.getValueAtUpperBoundary(product, time, stateVariables), dimension);
 	}
 }

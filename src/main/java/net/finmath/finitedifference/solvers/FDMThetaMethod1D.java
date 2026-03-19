@@ -166,11 +166,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 			// Lower boundary
 			final BoundaryCondition lowerCondition =
 					FiniteDifferenceBoundaryConditionAdapter.getLowerBoundaryConditions(
-							(net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary) model,
-							product,
-							boundaryTime,
-							1,
-							xGrid[0])[0];
+							model, product, boundaryTime, 1, xGrid[0])[0];
+
 
 			if(lowerCondition.isDirichlet()) {
 				for(int col = 0; col < nX; col++) {
@@ -183,11 +180,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 			// Upper boundary
 			final BoundaryCondition upperCondition =
 					FiniteDifferenceBoundaryConditionAdapter.getUpperBoundaryConditions(
-							(net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary) model,
-							product,
-							boundaryTime,
-							1,
-							xGrid[nX - 1])[0];
+							model, product, boundaryTime, 1, xGrid[nX - 1])[0];
 
 			if(upperCondition.isDirichlet()) {
 				for(int col = 0; col < nX; col++) {

@@ -264,20 +264,11 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 					final BoundaryCondition[] lowerConditions =
 							FiniteDifferenceBoundaryConditionAdapter.getLowerBoundaryConditions(
-									(net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary) model,
-									product,
-									boundaryTime,
-									2,
-									x0,
-									x1);
+									model, product, boundaryTime, 2, x0, x1);
+
 					final BoundaryCondition[] upperConditions =
 							FiniteDifferenceBoundaryConditionAdapter.getUpperBoundaryConditions(
-									(net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary) model,
-									product,
-									boundaryTime,
-									2,
-									x0,
-									x1);
+									model, product, boundaryTime, 2, x0, x1);
 
 					final BoundaryCondition x0Lower = lowerConditions[0];
 					final BoundaryCondition x0Upper = upperConditions[0];
