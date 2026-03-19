@@ -12,6 +12,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
@@ -22,16 +23,15 @@ import net.finmath.modelling.Exercise;
  * Theta-method solver for two-dimensional PDEs in <em>state-variable form</em>.
  *
  * <p>
- * In contrast to the original {@link FDMThetaMethod2D} (which contained S-specific scaling like {@code S * d/dS} and
- * {@code S^2 * d^2/dS^2}), this solver assumes the two state variables {@code (X0, X1)} follow a generic SDE
+ * This solver assumes the two state variables {@code (X0, X1)} follow a generic SDE
  * </p>
  *
  * <p>
- * {@code dX_i(t) = mu_i(t, X0, X1) dt + sum_k b_{i,k}(t, X0, X1) dW_k(t)},  i=0,1,
+ * {@code dX_i(t) = mu_i(t, X0, X1) dt + sum_k b_{i,k}(t, X0, X1) dW_k(t)},  i=0,1.
  * </p>
  *
  * <p>
- * and builds the backward PDE operator using
+ * It builds the backward PDE operator using
  * </p>
  *
  * <ul>
@@ -44,6 +44,18 @@ import net.finmath.modelling.Exercise;
  * Boundary conditions are enforced via explicit {@link BoundaryCondition} objects.
  * Dirichlet rows are overwritten only if the corresponding boundary condition is of Dirichlet type.
  * If the boundary condition type is NONE, the PDE row is left intact.
+ * </p>
+ *
+ * <p>
+ * In addition, products may define internal state constraints through
+ * {@link FiniteDifferenceInternalStateConstraint}. Constrained nodes are imposed
+ * as internal Dirichlet rows.
+ * </p>
+ *
+ * <p>
+ * The solver returns the full time history as a flattened matrix of dimension
+ * {@code (n0*n1) x (nT+1)}.
+ * Flattening convention: {@code k = i0 + i1*n0} where {@code i0} is the fastest index.
  * </p>
  *
  * @author Enrico De Vecchi
@@ -76,7 +88,7 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 		final Grid x0GridObj = spaceTimeDiscretization.getSpaceGrid(0);
 		final Grid x1GridObj = spaceTimeDiscretization.getSpaceGrid(1);
-		if (x0GridObj == null || x1GridObj == null) {
+		if(x0GridObj == null || x1GridObj == null) {
 			throw new IllegalArgumentException(
 					"SpaceTimeDiscretization must provide two space grids (dimension 0 and dimension 1).");
 		}
@@ -101,6 +113,14 @@ public class FDMThetaMethod2D implements FDMSolver {
 		final RealMatrix T1_1 = b1.getFirstDerivativeMatrix();
 		final RealMatrix T2_1 = b1.getSecondDerivativeMatrix();
 
+		/*
+		 * Build 2D differential operators on flattened state (x0 fastest, then x1).
+		 *   D0  = I1 ⊗ T1_0
+		 *   D00 = I1 ⊗ T2_0
+		 *   D1  = T1_1 ⊗ I0
+		 *   D11 = T2_1 ⊗ I0
+		 *   D01 = T1_1 ⊗ T1_0
+		 */
 		final RealMatrix D0 = buildBlockDiagonal(T1_0, n1);
 		final RealMatrix D00 = buildBlockDiagonal(T2_0, n1);
 
@@ -110,16 +130,16 @@ public class FDMThetaMethod2D implements FDMSolver {
 		final RealMatrix D01 = buildKron(T1_1, T1_0);
 
 		final boolean[] isBoundary = new boolean[n];
-		for (int j = 0; j < n1; j++) {
-			for (int i = 0; i < n0; i++) {
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
 				final int k = i + j * n0;
 				isBoundary[k] = (i == 0 || i == n0 - 1 || j == 0 || j == n1 - 1);
 			}
 		}
 
 		RealMatrix U = MatrixUtils.createRealMatrix(n, 1);
-		for (int j = 0; j < n1; j++) {
-			for (int i = 0; i < n0; i++) {
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
 				final int k = i + j * n0;
 				U.setEntry(k, 0, valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]));
 			}
@@ -128,7 +148,7 @@ public class FDMThetaMethod2D implements FDMSolver {
 		final RealMatrix z = MatrixUtils.createRealMatrix(n, timeLength);
 		z.setColumnMatrix(0, U);
 
-		for (int m = 0; m < M; m++) {
+		for(int m = 0; m < M; m++) {
 
 			final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
@@ -153,8 +173,8 @@ public class FDMThetaMethod2D implements FDMSolver {
 			final double[] a01_m = new double[n];
 			final double[] a01_mp1 = new double[n];
 
-			for (int j = 0; j < n1; j++) {
-				for (int i = 0; i < n0; i++) {
+			for(int j = 0; j < n1; j++) {
+				for(int i = 0; i < n0; i++) {
 					final int k = i + j * n0;
 					final double x0 = x0Grid[i];
 					final double x1 = x1Grid[j];
@@ -176,7 +196,7 @@ public class FDMThetaMethod2D implements FDMSolver {
 					double a01v_m = 0.0;
 
 					final int nFactors_m = b_m[0].length;
-					for (int f = 0; f < nFactors_m; f++) {
+					for(int f = 0; f < nFactors_m; f++) {
 						final double b00 = b_m[0][f];
 						final double b10 = b_m.length > 1 ? b_m[1][f] : 0.0;
 						a00v_m += b00 * b00;
@@ -189,7 +209,7 @@ public class FDMThetaMethod2D implements FDMSolver {
 					double a01v_p = 0.0;
 
 					final int nFactors_p = b_mp1[0].length;
-					for (int f = 0; f < nFactors_p; f++) {
+					for(int f = 0; f < nFactors_p; f++) {
 						final double b00 = b_mp1[0][f];
 						final double b10 = b_mp1.length > 1 ? b_mp1[1][f] : 0.0;
 						a00v_p += b00 * b00;
@@ -251,10 +271,13 @@ public class FDMThetaMethod2D implements FDMSolver {
 			final double boundaryTime =
 					spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
 
-			for (int j = 0; j < n1; j++) {
-				for (int i = 0; i < n0; i++) {
+			/*
+			 * Outer boundary enforcement.
+			 */
+			for(int j = 0; j < n1; j++) {
+				for(int i = 0; i < n0; i++) {
 					final int k = i + j * n0;
-					if (!isBoundary[k]) {
+					if(!isBoundary[k]) {
 						continue;
 					}
 
@@ -263,31 +286,30 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 					final BoundaryCondition[] lowerConditions =
 							model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, x0, x1);
-
 					final BoundaryCondition[] upperConditions =
 							model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, x0, x1);
-					
+
 					final BoundaryCondition x0Lower = lowerConditions[0];
 					final BoundaryCondition x0Upper = upperConditions[0];
 					final BoundaryCondition x1Lower = lowerConditions[1];
 					final BoundaryCondition x1Upper = upperConditions[1];
 
 					BoundaryCondition chosenCondition = null;
-					if (i == 0) {
+					if(i == 0) {
 						chosenCondition = x0Lower;
 					}
-					else if (i == n0 - 1) {
+					else if(i == n0 - 1) {
 						chosenCondition = x0Upper;
 					}
-					else if (j == 0) {
+					else if(j == 0) {
 						chosenCondition = x1Lower;
 					}
-					else if (j == n1 - 1) {
+					else if(j == n1 - 1) {
 						chosenCondition = x1Upper;
 					}
 
-					if (chosenCondition != null && chosenCondition.isDirichlet()) {
-						for (int col = 0; col < n; col++) {
+					if(chosenCondition != null && chosenCondition.isDirichlet()) {
+						for(int col = 0; col < n; col++) {
 							H.setEntry(k, col, 0.0);
 						}
 						H.setEntry(k, k, 1.0);
@@ -296,26 +318,72 @@ public class FDMThetaMethod2D implements FDMSolver {
 				}
 			}
 
+			/*
+			 * Internal state constraints:
+			 * overwrite constrained nodes as internal Dirichlet rows.
+			 */
+			for(int j = 0; j < n1; j++) {
+				for(int i = 0; i < n0; i++) {
+					final int k = i + j * n0;
+					final double x0 = x0Grid[i];
+					final double x1 = x1Grid[j];
+
+					if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+						final double constrainedValue = getInternalConstrainedValue(boundaryTime, x0, x1);
+
+						for(int col = 0; col < n; col++) {
+							H.setEntry(k, col, 0.0);
+						}
+						H.setEntry(k, k, 1.0);
+						rhs.setEntry(k, 0, constrainedValue);
+					}
+				}
+			}
+
 			final boolean isExerciseDate =
 					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
 
-			if (exercise.isAmerican()) {
+			if(exercise.isAmerican()) {
 				final double omega = 1.2;
 				final SORDecomposition sor = new SORDecomposition(H);
 				final RealMatrix zz = sor.getSol(U, rhs, omega, 500);
 
 				if(isExerciseDate) {
-					for (int j = 0; j < n1; j++) {
-						for (int i = 0; i < n0; i++) {
+					for(int j = 0; j < n1; j++) {
+						for(int i = 0; i < n0; i++) {
 							final int k = i + j * n0;
-							final double payoff = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
-							U.setEntry(k, 0, Math.max(zz.getEntry(k, 0), payoff));
+							final double x0 = x0Grid[i];
+							final double x1 = x1Grid[j];
+
+							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
+							}
+							else {
+								final double payoff = valueAtMaturity.applyAsDouble(x0, x1);
+								U.setEntry(k, 0, Math.max(zz.getEntry(k, 0), payoff));
+							}
 						}
 					}
 				}
 				else {
 					U = zz;
+
+					/*
+					 * Re-impose internal constraints explicitly after the solve for numerical safety.
+					 */
+					for(int j = 0; j < n1; j++) {
+						for(int i = 0; i < n0; i++) {
+							final int k = i + j * n0;
+							final double x0 = x0Grid[i];
+							final double x1 = x1Grid[j];
+
+							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
+							}
+						}
+					}
 				}
+
 				z.setColumnMatrix(m + 1, U);
 			}
 			else {
@@ -323,14 +391,39 @@ public class FDMThetaMethod2D implements FDMSolver {
 				U = solver.solve(rhs);
 
 				if(isExerciseDate) {
-					for (int j = 0; j < n1; j++) {
-						for (int i = 0; i < n0; i++) {
+					for(int j = 0; j < n1; j++) {
+						for(int i = 0; i < n0; i++) {
 							final int k = i + j * n0;
-							final double payoff = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
-							U.setEntry(k, 0, Math.max(U.getEntry(k, 0), payoff));
+							final double x0 = x0Grid[i];
+							final double x1 = x1Grid[j];
+
+							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
+							}
+							else {
+								final double payoff = valueAtMaturity.applyAsDouble(x0, x1);
+								U.setEntry(k, 0, Math.max(U.getEntry(k, 0), payoff));
+							}
 						}
 					}
 				}
+				else {
+					/*
+					 * Re-impose internal constraints explicitly after the solve for numerical safety.
+					 */
+					for(int j = 0; j < n1; j++) {
+						for(int i = 0; i < n0; i++) {
+							final int k = i + j * n0;
+							final double x0 = x0Grid[i];
+							final double x1 = x1Grid[j];
+
+							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
+							}
+						}
+					}
+				}
+
 				z.setColumnMatrix(m + 1, U);
 			}
 		}
@@ -346,18 +439,29 @@ public class FDMThetaMethod2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
+	private boolean isInternalConstraintActive(final double time, final double x0, final double x1) {
+		if(product instanceof FiniteDifferenceInternalStateConstraint) {
+			return ((FiniteDifferenceInternalStateConstraint) product).isConstraintActive(time, x0, x1);
+		}
+		return false;
+	}
+
+	private double getInternalConstrainedValue(final double time, final double x0, final double x1) {
+		return ((FiniteDifferenceInternalStateConstraint) product).getConstrainedValue(time, x0, x1);
+	}
+
 	private static RealMatrix buildBlockDiagonal(final RealMatrix block, final int numBlocks) {
 		final int n = block.getRowDimension();
 		final int N = n * numBlocks;
 		final OpenMapRealMatrix out = new OpenMapRealMatrix(N, N);
 
-		for (int b = 0; b < numBlocks; b++) {
+		for(int b = 0; b < numBlocks; b++) {
 			final int row0 = b * n;
 			final int col0 = b * n;
-			for (int i = 0; i < n; i++) {
-				for (int j = Math.max(0, i - 2); j <= Math.min(n - 1, i + 2); j++) {
+			for(int i = 0; i < n; i++) {
+				for(int j = Math.max(0, i - 2); j <= Math.min(n - 1, i + 2); j++) {
 					final double v = block.getEntry(i, j);
-					if (v != 0.0) {
+					if(v != 0.0) {
 						out.setEntry(row0 + i, col0 + j, v);
 					}
 				}
@@ -374,20 +478,20 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 		final OpenMapRealMatrix out = new OpenMapRealMatrix(aR * bR, aC * bC);
 
-		for (int i = 0; i < aR; i++) {
-			for (int j = Math.max(0, i - 2); j <= Math.min(aC - 1, i + 2); j++) {
+		for(int i = 0; i < aR; i++) {
+			for(int j = Math.max(0, i - 2); j <= Math.min(aC - 1, i + 2); j++) {
 				final double a = A.getEntry(i, j);
-				if (a == 0.0) {
+				if(a == 0.0) {
 					continue;
 				}
 
 				final int rowBase = i * bR;
 				final int colBase = j * bC;
 
-				for (int p = 0; p < bR; p++) {
-					for (int q = Math.max(0, p - 2); q <= Math.min(bC - 1, p + 2); q++) {
+				for(int p = 0; p < bR; p++) {
+					for(int q = Math.max(0, p - 2); q <= Math.min(bC - 1, p + 2); q++) {
 						final double b = B.getEntry(p, q);
-						if (b == 0.0) {
+						if(b == 0.0) {
 							continue;
 						}
 						out.setEntry(rowBase + p, colBase + q, a * b);
@@ -405,14 +509,14 @@ public class FDMThetaMethod2D implements FDMSolver {
 
 		final OpenMapRealMatrix out = new OpenMapRealMatrix(N, aC * nIdentity);
 
-		for (int i = 0; i < aR; i++) {
-			for (int j = Math.max(0, i - 2); j <= Math.min(aC - 1, i + 2); j++) {
+		for(int i = 0; i < aR; i++) {
+			for(int j = Math.max(0, i - 2); j <= Math.min(aC - 1, i + 2); j++) {
 				final double a = A.getEntry(i, j);
-				if (a == 0.0) {
+				if(a == 0.0) {
 					continue;
 				}
 
-				for (int k = 0; k < nIdentity; k++) {
+				for(int k = 0; k < nIdentity; k++) {
 					out.setEntry(i * nIdentity + k, j * nIdentity + k, a);
 				}
 			}

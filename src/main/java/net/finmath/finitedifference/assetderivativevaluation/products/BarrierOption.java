@@ -6,6 +6,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
+import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
@@ -16,41 +17,33 @@ import net.finmath.modelling.products.CallOrPut;
 import net.finmath.time.TimeDiscretization;
 
 /**
- * Implements valuation of a standard single-barrier option on one asset.
+ * Finite-difference valuation of a standard single-barrier option on one asset.
  *
  * <p>
- * The class currently supports one-dimensional finite-difference valuation
- * for models whose first state variable represents the underlying level
- * and whose spatial grid boundary coincides with the barrier.
- * </p>
- *
- * <p>
- * For out-options, the price is obtained directly from the finite-difference
- * solver. For in-options, the standard parity relation
- * </p>
- * <p>
- * in = vanilla - out
- * </p>
- * <p>
- * is used in the European case.
+ * The barrier acts on the first state variable of the model, which is assumed to
+ * represent the underlying level.
  * </p>
  *
  * <p>
- * The current implementation assumes that the barrier coincides with the
- * lower or upper boundary of the spatial grid:
+ * Current implementation policy:
  * </p>
  * <ul>
- *   <li>down-barrier: lower boundary of the grid,</li>
- *   <li>up-barrier: upper boundary of the grid.</li>
+ *   <li>knock-out options are priced directly by the finite-difference solver, using
+ *       internal state constraints,</li>
+ *   <li>knock-in options are currently priced by an internal parity helper:
+ *       in = vanilla - out,</li>
+ *   <li>exercise is currently European only.</li>
  * </ul>
  *
  * <p>
- * The terminal payoff logic follows the standard barrier-option cases.
+ * This class no longer assumes that the barrier must coincide with the outer grid
+ * boundary. For knock-out options, barrier enforcement is performed through
+ * {@link FiniteDifferenceInternalStateConstraint}.
  * </p>
  *
  * @author Alessandro Gnoatto
  */
-public class BarrierOption implements FiniteDifferenceProduct {
+public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint {
 
 	private final String underlyingName;
 	private final double maturity;
@@ -61,18 +54,6 @@ public class BarrierOption implements FiniteDifferenceProduct {
 	private final BarrierType barrierType;
 	private final Exercise exercise;
 
-	/**
-	 * Creates a barrier option.
-	 *
-	 * @param underlyingName Name of the underlying.
-	 * @param maturity Maturity of the option.
-	 * @param strike Strike of the option.
-	 * @param barrierValue Barrier level.
-	 * @param rebate Rebate paid at knock-out.
-	 * @param callOrPutSign Sign of the option payoff: {@code +1.0} for call,
-	 *        {@code -1.0} for put.
-	 * @param barrierType Barrier type.
-	 */
 	public BarrierOption(
 			final String underlyingName,
 			final double maturity,
@@ -81,38 +62,17 @@ public class BarrierOption implements FiniteDifferenceProduct {
 			final double rebate,
 			final double callOrPutSign,
 			final BarrierType barrierType) {
-		super();
-		this.underlyingName = underlyingName;
-		this.maturity = maturity;
-		this.strike = strike;
-		this.barrierValue = barrierValue;
-		this.rebate = rebate;
-		this.barrierType = barrierType;
-
-		if(callOrPutSign == 1.0) {
-			this.callOrPutSign = CallOrPut.CALL;
-		}
-		else if(callOrPutSign == -1.0) {
-			this.callOrPutSign = CallOrPut.PUT;
-		}
-		else {
-			throw new IllegalArgumentException("Unknown option type.");
-		}
-
-		this.exercise = new EuropeanExercise(maturity);
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				mapCallOrPut(callOrPutSign),
+				barrierType
+		);
 	}
 
-	/**
-	 * Creates a barrier option.
-	 *
-	 * @param underlyingName Name of the underlying.
-	 * @param maturity Maturity of the option.
-	 * @param strike Strike of the option.
-	 * @param barrierValue Barrier level.
-	 * @param rebate Rebate paid at knock-out.
-	 * @param callOrPutSign Call/put flag.
-	 * @param barrierType Barrier type.
-	 */
 	public BarrierOption(
 			final String underlyingName,
 			final double maturity,
@@ -132,17 +92,6 @@ public class BarrierOption implements FiniteDifferenceProduct {
 		this.exercise = new EuropeanExercise(maturity);
 	}
 
-	/**
-	 * Creates a barrier option on the default single underlying.
-	 *
-	 * @param maturity Maturity of the option.
-	 * @param strike Strike of the option.
-	 * @param barrierValue Barrier level.
-	 * @param rebate Rebate paid at knock-out.
-	 * @param callOrPutSign Sign of the option payoff: {@code +1.0} for call,
-	 *        {@code -1.0} for put.
-	 * @param barrierType Barrier type.
-	 */
 	public BarrierOption(
 			final double maturity,
 			final double strike,
@@ -153,36 +102,16 @@ public class BarrierOption implements FiniteDifferenceProduct {
 		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
 	}
 
-	/**
-	 * Creates a barrier option on the default single underlying.
-	 *
-	 * @param maturity Maturity of the option.
-	 * @param strike Strike of the option.
-	 * @param barrierValue Barrier level.
-	 * @param rebate Rebate paid at knock-out.
-	 * @param callOrPutSign Call/put flag.
-	 * @param barrierType Barrier type.
-	 */
 	public BarrierOption(
 			final double maturity,
 			final double strike,
 			final double barrierValue,
+			final double rebate,
 			final CallOrPut callOrPutSign,
 			final BarrierType barrierType) {
-		this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
+		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
 	}
 
-	/**
-	 * Creates a zero-rebate barrier option.
-	 *
-	 * @param underlyingName Name of the underlying.
-	 * @param maturity Maturity of the option.
-	 * @param strike Strike of the option.
-	 * @param barrierValue Barrier level.
-	 * @param callOrPutSign Sign of the option payoff: {@code +1.0} for call,
-	 *        {@code -1.0} for put.
-	 * @param barrierType Barrier type.
-	 */
 	public BarrierOption(
 			final String underlyingName,
 			final double maturity,
@@ -193,16 +122,6 @@ public class BarrierOption implements FiniteDifferenceProduct {
 		this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
 	}
 
-	/**
-	 * Creates a zero-rebate barrier option on the default single underlying.
-	 *
-	 * @param maturity Maturity of the option.
-	 * @param strike Strike of the option.
-	 * @param barrierValue Barrier level.
-	 * @param callOrPutSign Sign of the option payoff: {@code +1.0} for call,
-	 *        {@code -1.0} for put.
-	 * @param barrierType Barrier type.
-	 */
 	public BarrierOption(
 			final double maturity,
 			final double strike,
@@ -229,30 +148,32 @@ public class BarrierOption implements FiniteDifferenceProduct {
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 
-		if(!exercise.isEuropean()) {
-			throw new IllegalArgumentException(
-					"BarrierOption currently supports only European exercise.");
+		validateProductConfiguration(model);
+
+		if(isDegenerateZeroCase()) {
+			return buildZeroValueSurface(model);
 		}
 
-		validateBarrierAgainstGrid(model);
-
-		if(isIdenticallyZero()) {
-			return getZeroValues(model);
-		}
-
-		if(isIdenticallyVanilla()) {
+		if(isDegenerateVanillaCase()) {
 			return getVanillaValues(model);
 		}
 
 		if(isOutOption()) {
-			return getOutValues(model);
+			return priceOutOptionDirectly(model);
 		}
-		else {
-			return getInValuesByParity(model);
-		}
+
+		return priceInOptionByInternalParity(model);
 	}
 
-	private double[][] getZeroValues(final FiniteDifferenceEquityModel model) {
+	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
+		if(!exercise.isEuropean()) {
+			throw new IllegalArgumentException("BarrierOption currently supports only European exercise.");
+		}
+
+		validateBarrierInsideGrid(model);
+	}
+
+	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
 		final int numberOfSpacePoints = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid().length;
 		final int numberOfTimePoints =
 				model.getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps() + 1;
@@ -268,72 +189,95 @@ public class BarrierOption implements FiniteDifferenceProduct {
 	}
 
 	private double[][] getVanillaValues(final FiniteDifferenceEquityModel model) {
-		final EuropeanOption vanillaOption =
-				new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
-		return vanillaOption.getValues(model);
+		return createVanillaOption().getValues(model);
 	}
 
-	private double[][] getOutValues(final FiniteDifferenceEquityModel model) {
-		final FDMSolver solver = new FDMThetaMethod1D(
-				model,
-				this,
-				model.getSpaceTimeDiscretization(),
-				exercise);
-
-		return solver.getValues(maturity, this::payoffAtMaturityForOutOption);
+	private double[][] priceOutOptionDirectly(final FiniteDifferenceEquityModel model) {
+		return createSolver(model).getValues(maturity, this::getTerminalPayoffForDirectOutPricing);
 	}
 
-	private double[][] getInValuesByParity(final FiniteDifferenceEquityModel barrierModel) {
-		final EuropeanOption vanillaOption =
-				new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
+	private double[][] priceInOptionByInternalParity(final FiniteDifferenceEquityModel model) {
 
-		final BarrierType correspondingOutType;
-		if(barrierType == BarrierType.DOWN_IN) {
-			correspondingOutType = BarrierType.DOWN_OUT;
-		}
-		else if(barrierType == BarrierType.UP_IN) {
-			correspondingOutType = BarrierType.UP_OUT;
-		}
-		else {
-			throw new IllegalArgumentException("Parity for in-options called with non in-type barrier.");
-		}
+		final EuropeanOption vanillaOption = createVanillaOption();
+		final BarrierOption correspondingOutOption = createCorrespondingOutOption();
 
-		final BarrierOption outOption =
-				new BarrierOption(
-						underlyingName,
-						maturity,
-						strike,
-						barrierValue,
-						rebate,
-						callOrPutSign,
-						correspondingOutType);
+		final double[][] outValues = correspondingOutOption.getValues(model);
 
-		final double[][] outValues = outOption.getValues(barrierModel);
-
-		final FiniteDifferenceEquityModel vanillaModel = createAuxiliaryVanillaModel(barrierModel);
+		final FiniteDifferenceEquityModel vanillaModel = createAuxiliaryVanillaModel(model);
 		final double[][] vanillaValues = vanillaOption.getValues(vanillaModel);
 
-		final double[] barrierGrid = barrierModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+		final double[] barrierGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		final double[] vanillaGrid = vanillaModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 
 		final int numberOfColumns = outValues[0].length;
 		final double[][] inValues = new double[outValues.length][numberOfColumns];
 
 		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			final RationalFunctionInterpolation interpolator =
+					new RationalFunctionInterpolation(
+							vanillaGrid,
+							getColumn(vanillaValues, timeIndex),
+							InterpolationMethod.LINEAR,
+							ExtrapolationMethod.CONSTANT);
+
 			for(int i = 0; i < barrierGrid.length; i++) {
 				final double stock = barrierGrid[i];
-				final RationalFunctionInterpolation interpolator =
-						new RationalFunctionInterpolation(
-								vanillaGrid,
-								getColumn(vanillaValues, timeIndex),
-								InterpolationMethod.LINEAR,
-								ExtrapolationMethod.CONSTANT);
 				final double vanillaValue = interpolator.getValue(stock);
 				inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
 			}
 		}
 
 		return inValues;
+	}
+
+	private FDMSolver createSolver(final FiniteDifferenceEquityModel model) {
+		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(numberOfSpaceDimensions == 1) {
+			return new FDMThetaMethod1D(
+					model,
+					this,
+					model.getSpaceTimeDiscretization(),
+					exercise
+			);
+		}
+		else if(numberOfSpaceDimensions == 2) {
+			return new FDMThetaMethod2D(
+					model,
+					this,
+					model.getSpaceTimeDiscretization(),
+					exercise
+			);
+		}
+		else {
+			throw new IllegalArgumentException("BarrierOption currently supports only 1D or 2D finite-difference models.");
+		}
+	}
+
+	private EuropeanOption createVanillaOption() {
+		return new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
+	}
+
+	private BarrierOption createCorrespondingOutOption() {
+		return new BarrierOption(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				callOrPutSign,
+				getCorrespondingOutBarrierType()
+		);
+	}
+
+	private BarrierType getCorrespondingOutBarrierType() {
+		if(barrierType == BarrierType.DOWN_IN) {
+			return BarrierType.DOWN_OUT;
+		}
+		if(barrierType == BarrierType.UP_IN) {
+			return BarrierType.UP_OUT;
+		}
+		throw new IllegalArgumentException("No corresponding out barrier type for " + barrierType);
 	}
 
 	private FiniteDifferenceEquityModel createAuxiliaryVanillaModel(
@@ -349,14 +293,8 @@ public class BarrierOption implements FiniteDifferenceProduct {
 			throw new IllegalArgumentException("Barrier grid must contain at least two points.");
 		}
 
-		/*
-		 * Reuse the same mesh size as the barrier grid in the first space dimension.
-		 */
 		final double deltaS = barrierGrid[1] - barrierGrid[0];
 
-		/*
-		 * Build a wider auxiliary grid for the vanilla problem.
-		 */
 		final double initialValue = barrierModel.getInitialValue()[0];
 		final double currentMin = barrierGrid[0];
 		final double currentMax = barrierGrid[barrierGrid.length - 1];
@@ -393,7 +331,7 @@ public class BarrierOption implements FiniteDifferenceProduct {
 		return barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT;
 	}
 
-	private boolean isIdenticallyZero() {
+	private boolean isDegenerateZeroCase() {
 		return (barrierType == BarrierType.UP_OUT
 				&& callOrPutSign == CallOrPut.CALL
 				&& barrierValue <= strike)
@@ -408,7 +346,7 @@ public class BarrierOption implements FiniteDifferenceProduct {
 				&& barrierValue <= strike);
 	}
 
-	private boolean isIdenticallyVanilla() {
+	private boolean isDegenerateVanillaCase() {
 		return (barrierType == BarrierType.UP_IN
 				&& callOrPutSign == CallOrPut.CALL
 				&& barrierValue <= strike)
@@ -417,24 +355,20 @@ public class BarrierOption implements FiniteDifferenceProduct {
 				&& barrierValue >= strike);
 	}
 
-	private double payoffAtMaturityForOutOption(final double assetValue) {
+	private double getTerminalPayoffForDirectOutPricing(final double assetValue) {
 
 		if(callOrPutSign == CallOrPut.CALL) {
 			if(barrierType == BarrierType.DOWN_OUT) {
 				if(barrierValue <= strike) {
 					return Math.max(assetValue - strike, 0.0);
 				}
-				else {
-					return assetValue > barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
-				}
+				return assetValue > barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
 			}
 			else if(barrierType == BarrierType.UP_OUT) {
 				if(barrierValue <= strike) {
 					return 0.0;
 				}
-				else {
-					return assetValue < barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
-				}
+				return assetValue < barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
 			}
 		}
 		else {
@@ -442,111 +376,99 @@ public class BarrierOption implements FiniteDifferenceProduct {
 				if(barrierValue >= strike) {
 					return 0.0;
 				}
-				else {
-					return assetValue > barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
-				}
+				return assetValue > barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
 			}
 			else if(barrierType == BarrierType.UP_OUT) {
 				if(barrierValue >= strike) {
 					return Math.max(strike - assetValue, 0.0);
 				}
-				else {
-					return assetValue < barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
-				}
+				return assetValue < barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
 			}
 		}
 
-		throw new IllegalArgumentException("Unsupported barrier / option type combination.");
+		throw new IllegalArgumentException("Direct terminal payoff requested for non out-option type.");
 	}
 
-	private void validateBarrierAgainstGrid(final FiniteDifferenceEquityModel model) {
+	private void validateBarrierInsideGrid(final FiniteDifferenceEquityModel model) {
 		final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		final double lowerBoundary = grid[0];
 		final double upperBoundary = grid[grid.length - 1];
-		final double tolerance = 1E-12;
 
-		if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) {
-			if(Math.abs(barrierValue - lowerBoundary) > tolerance) {
-				throw new IllegalArgumentException(
-						"For down-barrier options the barrier must coincide with the lower grid boundary.");
-			}
-		}
-		else if(barrierType == BarrierType.UP_IN || barrierType == BarrierType.UP_OUT) {
-			if(Math.abs(barrierValue - upperBoundary) > tolerance) {
-				throw new IllegalArgumentException(
-						"For up-barrier options the barrier must coincide with the upper grid boundary.");
-			}
+		if(barrierValue < lowerBoundary || barrierValue > upperBoundary) {
+			throw new IllegalArgumentException(
+					"The barrier must lie inside the first state-variable grid domain.");
 		}
 	}
 
-	/**
-	 * Returns the name of the underlying.
-	 *
-	 * @return Underlying name.
-	 */
+	@Override
+	public boolean isConstraintActive(final double time, final double... stateVariables) {
+		if(!isOutOption()) {
+			return false;
+		}
+
+		final double underlyingLevel = stateVariables[0];
+
+		switch(barrierType) {
+		case DOWN_OUT:
+			return underlyingLevel <= barrierValue;
+		case UP_OUT:
+			return underlyingLevel >= barrierValue;
+		default:
+			return false;
+		}
+	}
+
+	@Override
+	public double getConstrainedValue(final double time, final double... stateVariables) {
+		if(!isOutOption()) {
+			throw new IllegalStateException("Internal constrained value requested for a non out-option.");
+		}
+
+		/*
+		 * Current convention:
+		 * knock-out rebate is paid at hit.
+		 */
+		return rebate;
+	}
+
+	private static CallOrPut mapCallOrPut(final double callOrPutSign) {
+		if(callOrPutSign == 1.0) {
+			return CallOrPut.CALL;
+		}
+		if(callOrPutSign == -1.0) {
+			return CallOrPut.PUT;
+		}
+		throw new IllegalArgumentException("Unknown option type.");
+	}
+
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
-	/**
-	 * Returns the maturity.
-	 *
-	 * @return Maturity.
-	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
-	/**
-	 * Returns the strike.
-	 *
-	 * @return Strike.
-	 */
 	public double getStrike() {
 		return strike;
 	}
 
-	/**
-	 * Returns the barrier level.
-	 *
-	 * @return Barrier level.
-	 */
 	public double getBarrierValue() {
 		return barrierValue;
 	}
 
-	/**
-	 * Returns the rebate.
-	 *
-	 * @return Rebate.
-	 */
 	public double getRebate() {
 		return rebate;
 	}
 
-	/**
-	 * Returns the call/put flag.
-	 *
-	 * @return Call/put flag.
-	 */
 	public CallOrPut getCallOrPut() {
 		return callOrPutSign;
 	}
 
-	/**
-	 * Returns the barrier type.
-	 *
-	 * @return Barrier type.
-	 */
 	public BarrierType getBarrierType() {
 		return barrierType;
 	}
 
-	/**
-	 * Returns the exercise specification.
-	 *
-	 * @return Exercise specification.
-	 */
 	public Exercise getExercise() {
 		return exercise;
 	}

@@ -11,6 +11,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -47,6 +48,12 @@ import net.finmath.modelling.Exercise;
  * Boundary conditions are enforced via explicit {@link BoundaryCondition} objects.
  * Dirichlet rows are overwritten only if the corresponding boundary condition is of Dirichlet type.
  * If the boundary condition type is NONE, the PDE row is left intact.
+ * </p>
+ *
+ * <p>
+ * In addition, products may define internal state constraints through
+ * {@link FiniteDifferenceInternalStateConstraint}. Constrained nodes are imposed
+ * as internal Dirichlet rows.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -165,7 +172,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final BoundaryCondition lowerCondition =
 					model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, xGrid[0])[0];
 
-
 			if(lowerCondition.isDirichlet()) {
 				for(int col = 0; col < nX; col++) {
 					H.setEntry(0, col, 0.0);
@@ -176,13 +182,31 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 			final BoundaryCondition upperCondition =
 					model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, xGrid[nX - 1])[0];
-			
+
 			if(upperCondition.isDirichlet()) {
 				for(int col = 0; col < nX; col++) {
 					H.setEntry(nX - 1, col, 0.0);
 				}
 				H.setEntry(nX - 1, nX - 1, 1.0);
 				rhs.setEntry(nX - 1, 0, upperCondition.getValue());
+			}
+
+			/*
+			 * Internal state constraints:
+			 * overwrite interior constrained nodes as internal Dirichlet rows.
+			 */
+			for(int i = 1; i < nX - 1; i++) {
+				final double x = xGrid[i];
+
+				if(isInternalConstraintActive(boundaryTime, x)) {
+					final double constrainedValue = getInternalConstrainedValue(boundaryTime, x);
+
+					for(int col = 0; col < nX; col++) {
+						H.setEntry(i, col, 0.0);
+					}
+					H.setEntry(i, i, 1.0);
+					rhs.setEntry(i, 0, constrainedValue);
+				}
 			}
 
 			final boolean isExerciseDate =
@@ -201,6 +225,9 @@ public class FDMThetaMethod1D implements FDMSolver {
 						else if(i == nX - 1 && upperCondition.isDirichlet()) {
 							U.setEntry(i, 0, upperCondition.getValue());
 						}
+						else if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
+						}
 						else {
 							U.setEntry(i, 0, Math.max(zz.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
 						}
@@ -208,6 +235,15 @@ public class FDMThetaMethod1D implements FDMSolver {
 				}
 				else {
 					U = zz;
+
+					/*
+					 * Re-impose internal constraints explicitly after the solve for numerical safety.
+					 */
+					for(int i = 1; i < nX - 1; i++) {
+						if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
+						}
+					}
 				}
 			}
 			else {
@@ -222,8 +258,21 @@ public class FDMThetaMethod1D implements FDMSolver {
 						else if(i == nX - 1 && upperCondition.isDirichlet()) {
 							U.setEntry(i, 0, upperCondition.getValue());
 						}
+						else if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
+						}
 						else {
 							U.setEntry(i, 0, Math.max(U.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
+						}
+					}
+				}
+				else {
+					/*
+					 * Re-impose internal constraints explicitly after the solve for numerical safety.
+					 */
+					for(int i = 1; i < nX - 1; i++) {
+						if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
 						}
 					}
 				}
@@ -247,5 +296,16 @@ public class FDMThetaMethod1D implements FDMSolver {
 		final int timeIndex = this.spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
 
 		return values.getColumn(timeIndex);
+	}
+
+	private boolean isInternalConstraintActive(final double time, final double x) {
+		if(product instanceof FiniteDifferenceInternalStateConstraint) {
+			return ((FiniteDifferenceInternalStateConstraint) product).isConstraintActive(time, x);
+		}
+		return false;
+	}
+
+	private double getInternalConstrainedValue(final double time, final double x) {
+		return ((FiniteDifferenceInternalStateConstraint) product).getConstrainedValue(time, x);
 	}
 }
