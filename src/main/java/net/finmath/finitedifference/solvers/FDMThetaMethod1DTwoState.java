@@ -11,8 +11,6 @@ import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.BarrierOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.EuropeanOption;
-import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;
@@ -27,7 +25,7 @@ import net.finmath.modelling.products.BarrierType;
  *
  * <p>
  * Both regimes evolve under the same 1D PDE operator on the same full spatial grid.
- * The active regime uses the ordinary vanilla PDE and vanilla outer boundary conditions.
+ * The active regime uses the ordinary vanilla PDE and caller-supplied outer boundary conditions.
  * The inactive regime is coupled to the active regime on the whole already-hit region:
  * </p>
  *
@@ -54,16 +52,19 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 	private final BarrierOption product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
+	private final TwoStateActiveBoundaryProvider activeBoundaryProvider;
 
 	public FDMThetaMethod1DTwoState(
 			final FiniteDifferenceEquityModel model,
 			final BarrierOption product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise) {
+			final Exercise exercise,
+			final TwoStateActiveBoundaryProvider activeBoundaryProvider) {
 		this.model = model;
 		this.product = product;
 		this.spaceTimeDiscretization = spaceTimeDiscretization;
 		this.exercise = exercise;
+		this.activeBoundaryProvider = activeBoundaryProvider;
 	}
 
 	@Override
@@ -71,6 +72,10 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
 		if(!exercise.isEuropean()) {
 			throw new IllegalArgumentException("FDMThetaMethod1DTwoState currently supports only European exercise.");
+		}
+
+		if(activeBoundaryProvider == null) {
+			throw new IllegalArgumentException("Active boundary provider must not be null.");
 		}
 
 		final BarrierType barrierType = product.getBarrierType();
@@ -95,11 +100,6 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		final RealMatrix identity1D = MatrixUtils.createRealIdentityMatrix(nX);
 		final RealMatrix identity2State = MatrixUtils.createRealIdentityMatrix(n);
 
-		/*
-		 * State vectors:
-		 * U0 = inactive / not-yet-hit regime
-		 * U1 = active / already-hit regime
-		 */
 		RealMatrix U0 = MatrixUtils.createRealMatrix(nX, 1);
 		RealMatrix U1 = MatrixUtils.createRealMatrix(nX, 1);
 
@@ -123,13 +123,6 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
 		final RealMatrix solutionSurface = MatrixUtils.createRealMatrix(nX, timeLength);
 		solutionSurface.setColumnMatrix(0, U0);
-
-		final EuropeanOption activatedVanilla = new EuropeanOption(
-				product.getUnderlyingName(),
-				product.getMaturity(),
-				product.getStrike(),
-				product.getCallOrPut()
-		);
 
 		for(int m = 0; m < numberOfTimeSteps; m++) {
 
@@ -212,13 +205,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
 			final double currentTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
 
-			applyOuterBoundaryConditions(H, rhs, currentTime, xGrid, nX, barrierType, activatedVanilla);
+			applyOuterBoundaryConditions(H, rhs, currentTime, xGrid, nX, barrierType);
 
-			/*
-			 * Activation coupling:
-			 * once the barrier has been hit, the inactive state equals the active state.
-			 * We enforce this on the whole already-hit region.
-			 */
 			for(int i = 0; i < nX; i++) {
 				if(isAlreadyHitRegion(xGrid[i], barrierType, product.getBarrierValue())) {
 					overwriteCouplingRow(H, rhs, i, nX);
@@ -228,9 +216,6 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 			final DecompositionSolver solver = new LUDecomposition(H).getSolver();
 			U = solver.solve(rhs);
 
-			/*
-			 * Re-impose coupling after the linear solve for numerical safety.
-			 */
 			for(int i = 0; i < nX; i++) {
 				if(isAlreadyHitRegion(xGrid[i], barrierType, product.getBarrierValue())) {
 					U.setEntry(i, 0, U.getEntry(nX + i, 0));
@@ -265,29 +250,14 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 			final double currentTime,
 			final double[] xGrid,
 			final int nX,
-			final BarrierType barrierType,
-			final EuropeanOption activatedVanilla) {
+			final BarrierType barrierType) {
 
-		final BoundaryCondition lowerVanilla =
-				model.getBoundaryConditionsAtLowerBoundary(activatedVanilla, currentTime, xGrid[0])[0];
-		final BoundaryCondition upperVanilla =
-				model.getBoundaryConditionsAtUpperBoundary(activatedVanilla, currentTime, xGrid[nX - 1])[0];
+		final double lowerActiveValue = activeBoundaryProvider.getLowerBoundaryValue(currentTime, xGrid[0]);
+		final double upperActiveValue = activeBoundaryProvider.getUpperBoundaryValue(currentTime, xGrid[nX - 1]);
 
-		/*
-		 * Active regime: always vanilla asymptotics.
-		 */
-		if(lowerVanilla.isDirichlet()) {
-			overwriteDirichletRow(H, rhs, nX, lowerVanilla.getValue());
-		}
-		if(upperVanilla.isDirichlet()) {
-			overwriteDirichletRow(H, rhs, nX + nX - 1, upperVanilla.getValue());
-		}
+		overwriteDirichletRow(H, rhs, nX, lowerActiveValue);
+		overwriteDirichletRow(H, rhs, nX + nX - 1, upperActiveValue);
 
-		/*
-		 * Inactive regime:
-		 * - hit-side boundary: couple to active regime,
-		 * - continuation-side boundary: discounted no-hit value.
-		 */
 		final double discountedNoHitValue = getDiscountedNoHitValue(currentTime);
 
 		switch(barrierType) {

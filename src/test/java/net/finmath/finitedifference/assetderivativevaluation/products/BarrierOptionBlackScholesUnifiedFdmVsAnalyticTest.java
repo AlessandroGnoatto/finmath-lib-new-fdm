@@ -9,11 +9,11 @@ import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 import org.junit.Test;
 
+import it.univr.fima.correction.BarrierOptions;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
-import it.univr.fima.correction.BarrierOptions;
 import net.finmath.marketdata.model.curves.CurveInterpolation.ExtrapolationMethod;
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationEntity;
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationMethod;
@@ -25,28 +25,28 @@ import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
 /**
- * Compares finite-difference prices of European barrier options under Black-Scholes
- * with the closed-form prices provided by {@link BarrierOptions}.
+ * Unified Black-Scholes finite-difference vs analytic regression test for all 8
+ * standard single-barrier European options.
  *
  * <p>
- * The test suite covers all 8 standard barrier combinations:
+ * Grid policy:
  * </p>
  * <ul>
- *   <li>call / put,</li>
- *   <li>down / up,</li>
- *   <li>in / out.</li>
+ *   <li>knock-out options use the traditional barrier-on-boundary grid,</li>
+ *   <li>knock-in options use an interior-barrier grid with asymmetric tail
+ *       extension where needed.</li>
  * </ul>
  *
  * <p>
- * Implementation notes:
- * <ul>
- *   <li>Uses Apache Commons Math linear interpolation when S0 is not exactly a grid node.</li>
- *   <li>Ensures the barrier coincides with the relevant grid boundary by construction.</li>
- *   <li>Prints FD and analytic prices for easy diagnostics.</li>
- * </ul>
+ * This mirrors the current production implementation:
  * </p>
+ * <ul>
+ *   <li>knock-outs are solved directly on the original grid,</li>
+ *   <li>1D knock-ins are solved directly through a coupled two-state PDE using
+ *       an auxiliary interior-barrier grid.</li>
+ * </ul>
  */
-public class BarrierOptionBlackScholesFdmVsAnalyticTest {
+public class BarrierOptionBlackScholesUnifiedFdmVsAnalyticTest {
 
 	private static final double MATURITY = 1.0;
 	private static final double STRIKE = 100.0;
@@ -59,13 +59,28 @@ public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 
 	private static final double THETA = 0.5;
 	private static final int NUMBER_OF_TIME_STEPS = 100;
-	private static final int NUMBER_OF_SPACE_STEPS = 200;
+	private static final int NUMBER_OF_SPACE_STEPS = 300;
 
 	/**
 	 * Number of space intervals between the barrier and S0.
-	 * This ensures that S0 is aligned to a grid node when possible.
+	 * This keeps the local spacing near the barrier under control and often aligns S0 with a grid node.
 	 */
 	private static final int STEPS_BETWEEN_BARRIER_AND_SPOT = 40;
+
+	/**
+	 * Default interior extension for knock-in grids.
+	 */
+	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS = 40;
+
+	/**
+	 * Extra lower-tail depth for DOWN_IN PUT.
+	 */
+	private static final int DOWN_IN_PUT_EXTRA_STEPS = 160;
+
+	/**
+	 * Extra upper-tail depth for UP_IN CALL.
+	 */
+	private static final int UP_IN_CALL_EXTRA_STEPS = 160;
 
 	@Test
 	public void testDownAndOutEuropeanCallBlackScholesFiniteDifferenceVsAnalytic() {
@@ -120,9 +135,10 @@ public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 				new TimeDiscretizationFromArray(
 						0.0,
 						NUMBER_OF_TIME_STEPS,
-						MATURITY / NUMBER_OF_TIME_STEPS);
+						MATURITY / NUMBER_OF_TIME_STEPS
+				);
 
-		final Grid sGrid = createGrid(barrier, barrierType);
+		final Grid sGrid = createGrid(barrier, barrierType, callOrPut);
 
 		final SpaceTimeDiscretization spaceTime = new SpaceTimeDiscretization(
 				sGrid,
@@ -138,15 +154,9 @@ public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 				SIGMA,
 				spaceTime
 		);
-		
-		double callOrPutSign = 1.0;
-		if(callOrPut == CallOrPut.CALL) {
-			callOrPutSign = 1.0;
-		}
-		else if(callOrPut == CallOrPut.PUT) {
-			callOrPutSign = -1.0;
-		}
-		
+
+		final double callOrPutSign = callOrPut == CallOrPut.CALL ? 1.0 : -1.0;
+
 		final BarrierOption fdmProduct = new BarrierOption(
 				MATURITY,
 				STRIKE,
@@ -156,7 +166,6 @@ public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 				barrierType
 		);
 
-		// Solve via FD
 		final double[] fdValuesOnGrid = fdmProduct.getValue(0.0, fdmModel);
 		final double[] sNodes = spaceTime.getSpaceGrid(0).getGrid();
 
@@ -165,13 +174,11 @@ public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 			fdPrice = fdValuesOnGrid[getGridIndex(sNodes, S0)];
 		}
 		else {
-			// fallback linear interpolation using Apache Commons Math
 			final PolynomialSplineFunction interpolation =
 					new LinearInterpolator().interpolate(sNodes, fdValuesOnGrid);
 			fdPrice = interpolation.value(S0);
 		}
 
-		// Analytic closed-form from finmath.functions (your corrected version)
 		final double analyticPrice = BarrierOptions.blackScholesBarrierOptionValue(
 				S0,
 				R,
@@ -186,10 +193,11 @@ public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 		);
 
 		System.out.println("Type           = " + barrierType + " " + callOrPut);
+		System.out.println("Grid min       = " + sNodes[0]);
+		System.out.println("Grid max       = " + sNodes[sNodes.length - 1]);
 		System.out.println("FD price       = " + fdPrice);
 		System.out.println("Analytic price = " + analyticPrice);
 
-		// allow tiny negative numerical values
 		assertTrue(fdPrice >= -1E-10);
 		assertTrue(analyticPrice >= -1E-10);
 
@@ -201,25 +209,84 @@ public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 		);
 	}
 
-	private Grid createGrid(final double barrier, final BarrierType barrierType) {
+	private Grid createGrid(
+			final double barrier,
+			final BarrierType barrierType,
+			final CallOrPut callOrPut) {
+
+		if(barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT) {
+			return createKnockOutGrid(barrier, barrierType);
+		}
+		else if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.UP_IN) {
+			return createKnockInInteriorGrid(barrier, barrierType, callOrPut);
+		}
+		else {
+			throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
+		}
+	}
+
+	private Grid createKnockOutGrid(final double barrier, final BarrierType barrierType) {
 
 		/*
-		 * We construct a uniform grid that places the barrier exactly on the chosen
-		 * boundary (lower for DOWN_*, upper for UP_*). The spacing is chosen so that
-		 * there are STEPS_BETWEEN_BARRIER_AND_SPOT intervals between barrier and S0
-		 * (so S0 ideally falls on a node).
+		 * Traditional knock-out grid:
+		 * place the barrier exactly on the relevant outer boundary.
 		 */
-		if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) {
+		if(barrierType == BarrierType.DOWN_OUT) {
 			final double deltaS = (S0 - barrier) / STEPS_BETWEEN_BARRIER_AND_SPOT;
 			final double sMin = barrier;
 			final double sMax = sMin + NUMBER_OF_SPACE_STEPS * deltaS;
 			return new UniformGrid(NUMBER_OF_SPACE_STEPS, sMin, sMax);
 		}
-		else {
+		else if(barrierType == BarrierType.UP_OUT) {
 			final double deltaS = (barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
 			final double sMax = barrier;
 			final double sMin = sMax - NUMBER_OF_SPACE_STEPS * deltaS;
 			return new UniformGrid(NUMBER_OF_SPACE_STEPS, sMin, sMax);
+		}
+		else {
+			throw new IllegalArgumentException("Knock-out grid requested for non knock-out type: " + barrierType);
+		}
+	}
+
+	private Grid createKnockInInteriorGrid(
+			final double barrier,
+			final BarrierType barrierType,
+			final CallOrPut callOrPut) {
+
+		/*
+		 * Interior-barrier grid for direct knock-in pricing:
+		 * - keep the same local spacing near the barrier as the old test,
+		 * - place the barrier on an interior node,
+		 * - extend asymmetrically for tail-sensitive cases.
+		 */
+		if(barrierType == BarrierType.DOWN_IN) {
+			final double deltaS = (S0 - barrier) / STEPS_BETWEEN_BARRIER_AND_SPOT;
+
+			final int extraStepsBelowBarrier =
+					callOrPut == CallOrPut.PUT
+					? DOWN_IN_PUT_EXTRA_STEPS
+					: DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS;
+
+			final double sMin = barrier - extraStepsBelowBarrier * deltaS;
+			final double sMax = sMin + NUMBER_OF_SPACE_STEPS * deltaS;
+
+			return new UniformGrid(NUMBER_OF_SPACE_STEPS, sMin, sMax);
+		}
+		else if(barrierType == BarrierType.UP_IN) {
+			final double deltaS = (barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
+
+			final int extraStepsAboveBarrier =
+					callOrPut == CallOrPut.CALL
+					? UP_IN_CALL_EXTRA_STEPS
+					: DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS;
+
+			final double sMax = barrier + extraStepsAboveBarrier * deltaS;
+			final double sMin = sMax - NUMBER_OF_SPACE_STEPS * deltaS;
+
+			return new UniformGrid(NUMBER_OF_SPACE_STEPS, sMin, sMax);
+		}
+		else {
+			throw new IllegalArgumentException("Knock-in interior grid requested for non knock-in type: " + barrierType);
 		}
 	}
 

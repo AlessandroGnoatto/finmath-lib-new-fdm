@@ -1,5 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -11,8 +12,8 @@ import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
-import net.finmath.modelling.Exercise;
 import net.finmath.modelling.EuropeanExercise;
+import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
 import net.finmath.time.TimeDiscretization;
@@ -29,13 +30,21 @@ import net.finmath.time.TimeDiscretization;
  * Current implementation policy:
  * </p>
  * <ul>
- * <li>knock-out options are priced directly by the finite-difference solver,
- * using internal state constraints,</li>
- * <li>knock-in options are priced through an internal activation policy, which
- * currently uses parity but is intentionally encapsulated so that it may later
- * be replaced by a direct solver formulation,</li>
- * <li>exercise is currently European only.</li>
+ *   <li>knock-out options are priced directly by the finite-difference solver,
+ *       using internal state constraints on the original product grid,</li>
+ *   <li>1D knock-in options are priced directly through a coupled two-state PDE
+ *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
+ *   <li>the resulting 1D knock-in surface is interpolated back to the original product grid,</li>
+ *   <li>higher-dimensional knock-in options currently fall back to parity,</li>
+ *   <li>exercise is currently European only.</li>
  * </ul>
+ *
+ * <p>
+ * The auxiliary interior-barrier grid used for 1D knock-ins is chosen because
+ * the direct coupled formulation requires an activated state evolving on a full
+ * domain, unlike knock-out pricing where it is natural to place the barrier on
+ * the outer grid boundary.
+ * </p>
  *
  * @author Alessandro Gnoatto
  */
@@ -44,6 +53,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	private enum PricingMode {
 		DIRECT_OUT, ACTIVATION_POLICY_IN
 	}
+
+	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS = 40;
+	private static final int DOWN_IN_PUT_EXTRA_STEPS = 160;
+	private static final int UP_IN_CALL_EXTRA_STEPS = 160;
 
 	private final String underlyingName;
 	private final double maturity;
@@ -101,7 +114,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 				.getTimeIndexNearestLessOrEqual(tau);
 
 		final double[] column = new double[values.length];
-		for (int i = 0; i < values.length; i++) {
+		for(int i = 0; i < values.length; i++) {
 			column[i] = values[i][timeIndex];
 		}
 		return column;
@@ -112,15 +125,15 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 		validateProductConfiguration(model);
 
-		if (isDegenerateZeroCase()) {
+		if(isDegenerateZeroCase()) {
 			return buildZeroValueSurface(model);
 		}
 
-		if (isDegenerateVanillaCase()) {
+		if(isDegenerateVanillaCase()) {
 			return createVanillaOption().getValues(model);
 		}
 
-		switch (getPricingMode()) {
+		switch(getPricingMode()) {
 		case DIRECT_OUT:
 			return priceOutOptionDirectly(model);
 		case ACTIVATION_POLICY_IN:
@@ -135,7 +148,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
-		if (!exercise.isEuropean()) {
+		if(!exercise.isEuropean()) {
 			throw new IllegalArgumentException("BarrierOption currently supports only European exercise.");
 		}
 
@@ -148,8 +161,8 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 				+ 1;
 
 		final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
-		for (int i = 0; i < numberOfSpacePoints; i++) {
-			for (int j = 0; j < numberOfTimePoints; j++) {
+		for(int i = 0; i < numberOfSpacePoints; i++) {
+			for(int j = 0; j < numberOfTimePoints; j++) {
 				zeroValues[i][j] = 0.0;
 			}
 		}
@@ -164,27 +177,32 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	 * Prices a knock-in option through the current activation policy.
 	 *
 	 * <p>
-	 * Today this activation policy is implemented by the identity
+	 * Current implementation policy:
 	 * </p>
+	 * <ul>
+	 *   <li>for 1D models, use a direct coupled two-state PDE solver on an auxiliary
+	 *       spatial grid where the barrier is an interior node,</li>
+	 *   <li>interpolate the resulting value surface back to the original product grid,</li>
+	 *   <li>for higher-dimensional models, fall back to the parity identity
+	 *       knock-in = vanilla - corresponding knock-out.</li>
+	 * </ul>
+	 *
 	 * <p>
-	 * knock-in = vanilla - corresponding knock-out.
-	 * </p>
-	 * <p>
-	 * This is intentionally encapsulated here so that a future direct coupled-PDE
-	 * treatment of knock-in activation can replace this implementation without
-	 * changing the public semantics of the product class.
+	 * This method remains the single internal hook for knock-in activation handling,
+	 * so the public semantics of {@link BarrierOption} stay unchanged if the direct
+	 * solver is later extended beyond the current 1D setting.
 	 * </p>
 	 */
-	/*private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
-		return priceInOptionByParity(model);
-	}*/
 	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
 
 		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
+		/*
+		 * Direct coupled-PDE knock-in pricing is currently implemented only in 1D.
+		 * In higher dimensions we retain the parity fallback.
+		 */
 		if(numberOfSpaceDimensions != 1) {
-			throw new IllegalArgumentException(
-					"Direct coupled two-state knock-in pricing is currently implemented only for 1D finite-difference models.");
+			return priceInOptionByParity(model);
 		}
 
 		if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
@@ -192,14 +210,27 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 					"priceInOptionThroughActivationPolicy was called for a non knock-in barrier type.");
 		}
 
+		/*
+		 * The direct two-state knock-in solver requires a spatial domain where the
+		 * barrier is an interior node, so we build an auxiliary model/discretization
+		 * for the PDE solve and then interpolate the result back to the original grid.
+		 */
+		final FiniteDifferenceEquityModel knockInModel = createAuxiliaryKnockInModel(model);
+
 		final FDMSolver solver = new FDMThetaMethod1DTwoState(
-				model,
+				knockInModel,
 				this,
-				model.getSpaceTimeDiscretization(),
-				exercise
+				knockInModel.getSpaceTimeDiscretization(),
+				exercise,
+				ActiveBoundaryProviderFactory.createProvider(
+						knockInModel,
+						strike,
+						maturity,
+						callOrPutSign
+				)
 		);
 
-		return solver.getValues(
+		final double[][] knockInValuesOnAuxiliaryGrid = solver.getValues(
 				maturity,
 				assetValue -> {
 					if(callOrPutSign == CallOrPut.CALL) {
@@ -210,8 +241,17 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 					}
 				}
 		);
-	}
 
+		/*
+		 * The public product still returns values on the original product grid,
+		 * so we interpolate the auxiliary-grid solution surface back.
+		 */
+		return interpolateSurfaceToOriginalGrid(
+				knockInValuesOnAuxiliaryGrid,
+				knockInModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+				model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid()
+		);
+	}
 
 	private double[][] priceInOptionByParity(final FiniteDifferenceEquityModel barrierModel) {
 
@@ -229,11 +269,15 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		final int numberOfColumns = outValues[0].length;
 		final double[][] inValues = new double[outValues.length][numberOfColumns];
 
-		for (int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
-			final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(vanillaGrid,
-					getColumn(vanillaValues, timeIndex), InterpolationMethod.LINEAR, ExtrapolationMethod.CONSTANT);
+		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+					vanillaGrid,
+					getColumn(vanillaValues, timeIndex),
+					InterpolationMethod.LINEAR,
+					ExtrapolationMethod.CONSTANT
+			);
 
-			for (int i = 0; i < barrierGrid.length; i++) {
+			for(int i = 0; i < barrierGrid.length; i++) {
 				final double stock = barrierGrid[i];
 				final double vanillaValue = interpolator.getValue(stock);
 				inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
@@ -243,14 +287,50 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return inValues;
 	}
 
+	/**
+	 * Interpolates a value surface from the auxiliary knock-in grid back to the
+	 * original product grid.
+	 *
+	 * <p>
+	 * This preserves the public contract of {@link BarrierOption}, which returns
+	 * values on the grid associated with the model passed by the caller, even when
+	 * the internal knock-in PDE solve is performed on an auxiliary grid.
+	 * </p>
+	 */
+	private double[][] interpolateSurfaceToOriginalGrid(
+			final double[][] valuesOnAuxiliaryGrid,
+			final double[] auxiliaryGrid,
+			final double[] originalGrid) {
+
+		final int numberOfColumns = valuesOnAuxiliaryGrid[0].length;
+		final double[][] interpolatedValues = new double[originalGrid.length][numberOfColumns];
+
+		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+					auxiliaryGrid,
+					getColumn(valuesOnAuxiliaryGrid, timeIndex),
+					InterpolationMethod.LINEAR,
+					ExtrapolationMethod.CONSTANT
+			);
+
+			for(int i = 0; i < originalGrid.length; i++) {
+				interpolatedValues[i][timeIndex] = interpolator.getValue(originalGrid[i]);
+			}
+		}
+
+		return interpolatedValues;
+	}
+
 	private FDMSolver createSolver(final FiniteDifferenceEquityModel model) {
 		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
-		if (numberOfSpaceDimensions == 1) {
+		if(numberOfSpaceDimensions == 1) {
 			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
-		} else if (numberOfSpaceDimensions == 2) {
+		}
+		else if(numberOfSpaceDimensions == 2) {
 			return new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
-		} else {
+		}
+		else {
 			throw new IllegalArgumentException(
 					"BarrierOption currently supports only 1D or 2D finite-difference models.");
 		}
@@ -266,10 +346,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private BarrierType getCorrespondingOutBarrierType() {
-		if (barrierType == BarrierType.DOWN_IN) {
+		if(barrierType == BarrierType.DOWN_IN) {
 			return BarrierType.DOWN_OUT;
 		}
-		if (barrierType == BarrierType.UP_IN) {
+		if(barrierType == BarrierType.UP_IN) {
 			return BarrierType.UP_OUT;
 		}
 		throw new IllegalArgumentException("No corresponding out barrier type for " + barrierType);
@@ -283,7 +363,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 		final double[] barrierGrid = barrierDiscretization.getSpaceGrid(0).getGrid();
 
-		if (barrierGrid.length < 2) {
+		if(barrierGrid.length < 2) {
 			throw new IllegalArgumentException("Barrier grid must contain at least two points.");
 		}
 
@@ -299,19 +379,122 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 		final double sMin = Math.floor(targetMin / deltaS) * deltaS;
 		final double sMax = Math.ceil(targetMax / deltaS) * deltaS;
-		final int numberOfSteps = (int) Math.round((sMax - sMin) / deltaS);
+		final int numberOfSteps = (int)Math.round((sMax - sMin) / deltaS);
 
 		final Grid vanillaGrid = new UniformGrid(numberOfSteps, sMin, sMax);
 
-		final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(vanillaGrid,
-				timeDiscretization, thetaValue, new double[] { initialValue });
+		final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
+				vanillaGrid,
+				timeDiscretization,
+				thetaValue,
+				new double[] { initialValue }
+		);
 
 		return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
 	}
 
+	/**
+	 * Creates the auxiliary 1D model used for direct knock-in pricing.
+	 *
+	 * <p>
+	 * The auxiliary spatial grid keeps the same spacing and number of intervals as
+	 * the original product grid, but shifts the domain so that the barrier lies on
+	 * an interior node instead of on the outer boundary.
+	 * </p>
+	 *
+	 * <p>
+	 * The extension beyond the barrier is chosen asymmetrically for some payoff
+	 * types to reduce truncation error in the activated-state vanilla problem,
+	 * in particular:
+	 * </p>
+	 * <ul>
+	 *   <li>deeper lower tail for down-in puts,</li>
+	 *   <li>higher upper tail for up-in calls.</li>
+	 * </ul>
+	 */
+	private FiniteDifferenceEquityModel createAuxiliaryKnockInModel(final FiniteDifferenceEquityModel originalModel) {
+
+		final SpaceTimeDiscretization originalDiscretization = originalModel.getSpaceTimeDiscretization();
+		final TimeDiscretization timeDiscretization = originalDiscretization.getTimeDiscretization();
+		final double thetaValue = originalDiscretization.getTheta();
+
+		final double[] originalGrid = originalDiscretization.getSpaceGrid(0).getGrid();
+		if(originalGrid.length < 2) {
+			throw new IllegalArgumentException("Barrier grid must contain at least two points.");
+		}
+
+		final double deltaS = originalGrid[1] - originalGrid[0];
+		final int numberOfSteps = originalGrid.length - 1;
+
+		final double initialValue = originalModel.getInitialValue()[0];
+
+		final int extraStepsBeyondBarrier = getKnockInExtraStepsBeyondBarrier();
+
+		final double sMin;
+		final double sMax;
+
+		if(barrierType == BarrierType.DOWN_IN) {
+			sMin = barrierValue - extraStepsBeyondBarrier * deltaS;
+			sMax = sMin + numberOfSteps * deltaS;
+		}
+		else if(barrierType == BarrierType.UP_IN) {
+			sMax = barrierValue + extraStepsBeyondBarrier * deltaS;
+			sMin = sMax - numberOfSteps * deltaS;
+		}
+		else {
+			throw new IllegalArgumentException("Auxiliary knock-in model requested for non knock-in barrier type.");
+		}
+
+		validateBarrierIsInteriorGridNode(sMin, sMax, deltaS, numberOfSteps);
+
+		final Grid knockInGrid = new UniformGrid(numberOfSteps, sMin, sMax);
+
+		final SpaceTimeDiscretization knockInDiscretization = new SpaceTimeDiscretization(
+				knockInGrid,
+				timeDiscretization,
+				thetaValue,
+				new double[] { initialValue }
+		);
+
+		return originalModel.getCloneWithModifiedSpaceTimeDiscretization(knockInDiscretization);
+	}
+
+	private int getKnockInExtraStepsBeyondBarrier() {
+		if(barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT) {
+			return DOWN_IN_PUT_EXTRA_STEPS;
+		}
+		if(barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL) {
+			return UP_IN_CALL_EXTRA_STEPS;
+		}
+		return DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS;
+	}
+
+	private void validateBarrierIsInteriorGridNode(
+			final double sMin,
+			final double sMax,
+			final double deltaS,
+			final int numberOfSteps) {
+
+		final double barrierIndexReal = (barrierValue - sMin) / deltaS;
+		final long barrierIndexRounded = Math.round(barrierIndexReal);
+
+		if(Math.abs(barrierIndexReal - barrierIndexRounded) > 1E-8) {
+			throw new IllegalArgumentException("Auxiliary knock-in grid does not place the barrier on a grid node.");
+		}
+
+		if(barrierIndexRounded <= 0 || barrierIndexRounded >= numberOfSteps) {
+			throw new IllegalArgumentException("Auxiliary knock-in grid must place the barrier on an interior node.");
+		}
+
+		if(barrierValue <= sMin || barrierValue >= sMax) {
+			throw new IllegalArgumentException(
+					"Auxiliary knock-in grid must contain the barrier strictly inside the domain.");
+		}
+	}
+
 	private static double[] getColumn(final double[][] matrix, final int columnIndex) {
 		final double[] column = new double[matrix.length];
-		for (int i = 0; i < matrix.length; i++) {
+		for(int i = 0; i < matrix.length; i++) {
 			column[i] = matrix[i][columnIndex];
 		}
 		return column;
@@ -335,26 +518,29 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 	private double getTerminalPayoffForDirectOutPricing(final double assetValue) {
 
-		if (callOrPutSign == CallOrPut.CALL) {
-			if (barrierType == BarrierType.DOWN_OUT) {
-				if (barrierValue <= strike) {
+		if(callOrPutSign == CallOrPut.CALL) {
+			if(barrierType == BarrierType.DOWN_OUT) {
+				if(barrierValue <= strike) {
 					return Math.max(assetValue - strike, 0.0);
 				}
 				return assetValue > barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
-			} else if (barrierType == BarrierType.UP_OUT) {
-				if (barrierValue <= strike) {
+			}
+			else if(barrierType == BarrierType.UP_OUT) {
+				if(barrierValue <= strike) {
 					return 0.0;
 				}
 				return assetValue < barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
 			}
-		} else {
-			if (barrierType == BarrierType.DOWN_OUT) {
-				if (barrierValue >= strike) {
+		}
+		else {
+			if(barrierType == BarrierType.DOWN_OUT) {
+				if(barrierValue >= strike) {
 					return 0.0;
 				}
 				return assetValue > barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
-			} else if (barrierType == BarrierType.UP_OUT) {
-				if (barrierValue >= strike) {
+			}
+			else if(barrierType == BarrierType.UP_OUT) {
+				if(barrierValue >= strike) {
 					return Math.max(strike - assetValue, 0.0);
 				}
 				return assetValue < barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
@@ -369,20 +555,21 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		final double lowerBoundary = grid[0];
 		final double upperBoundary = grid[grid.length - 1];
 
-		if (barrierValue < lowerBoundary || barrierValue > upperBoundary) {
-			throw new IllegalArgumentException("The barrier must lie inside the first state-variable grid domain.");
+		if(barrierValue < lowerBoundary || barrierValue > upperBoundary) {
+			throw new IllegalArgumentException(
+					"The barrier must lie inside the first state-variable grid domain of the supplied model.");
 		}
 	}
 
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
-		if (!isOutOption()) {
+		if(!isOutOption()) {
 			return false;
 		}
 
 		final double underlyingLevel = stateVariables[0];
 
-		switch (barrierType) {
+		switch(barrierType) {
 		case DOWN_OUT:
 			return underlyingLevel <= barrierValue;
 		case UP_OUT:
@@ -394,7 +581,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 	@Override
 	public double getConstrainedValue(final double time, final double... stateVariables) {
-		if (!isOutOption()) {
+		if(!isOutOption()) {
 			throw new IllegalStateException("Internal constrained value requested for a non out-option.");
 		}
 
@@ -402,10 +589,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private static CallOrPut mapCallOrPut(final double callOrPutSign) {
-		if (callOrPutSign == 1.0) {
+		if(callOrPutSign == 1.0) {
 			return CallOrPut.CALL;
 		}
-		if (callOrPutSign == -1.0) {
+		if(callOrPutSign == -1.0) {
 			return CallOrPut.PUT;
 		}
 		throw new IllegalArgumentException("Unknown option type.");

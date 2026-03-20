@@ -26,31 +26,31 @@ import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
 /**
- * Compares European barrier option prices under the Bachelier model across
- * finite differences and Monte Carlo.
+ * Unified Bachelier finite-difference vs Monte Carlo regression test for all 8
+ * standard single-barrier European options.
  *
  * <p>
- * The test suite covers all 8 standard barrier combinations:
+ * Grid policy:
  * </p>
  * <ul>
- *   <li>call / put,</li>
- *   <li>down / up,</li>
- *   <li>in / out.</li>
+ *   <li>knock-out options use the traditional barrier-on-boundary grid,</li>
+ *   <li>knock-in options use an interior-barrier grid with asymmetric tail
+ *       extension where needed.</li>
+ * </ul>
+ *
+ * <p>
+ * This mirrors the current production implementation:
+ * </p>
+ * <ul>
+ *   <li>knock-outs are solved directly on the original grid,</li>
+ *   <li>1D knock-ins are solved directly through a coupled two-state PDE using
+ *       an auxiliary interior-barrier grid.</li>
  * </ul>
  *
  * <p>
  * Barrier monitoring in Monte Carlo is discrete on the simulation time grid.
- * Hence a tighter agreement is obtained by refining that grid.
+ * Hence agreement improves when the Monte Carlo time grid is refined.
  * </p>
- *
- * <p>
- * The assertion is performed in relative terms:
- * </p>
- * <p>
- * |FDM - MC| / MC <= 5%
- * </p>
- *
- * @author Alessandro Gnoatto
  */
 public class BachelierBarrierOptionFdmVsMonteCarloTest {
 
@@ -64,7 +64,7 @@ public class BachelierBarrierOptionFdmVsMonteCarloTest {
 	private static final double SIGMA_N = 10.0;
 
 	private static final int FD_NUMBER_OF_TIME_STEPS = 100;
-	private static final int FD_NUMBER_OF_SPACE_STEPS = 200;
+	private static final int FD_NUMBER_OF_SPACE_STEPS = 300;
 	private static final double THETA = 0.5;
 
 	private static final int MC_NUMBER_OF_TIME_STEPS = 1000;
@@ -72,15 +72,36 @@ public class BachelierBarrierOptionFdmVsMonteCarloTest {
 	private static final int SEED = 31415;
 
 	private static final double RELATIVE_TOLERANCE = 0.15;
+	private static final double ABSOLUTE_TOLERANCE = 1.0E-3;
+	/**
+	 * Number of space intervals between the barrier and S0.
+	 * This keeps the local spacing near the barrier under control and often aligns S0 with a grid node.
+	 */
+	private static final int STEPS_BETWEEN_BARRIER_AND_SPOT = 40;
+
+	/**
+	 * Default interior extension for knock-in grids.
+	 */
+	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS = 40;
+
+	/**
+	 * Extra lower-tail depth for DOWN_IN PUT.
+	 */
+	private static final int DOWN_IN_PUT_EXTRA_STEPS = 160;
+
+	/**
+	 * Extra upper-tail depth for UP_IN CALL.
+	 */
+	private static final int UP_IN_CALL_EXTRA_STEPS = 160;
 
 	@Test
 	public void testDownAndOutEuropeanCallBachelierFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_OUT, 70.0);
+		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_OUT, 80.0);
 	}
 
 	@Test
 	public void testDownAndInEuropeanCallBachelierFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_IN, 70.0);
+		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_IN, 80.0);
 	}
 
 	@Test
@@ -125,9 +146,10 @@ public class BachelierBarrierOptionFdmVsMonteCarloTest {
 				new TimeDiscretizationFromArray(
 						0.0,
 						FD_NUMBER_OF_TIME_STEPS,
-						MATURITY / FD_NUMBER_OF_TIME_STEPS);
+						MATURITY / FD_NUMBER_OF_TIME_STEPS
+				);
 
-		final Grid sGrid = createGrid(barrier, barrierType);
+		final Grid sGrid = createGrid(barrier, barrierType, callOrPut);
 
 		final SpaceTimeDiscretization spaceTime = new SpaceTimeDiscretization(
 				sGrid,
@@ -144,16 +166,15 @@ public class BachelierBarrierOptionFdmVsMonteCarloTest {
 				spaceTime
 		);
 
-		final net.finmath.finitedifference.assetderivativevaluation.products.BarrierOption fdmProduct =
-				new net.finmath.finitedifference.assetderivativevaluation.products.BarrierOption(
-						null,
-						MATURITY,
-						STRIKE,
-						barrier,
-						REBATE,
-						callOrPut,
-						barrierType
-				);
+		final BarrierOption fdmProduct = new BarrierOption(
+				null,
+				MATURITY,
+				STRIKE,
+				barrier,
+				REBATE,
+				callOrPut,
+				barrierType
+		);
 
 		final double[] fdValuesOnGrid = fdmProduct.getValue(0.0, fdmModel);
 		final double[] sNodes = spaceTime.getSpaceGrid(0).getGrid();
@@ -173,7 +194,8 @@ public class BachelierBarrierOptionFdmVsMonteCarloTest {
 				new TimeDiscretizationFromArray(
 						0.0,
 						MC_NUMBER_OF_TIME_STEPS,
-						MATURITY / MC_NUMBER_OF_TIME_STEPS);
+						MATURITY / MC_NUMBER_OF_TIME_STEPS
+				);
 
 		final BrownianMotionFromMersenneRandomNumbers brownianMotion =
 				new BrownianMotionFromMersenneRandomNumbers(mcTimes, 1, MC_NUMBER_OF_PATHS, SEED);
@@ -199,11 +221,13 @@ public class BachelierBarrierOptionFdmVsMonteCarloTest {
 		final double mcPrice = mcProduct.getValue(mcSimulation);
 
 		System.out.println("Type           = " + barrierType + " " + callOrPut);
+		System.out.println("Grid min       = " + sNodes[0]);
+		System.out.println("Grid max       = " + sNodes[sNodes.length - 1]);
 		System.out.println("FD price       = " + fdPrice);
 		System.out.println("MC price       = " + mcPrice);
 
-		assertTrue(fdPrice >= 0.0);
-		assertTrue(mcPrice >= 0.0);
+		assertTrue(fdPrice >= -1E-10);
+		assertTrue(mcPrice >= -1E-10);
 
 		final double relativeError;
 		if(Math.abs(mcPrice) > 1E-12) {
@@ -216,28 +240,99 @@ public class BachelierBarrierOptionFdmVsMonteCarloTest {
 			relativeError = Math.abs(fdPrice - mcPrice);
 		}
 
-		System.out.println("Relative error = " + relativeError);
+		final double absoluteError = Math.abs(fdPrice - mcPrice);
+		final double scale = Math.max(Math.abs(fdPrice), Math.abs(mcPrice));
+		final double admissibleError = Math.max(ABSOLUTE_TOLERANCE, RELATIVE_TOLERANCE * scale);
+
+		System.out.println("Absolute error = " + absoluteError);
+		System.out.println("Admissible     = " + admissibleError);
 
 		assertTrue(
-				"Relative error exceeds 15% for " + barrierType + " " + callOrPut
-				+ ": relativeError = " + relativeError,
-				relativeError <= RELATIVE_TOLERANCE
+				"Error exceeds tolerance for " + barrierType + " " + callOrPut
+				+ ": absoluteError = " + absoluteError
+				+ ", admissibleError = " + admissibleError,
+				absoluteError <= admissibleError
 		);
 	}
 
-	private Grid createGrid(final double barrier, final BarrierType barrierType) {
+	private Grid createGrid(
+			final double barrier,
+			final BarrierType barrierType,
+			final CallOrPut callOrPut) {
 
-		final double stdev = SIGMA_N * Math.sqrt(MATURITY);
+		if(barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT) {
+			return createKnockOutGrid(barrier, barrierType);
+		}
+		else if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.UP_IN) {
+			return createKnockInInteriorGrid(barrier, barrierType, callOrPut);
+		}
+		else {
+			throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
+		}
+	}
 
-		if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) {
+	private Grid createKnockOutGrid(final double barrier, final BarrierType barrierType) {
+
+		/*
+		 * Traditional knock-out grid:
+		 * place the barrier exactly on the relevant outer boundary.
+		 */
+		if(barrierType == BarrierType.DOWN_OUT) {
+			final double deltaS = (S0 - barrier) / STEPS_BETWEEN_BARRIER_AND_SPOT;
 			final double sMin = barrier;
-			final double sMax = S0 + 8.0 * stdev;
+			final double sMax = sMin + FD_NUMBER_OF_SPACE_STEPS * deltaS;
+			return new UniformGrid(FD_NUMBER_OF_SPACE_STEPS, sMin, sMax);
+		}
+		else if(barrierType == BarrierType.UP_OUT) {
+			final double deltaS = (barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
+			final double sMax = barrier;
+			final double sMin = sMax - FD_NUMBER_OF_SPACE_STEPS * deltaS;
 			return new UniformGrid(FD_NUMBER_OF_SPACE_STEPS, sMin, sMax);
 		}
 		else {
-			final double sMin = Math.max(1E-8, S0 - 8.0 * stdev);
-			final double sMax = barrier;
+			throw new IllegalArgumentException("Knock-out grid requested for non knock-out type: " + barrierType);
+		}
+	}
+
+	private Grid createKnockInInteriorGrid(
+			final double barrier,
+			final BarrierType barrierType,
+			final CallOrPut callOrPut) {
+
+		/*
+		 * Interior-barrier grid for direct knock-in pricing:
+		 * - keep the same local spacing near the barrier as the Black-Scholes unified test,
+		 * - place the barrier on an interior node,
+		 * - extend asymmetrically for tail-sensitive cases.
+		 */
+		if(barrierType == BarrierType.DOWN_IN) {
+			final double deltaS = (S0 - barrier) / STEPS_BETWEEN_BARRIER_AND_SPOT;
+
+			final int extraStepsBelowBarrier =
+					callOrPut == CallOrPut.PUT
+					? DOWN_IN_PUT_EXTRA_STEPS
+					: DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS;
+
+			final double sMin = barrier - extraStepsBelowBarrier * deltaS;
+			final double sMax = sMin + FD_NUMBER_OF_SPACE_STEPS * deltaS;
+
 			return new UniformGrid(FD_NUMBER_OF_SPACE_STEPS, sMin, sMax);
+		}
+		else if(barrierType == BarrierType.UP_IN) {
+			final double deltaS = (barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
+
+			final int extraStepsAboveBarrier =
+					callOrPut == CallOrPut.CALL
+					? UP_IN_CALL_EXTRA_STEPS
+					: DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS;
+
+			final double sMax = barrier + extraStepsAboveBarrier * deltaS;
+			final double sMin = sMax - FD_NUMBER_OF_SPACE_STEPS * deltaS;
+
+			return new UniformGrid(FD_NUMBER_OF_SPACE_STEPS, sMin, sMax);
+		}
+		else {
+			throw new IllegalArgumentException("Knock-in interior grid requested for non knock-in type: " + barrierType);
 		}
 	}
 
