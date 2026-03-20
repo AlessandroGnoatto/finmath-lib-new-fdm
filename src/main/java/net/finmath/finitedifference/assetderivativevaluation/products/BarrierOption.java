@@ -6,7 +6,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
-import net.finmath.finitedifference.solvers.FDMThetaMethod1DDirectKnockIn;
+import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
@@ -175,34 +175,43 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	 * changing the public semantics of the product class.
 	 * </p>
 	 */
-	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
+	/*private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
 		return priceInOptionByParity(model);
+	}*/
+	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
+
+		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(numberOfSpaceDimensions != 1) {
+			throw new IllegalArgumentException(
+					"Direct coupled two-state knock-in pricing is currently implemented only for 1D finite-difference models.");
+		}
+
+		if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+			throw new IllegalStateException(
+					"priceInOptionThroughActivationPolicy was called for a non knock-in barrier type.");
+		}
+
+		final FDMSolver solver = new FDMThetaMethod1DTwoState(
+				model,
+				this,
+				model.getSpaceTimeDiscretization(),
+				exercise
+		);
+
+		return solver.getValues(
+				maturity,
+				assetValue -> {
+					if(callOrPutSign == CallOrPut.CALL) {
+						return Math.max(assetValue - strike, 0.0);
+					}
+					else {
+						return Math.max(strike - assetValue, 0.0);
+					}
+				}
+		);
 	}
-//	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
-//
-//		/*
-//		 * Current implementation policy:
-//		 *
-//		 * - if the model is 1D, use the direct knock-in PDE solver,
-//		 * - otherwise fall back to the internal parity implementation.
-//		 *
-//		 * This keeps the activation-policy abstraction intact while allowing
-//		 * genuine direct knock-in pricing where the numerical machinery is available.
-//		 */
-//		if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1) {
-//			final FDMThetaMethod1DDirectKnockIn directKnockInSolver =
-//					new FDMThetaMethod1DDirectKnockIn(
-//							model,
-//							this,
-//							model.getSpaceTimeDiscretization(),
-//							exercise
-//					);
-//
-//			return directKnockInSolver.getValues(maturity);
-//		}
-//
-//		return priceInOptionByParity(model);
-//	}
+
 
 	private double[][] priceInOptionByParity(final FiniteDifferenceEquityModel barrierModel) {
 

@@ -12,8 +12,7 @@ import net.finmath.modelling.products.CallOrPut;
  * Boundary conditions for {@link BarrierOption} under the {@link FDMBlackScholesModel}.
  *
  * <p>
- * This class supports both the legacy boundary API returning {@code double[]}
- * and the newer explicit boundary-condition API returning
+ * This class supports the explicit boundary-condition API returning
  * {@link BoundaryCondition} objects.
  * </p>
  *
@@ -21,16 +20,24 @@ import net.finmath.modelling.products.CallOrPut;
  * Conventions:
  * </p>
  * <ul>
- *   <li>For knock-out options, the rebate is paid at hit.</li>
- *   <li>For knock-in options, the product is currently priced by parity in {@link BarrierOption}.</li>
- *   <li>The barrier is assumed to coincide with one spatial boundary of the grid:
+ *   <li>For knock-out options, the rebate is paid at hit, so the barrier-side
+ *       boundary is pinned to the rebate.</li>
+ *   <li>For knock-in options, the outer boundaries use the corresponding
+ *       vanilla Black-Scholes asymptotics.</li>
+ *   <li>The barrier is assumed to coincide with one spatial boundary of the grid
+ *       for direct knock-out pricing:
  *       down barriers at the lower boundary, up barriers at the upper boundary.</li>
  * </ul>
  *
+ * <p>
+ * In the direct two-state knock-in solver, the activated regime should use these
+ * vanilla asymptotic boundaries, while the inactive regime is coupled to the
+ * activated regime on the hit set.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
-public class BarrierOptionBlackScholesModelBoundary
-		implements FiniteDifferenceBoundary {
+public class BarrierOptionBlackScholesModelBoundary implements FiniteDifferenceBoundary {
 
 	private static final double EPSILON = 1E-6;
 
@@ -50,6 +57,12 @@ public class BarrierOptionBlackScholesModelBoundary
 		final BarrierType barrierType = option.getBarrierType();
 		final CallOrPut sign = option.getCallOrPut();
 
+		/*
+		 * For a down-and-out option, the lower boundary is the barrier-side boundary,
+		 * so the value is pinned to the rebate (paid at hit).
+		 *
+		 * For all other cases, including down-in, use vanilla asymptotics.
+		 */
 		if(barrierType == BarrierType.DOWN_OUT) {
 			return new BoundaryCondition[] {
 					StandardBoundaryCondition.dirichlet(option.getRebate())
@@ -57,11 +70,18 @@ public class BarrierOptionBlackScholesModelBoundary
 		}
 
 		if(sign == CallOrPut.CALL) {
+			/*
+			 * Vanilla call asymptotic at S -> 0.
+			 */
 			return new BoundaryCondition[] {
 					StandardBoundaryCondition.dirichlet(0.0)
 			};
 		}
 		else {
+			/*
+			 * Vanilla put asymptotic at S -> 0:
+			 * V(t,S) ~ K exp(-r(T-t)).
+			 */
 			time = Math.max(time, EPSILON);
 
 			final double discountFactorRiskFree =
@@ -91,6 +111,12 @@ public class BarrierOptionBlackScholesModelBoundary
 		final BarrierType barrierType = option.getBarrierType();
 		final CallOrPut sign = option.getCallOrPut();
 
+		/*
+		 * For an up-and-out option, the upper boundary is the barrier-side boundary,
+		 * so the value is pinned to the rebate (paid at hit).
+		 *
+		 * For all other cases, including up-in, use vanilla asymptotics.
+		 */
 		if(barrierType == BarrierType.UP_OUT) {
 			return new BoundaryCondition[] {
 					StandardBoundaryCondition.dirichlet(option.getRebate())
@@ -98,6 +124,10 @@ public class BarrierOptionBlackScholesModelBoundary
 		}
 
 		if(sign == CallOrPut.CALL) {
+			/*
+			 * Vanilla call asymptotic at large S:
+			 * V(t,S) ~ S exp(-q(T-t)) - K exp(-r(T-t)).
+			 */
 			time = Math.max(time, EPSILON);
 
 			final double discountFactorRiskFree =
@@ -126,6 +156,9 @@ public class BarrierOptionBlackScholesModelBoundary
 			};
 		}
 		else {
+			/*
+			 * Vanilla put asymptotic at large S.
+			 */
 			return new BoundaryCondition[] {
 					StandardBoundaryCondition.dirichlet(0.0)
 			};
