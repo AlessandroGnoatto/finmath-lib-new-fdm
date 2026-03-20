@@ -6,6 +6,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
+import net.finmath.finitedifference.solvers.FDMThetaMethod1DDirectKnockIn;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
@@ -20,20 +21,20 @@ import net.finmath.time.TimeDiscretization;
  * Finite-difference valuation of a standard single-barrier option on one asset.
  *
  * <p>
- * The barrier acts on the first state variable of the model, which is assumed to
- * represent the underlying level.
+ * The barrier acts on the first state variable of the model, which is assumed
+ * to represent the underlying level.
  * </p>
  *
  * <p>
  * Current implementation policy:
  * </p>
  * <ul>
- *   <li>knock-out options are priced directly by the finite-difference solver, using
- *       internal state constraints,</li>
- *   <li>knock-in options are priced through an internal activation policy, which
- *       currently uses parity but is intentionally encapsulated so that it may later
- *       be replaced by a direct solver formulation,</li>
- *   <li>exercise is currently European only.</li>
+ * <li>knock-out options are priced directly by the finite-difference solver,
+ * using internal state constraints,</li>
+ * <li>knock-in options are priced through an internal activation policy, which
+ * currently uses parity but is intentionally encapsulated so that it may later
+ * be replaced by a direct solver formulation,</li>
+ * <li>exercise is currently European only.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto
@@ -41,8 +42,7 @@ import net.finmath.time.TimeDiscretization;
 public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint {
 
 	private enum PricingMode {
-		DIRECT_OUT,
-		ACTIVATION_POLICY_IN
+		DIRECT_OUT, ACTIVATION_POLICY_IN
 	}
 
 	private final String underlyingName;
@@ -54,32 +54,13 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	private final BarrierType barrierType;
 	private final Exercise exercise;
 
-	public BarrierOption(
-			final String underlyingName,
-			final double maturity,
-			final double strike,
-			final double barrierValue,
-			final double rebate,
-			final double callOrPutSign,
-			final BarrierType barrierType) {
-		this(
-				underlyingName,
-				maturity,
-				strike,
-				barrierValue,
-				rebate,
-				mapCallOrPut(callOrPutSign),
-				barrierType
-		);
+	public BarrierOption(final String underlyingName, final double maturity, final double strike,
+			final double barrierValue, final double rebate, final double callOrPutSign, final BarrierType barrierType) {
+		this(underlyingName, maturity, strike, barrierValue, rebate, mapCallOrPut(callOrPutSign), barrierType);
 	}
 
-	public BarrierOption(
-			final String underlyingName,
-			final double maturity,
-			final double strike,
-			final double barrierValue,
-			final double rebate,
-			final CallOrPut callOrPutSign,
+	public BarrierOption(final String underlyingName, final double maturity, final double strike,
+			final double barrierValue, final double rebate, final CallOrPut callOrPutSign,
 			final BarrierType barrierType) {
 		super();
 		this.underlyingName = underlyingName;
@@ -92,42 +73,23 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		this.exercise = new EuropeanExercise(maturity);
 	}
 
-	public BarrierOption(
-			final double maturity,
-			final double strike,
-			final double barrierValue,
-			final double rebate,
-			final double callOrPutSign,
-			final BarrierType barrierType) {
+	public BarrierOption(final double maturity, final double strike, final double barrierValue, final double rebate,
+			final double callOrPutSign, final BarrierType barrierType) {
 		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
 	}
 
-	public BarrierOption(
-			final double maturity,
-			final double strike,
-			final double barrierValue,
-			final double rebate,
-			final CallOrPut callOrPutSign,
-			final BarrierType barrierType) {
+	public BarrierOption(final double maturity, final double strike, final double barrierValue, final double rebate,
+			final CallOrPut callOrPutSign, final BarrierType barrierType) {
 		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
 	}
 
-	public BarrierOption(
-			final String underlyingName,
-			final double maturity,
-			final double strike,
-			final double barrierValue,
-			final CallOrPut callOrPutSign,
-			final BarrierType barrierType) {
+	public BarrierOption(final String underlyingName, final double maturity, final double strike,
+			final double barrierValue, final CallOrPut callOrPutSign, final BarrierType barrierType) {
 		this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
 	}
 
-	public BarrierOption(
-			final double maturity,
-			final double strike,
-			final double barrierValue,
-			final double callOrPutSign,
-			final BarrierType barrierType) {
+	public BarrierOption(final double maturity, final double strike, final double barrierValue,
+			final double callOrPutSign, final BarrierType barrierType) {
 		this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
 	}
 
@@ -135,11 +97,11 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
 		final double tau = maturity - evaluationTime;
-		final int timeIndex =
-				model.getSpaceTimeDiscretization().getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
+		final int timeIndex = model.getSpaceTimeDiscretization().getTimeDiscretization()
+				.getTimeIndexNearestLessOrEqual(tau);
 
 		final double[] column = new double[values.length];
-		for(int i = 0; i < values.length; i++) {
+		for (int i = 0; i < values.length; i++) {
 			column[i] = values[i][timeIndex];
 		}
 		return column;
@@ -150,15 +112,15 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 		validateProductConfiguration(model);
 
-		if(isDegenerateZeroCase()) {
+		if (isDegenerateZeroCase()) {
 			return buildZeroValueSurface(model);
 		}
 
-		if(isDegenerateVanillaCase()) {
+		if (isDegenerateVanillaCase()) {
 			return createVanillaOption().getValues(model);
 		}
 
-		switch(getPricingMode()) {
+		switch (getPricingMode()) {
 		case DIRECT_OUT:
 			return priceOutOptionDirectly(model);
 		case ACTIVATION_POLICY_IN:
@@ -173,7 +135,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
-		if(!exercise.isEuropean()) {
+		if (!exercise.isEuropean()) {
 			throw new IllegalArgumentException("BarrierOption currently supports only European exercise.");
 		}
 
@@ -182,12 +144,12 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
 		final int numberOfSpacePoints = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid().length;
-		final int numberOfTimePoints =
-				model.getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps() + 1;
+		final int numberOfTimePoints = model.getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps()
+				+ 1;
 
 		final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
-		for(int i = 0; i < numberOfSpacePoints; i++) {
-			for(int j = 0; j < numberOfTimePoints; j++) {
+		for (int i = 0; i < numberOfSpacePoints; i++) {
+			for (int j = 0; j < numberOfTimePoints; j++) {
 				zeroValues[i][j] = 0.0;
 			}
 		}
@@ -216,6 +178,31 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
 		return priceInOptionByParity(model);
 	}
+//	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
+//
+//		/*
+//		 * Current implementation policy:
+//		 *
+//		 * - if the model is 1D, use the direct knock-in PDE solver,
+//		 * - otherwise fall back to the internal parity implementation.
+//		 *
+//		 * This keeps the activation-policy abstraction intact while allowing
+//		 * genuine direct knock-in pricing where the numerical machinery is available.
+//		 */
+//		if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1) {
+//			final FDMThetaMethod1DDirectKnockIn directKnockInSolver =
+//					new FDMThetaMethod1DDirectKnockIn(
+//							model,
+//							this,
+//							model.getSpaceTimeDiscretization(),
+//							exercise
+//					);
+//
+//			return directKnockInSolver.getValues(maturity);
+//		}
+//
+//		return priceInOptionByParity(model);
+//	}
 
 	private double[][] priceInOptionByParity(final FiniteDifferenceEquityModel barrierModel) {
 
@@ -233,15 +220,11 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		final int numberOfColumns = outValues[0].length;
 		final double[][] inValues = new double[outValues.length][numberOfColumns];
 
-		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
-			final RationalFunctionInterpolation interpolator =
-					new RationalFunctionInterpolation(
-							vanillaGrid,
-							getColumn(vanillaValues, timeIndex),
-							InterpolationMethod.LINEAR,
-							ExtrapolationMethod.CONSTANT);
+		for (int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(vanillaGrid,
+					getColumn(vanillaValues, timeIndex), InterpolationMethod.LINEAR, ExtrapolationMethod.CONSTANT);
 
-			for(int i = 0; i < barrierGrid.length; i++) {
+			for (int i = 0; i < barrierGrid.length; i++) {
 				final double stock = barrierGrid[i];
 				final double vanillaValue = interpolator.getValue(stock);
 				inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
@@ -254,24 +237,13 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	private FDMSolver createSolver(final FiniteDifferenceEquityModel model) {
 		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
-		if(numberOfSpaceDimensions == 1) {
-			return new FDMThetaMethod1D(
-					model,
-					this,
-					model.getSpaceTimeDiscretization(),
-					exercise
-			);
-		}
-		else if(numberOfSpaceDimensions == 2) {
-			return new FDMThetaMethod2D(
-					model,
-					this,
-					model.getSpaceTimeDiscretization(),
-					exercise
-			);
-		}
-		else {
-			throw new IllegalArgumentException("BarrierOption currently supports only 1D or 2D finite-difference models.");
+		if (numberOfSpaceDimensions == 1) {
+			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		} else if (numberOfSpaceDimensions == 2) {
+			return new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		} else {
+			throw new IllegalArgumentException(
+					"BarrierOption currently supports only 1D or 2D finite-difference models.");
 		}
 	}
 
@@ -280,29 +252,21 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private BarrierOption createCorrespondingOutOption() {
-		return new BarrierOption(
-				underlyingName,
-				maturity,
-				strike,
-				barrierValue,
-				rebate,
-				callOrPutSign,
-				getCorrespondingOutBarrierType()
-		);
+		return new BarrierOption(underlyingName, maturity, strike, barrierValue, rebate, callOrPutSign,
+				getCorrespondingOutBarrierType());
 	}
 
 	private BarrierType getCorrespondingOutBarrierType() {
-		if(barrierType == BarrierType.DOWN_IN) {
+		if (barrierType == BarrierType.DOWN_IN) {
 			return BarrierType.DOWN_OUT;
 		}
-		if(barrierType == BarrierType.UP_IN) {
+		if (barrierType == BarrierType.UP_IN) {
 			return BarrierType.UP_OUT;
 		}
 		throw new IllegalArgumentException("No corresponding out barrier type for " + barrierType);
 	}
 
-	private FiniteDifferenceEquityModel createAuxiliaryVanillaModel(
-			final FiniteDifferenceEquityModel barrierModel) {
+	private FiniteDifferenceEquityModel createAuxiliaryVanillaModel(final FiniteDifferenceEquityModel barrierModel) {
 
 		final SpaceTimeDiscretization barrierDiscretization = barrierModel.getSpaceTimeDiscretization();
 		final TimeDiscretization timeDiscretization = barrierDiscretization.getTimeDiscretization();
@@ -310,7 +274,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 		final double[] barrierGrid = barrierDiscretization.getSpaceGrid(0).getGrid();
 
-		if(barrierGrid.length < 2) {
+		if (barrierGrid.length < 2) {
 			throw new IllegalArgumentException("Barrier grid must contain at least two points.");
 		}
 
@@ -326,23 +290,19 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 		final double sMin = Math.floor(targetMin / deltaS) * deltaS;
 		final double sMax = Math.ceil(targetMax / deltaS) * deltaS;
-		final int numberOfSteps = (int)Math.round((sMax - sMin) / deltaS);
+		final int numberOfSteps = (int) Math.round((sMax - sMin) / deltaS);
 
 		final Grid vanillaGrid = new UniformGrid(numberOfSteps, sMin, sMax);
 
-		final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
-				vanillaGrid,
-				timeDiscretization,
-				thetaValue,
-				new double[] { initialValue }
-		);
+		final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(vanillaGrid,
+				timeDiscretization, thetaValue, new double[] { initialValue });
 
 		return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
 	}
 
 	private static double[] getColumn(final double[][] matrix, final int columnIndex) {
 		final double[] column = new double[matrix.length];
-		for(int i = 0; i < matrix.length; i++) {
+		for (int i = 0; i < matrix.length; i++) {
 			column[i] = matrix[i][columnIndex];
 		}
 		return column;
@@ -353,54 +313,39 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private boolean isDegenerateZeroCase() {
-		return (barrierType == BarrierType.UP_OUT
-				&& callOrPutSign == CallOrPut.CALL
-				&& barrierValue <= strike)
-			|| (barrierType == BarrierType.DOWN_OUT
-				&& callOrPutSign == CallOrPut.PUT
-				&& barrierValue >= strike)
-			|| (barrierType == BarrierType.DOWN_IN
-				&& callOrPutSign == CallOrPut.CALL
-				&& barrierValue >= strike)
-			|| (barrierType == BarrierType.UP_IN
-				&& callOrPutSign == CallOrPut.PUT
-				&& barrierValue <= strike);
+		return (barrierType == BarrierType.UP_OUT && callOrPutSign == CallOrPut.CALL && barrierValue <= strike)
+				|| (barrierType == BarrierType.DOWN_OUT && callOrPutSign == CallOrPut.PUT && barrierValue >= strike)
+				|| (barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.CALL && barrierValue >= strike)
+				|| (barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.PUT && barrierValue <= strike);
 	}
 
 	private boolean isDegenerateVanillaCase() {
-		return (barrierType == BarrierType.UP_IN
-				&& callOrPutSign == CallOrPut.CALL
-				&& barrierValue <= strike)
-			|| (barrierType == BarrierType.DOWN_IN
-				&& callOrPutSign == CallOrPut.PUT
-				&& barrierValue >= strike);
+		return (barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL && barrierValue <= strike)
+				|| (barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT && barrierValue >= strike);
 	}
 
 	private double getTerminalPayoffForDirectOutPricing(final double assetValue) {
 
-		if(callOrPutSign == CallOrPut.CALL) {
-			if(barrierType == BarrierType.DOWN_OUT) {
-				if(barrierValue <= strike) {
+		if (callOrPutSign == CallOrPut.CALL) {
+			if (barrierType == BarrierType.DOWN_OUT) {
+				if (barrierValue <= strike) {
 					return Math.max(assetValue - strike, 0.0);
 				}
 				return assetValue > barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
-			}
-			else if(barrierType == BarrierType.UP_OUT) {
-				if(barrierValue <= strike) {
+			} else if (barrierType == BarrierType.UP_OUT) {
+				if (barrierValue <= strike) {
 					return 0.0;
 				}
 				return assetValue < barrierValue ? Math.max(assetValue - strike, 0.0) : rebate;
 			}
-		}
-		else {
-			if(barrierType == BarrierType.DOWN_OUT) {
-				if(barrierValue >= strike) {
+		} else {
+			if (barrierType == BarrierType.DOWN_OUT) {
+				if (barrierValue >= strike) {
 					return 0.0;
 				}
 				return assetValue > barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
-			}
-			else if(barrierType == BarrierType.UP_OUT) {
-				if(barrierValue >= strike) {
+			} else if (barrierType == BarrierType.UP_OUT) {
+				if (barrierValue >= strike) {
 					return Math.max(strike - assetValue, 0.0);
 				}
 				return assetValue < barrierValue ? Math.max(strike - assetValue, 0.0) : rebate;
@@ -415,21 +360,20 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		final double lowerBoundary = grid[0];
 		final double upperBoundary = grid[grid.length - 1];
 
-		if(barrierValue < lowerBoundary || barrierValue > upperBoundary) {
-			throw new IllegalArgumentException(
-					"The barrier must lie inside the first state-variable grid domain.");
+		if (barrierValue < lowerBoundary || barrierValue > upperBoundary) {
+			throw new IllegalArgumentException("The barrier must lie inside the first state-variable grid domain.");
 		}
 	}
 
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
-		if(!isOutOption()) {
+		if (!isOutOption()) {
 			return false;
 		}
 
 		final double underlyingLevel = stateVariables[0];
 
-		switch(barrierType) {
+		switch (barrierType) {
 		case DOWN_OUT:
 			return underlyingLevel <= barrierValue;
 		case UP_OUT:
@@ -441,7 +385,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 	@Override
 	public double getConstrainedValue(final double time, final double... stateVariables) {
-		if(!isOutOption()) {
+		if (!isOutOption()) {
 			throw new IllegalStateException("Internal constrained value requested for a non out-option.");
 		}
 
@@ -449,10 +393,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private static CallOrPut mapCallOrPut(final double callOrPutSign) {
-		if(callOrPutSign == 1.0) {
+		if (callOrPutSign == 1.0) {
 			return CallOrPut.CALL;
 		}
-		if(callOrPutSign == -1.0) {
+		if (callOrPutSign == -1.0) {
 			return CallOrPut.PUT;
 		}
 		throw new IllegalArgumentException("Unknown option type.");
