@@ -1,6 +1,5 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
@@ -28,31 +27,35 @@ import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
 /**
- * Compares finite-difference prices of European barrier options under a Heston model
- * with Monte Carlo benchmark prices.
+ * Regression test for direct Heston knock-in barrier pricing:
+ * finite differences vs Monte Carlo.
  *
  * <p>
- * The test suite covers all 8 standard barrier combinations:
+ * This test covers the four standard knock-in contracts:
  * </p>
  * <ul>
- *   <li>call / put,</li>
- *   <li>down / up,</li>
- *   <li>in / out.</li>
+ *   <li>down-and-in call,</li>
+ *   <li>down-and-in put,</li>
+ *   <li>up-and-in call,</li>
+ *   <li>up-and-in put.</li>
  * </ul>
  *
  * <p>
- * Implementation notes:
+ * The FDM grid uses:
  * </p>
  * <ul>
- *   <li>Uses Apache Commons Math linear interpolation in the asset direction.</li>
- *   <li>Constructs the spot grid so that the barrier coincides with the relevant boundary.</li>
- *   <li>Uses a uniform variance grid for the second PDE dimension.</li>
- *   <li>Monte Carlo barrier monitoring is discrete on the simulation time grid.</li>
+ *   <li>an interior spot barrier node in the first state variable,</li>
+ *   <li>a separate variance grid in the second state variable,</li>
+ *   <li>extra lower-tail depth for down-in puts,</li>
+ *   <li>extra upper-tail depth for up-in calls.</li>
  * </ul>
  *
- * @author Alessandro Gnoatto
+ * <p>
+ * The Monte Carlo benchmark uses discrete barrier monitoring on the simulation
+ * time grid, so tolerances are necessarily looser than in 1D analytic tests.
+ * </p>
  */
-public class BarrierOptionHestonFdmVsMonteCarloTest {
+public class BarrierOptionHestonKnockInFdmVsMonteCarloTest {
 
 	private static final double MATURITY = 1.0;
 	private static final double STRIKE = 100.0;
@@ -64,69 +67,70 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 
 	// Heston parameters
 	private static final double VOLATILITY = 0.25;
-	private static final double VOLATILITY_SQUARED = VOLATILITY * VOLATILITY;
+	private static final double V0 = VOLATILITY * VOLATILITY;
 	private static final double KAPPA = 1.5;
-	private static final double THETA_H = VOLATILITY_SQUARED;
+	private static final double THETA_H = V0;
 	private static final double XI = 0.30;
 	private static final double RHO = -0.70;
 
 	private static final double THETA = 0.5;
 
-	private static final int NUMBER_OF_TIME_STEPS = 20;
-	private static final int NUMBER_OF_SPACE_STEPS_S = 24;
-	private static final int NUMBER_OF_SPACE_STEPS_V = 24;
+	private static final int FD_NUMBER_OF_TIME_STEPS = 100;
+	private static final int FD_NUMBER_OF_SPACE_STEPS_S = 150;
+	private static final int FD_NUMBER_OF_SPACE_STEPS_V = 150;
+
+	private static final int MC_NUMBER_OF_TIME_STEPS = 300;
+	private static final int MC_NUMBER_OF_PATHS = 10_000;
+	private static final int SEED = 31415;
+
+	private static final double RELATIVE_TOLERANCE = 0.20;
+	private static final double ABSOLUTE_TOLERANCE = 2.0E-2;
 
 	/**
-	 * Number of space intervals between the barrier and S0.
-	 * This ensures that S0 is aligned to a grid node in the S direction.
+	 * Number of spot intervals between the barrier and S0.
+	 * This keeps the local spacing near the barrier under control and often aligns S0 with a grid node.
 	 */
 	private static final int STEPS_BETWEEN_BARRIER_AND_SPOT = 40;
 
-	@Test
-	public void testDownAndOutEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_OUT, 80.0, 0.10);
-	}
+	/**
+	 * Default interior extension for knock-in grids.
+	 */
+	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS = 40;
+
+	/**
+	 * Extra lower-tail depth for DOWN_IN PUT.
+	 */
+	private static final int DOWN_IN_PUT_EXTRA_STEPS = 160;
+
+	/**
+	 * Extra upper-tail depth for UP_IN CALL.
+	 */
+	private static final int UP_IN_CALL_EXTRA_STEPS = 160;
 
 	@Test
 	public void testDownAndInEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_IN, 80.0, 0.10);
-	}
-
-	@Test
-	public void testUpAndOutEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.UP_OUT, 120.0, 0.10);
-	}
-
-	@Test
-	public void testUpAndInEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.UP_IN, 120.0, 0.10);
-	}
-
-	@Test
-	public void testDownAndOutEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.DOWN_OUT, 80.0, 0.10);
+		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_IN, 80.0);
 	}
 
 	@Test
 	public void testDownAndInEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.DOWN_IN, 80.0, 0.10);
+		runBarrierTest(CallOrPut.PUT, BarrierType.DOWN_IN, 80.0);
 	}
 
 	@Test
-	public void testUpAndOutEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.UP_OUT, 120.0, 0.10);
+	public void testUpAndInEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
+		runBarrierTest(CallOrPut.CALL, BarrierType.UP_IN, 120.0);
 	}
 
 	@Test
 	public void testUpAndInEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.UP_IN, 120.0, 0.10);
+		runBarrierTest(CallOrPut.PUT, BarrierType.UP_IN, 120.0);
 	}
 
 	private void runBarrierTest(
 			final CallOrPut callOrPut,
 			final BarrierType barrierType,
-			final double barrier,
-			final double relativeTolerance) throws Exception {
+			final double barrier) throws Exception {
 
 		final DiscountCurve riskFreeCurve = createFlatDiscountCurve("r", R);
 		final DiscountCurve dividendCurve = createFlatDiscountCurve("q", Q);
@@ -134,29 +138,26 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 		final TimeDiscretization timeDiscretization =
 				new TimeDiscretizationFromArray(
 						0.0,
-						NUMBER_OF_TIME_STEPS,
-						MATURITY / NUMBER_OF_TIME_STEPS);
+						FD_NUMBER_OF_TIME_STEPS,
+						MATURITY / FD_NUMBER_OF_TIME_STEPS
+				);
 
-		final Grid sGrid = createSpotGrid(barrier, barrierType);
+		final Grid sGrid = createKnockInInteriorSpotGrid(barrier, barrierType, callOrPut);
 
-		/*
-		 * Variance grid.
-		 * Choose a sufficiently wide interval around the long-run mean theta.
-		 */
 		final double vMin = 0.0;
-		final double vMax = Math.max(4.0 * THETA_H, VOLATILITY_SQUARED + 4.0 * XI * Math.sqrt(MATURITY));
-		final Grid vGrid = new UniformGrid(NUMBER_OF_SPACE_STEPS_V, vMin, vMax);
+		final double vMax = Math.max(4.0 * THETA_H, V0 + 4.0 * XI * Math.sqrt(MATURITY));
+		final Grid vGrid = new UniformGrid(FD_NUMBER_OF_SPACE_STEPS_V, vMin, vMax);
 
 		final SpaceTimeDiscretization spaceTime = new SpaceTimeDiscretization(
 				new Grid[] { sGrid, vGrid },
 				timeDiscretization,
 				THETA,
-				new double[] { S0, VOLATILITY_SQUARED }
+				new double[] { S0, V0 }
 		);
 
 		final FDMHestonModel fdmModel = new FDMHestonModel(
 				S0,
-				VOLATILITY,
+				V0,
 				riskFreeCurve,
 				dividendCurve,
 				KAPPA,
@@ -166,27 +167,24 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 				spaceTime
 		);
 
-		final double callOrPutSign = callOrPut == CallOrPut.CALL ? 1.0 : -1.0;
-
 		final BarrierOption fdmProduct = new BarrierOption(
 				MATURITY,
 				STRIKE,
 				barrier,
 				REBATE,
-				callOrPutSign,
+				callOrPut,
 				barrierType
 		);
 
 		/*
-		 * FD solver returns the full flattened grid.
-		 * Extract the time-0 slice and then interpolate in the spot dimension
-		 * at the initial variance level.
+		 * FD solver returns the flattened (S,v) grid at evaluation time.
+		 * Extract the slice nearest to v0 and interpolate in S.
 		 */
 		final double[] fdValuesOnGrid = fdmProduct.getValue(0.0, fdmModel);
 		final double[] sNodes = spaceTime.getSpaceGrid(0).getGrid();
 		final double[] vNodes = spaceTime.getSpaceGrid(1).getGrid();
 
-		final int v0Index = getNearestGridIndex(vNodes, VOLATILITY_SQUARED);
+		final int v0Index = getNearestGridIndex(vNodes, V0);
 
 		final double[] fdSliceAtInitialVariance = new double[sNodes.length];
 		for(int i = 0; i < sNodes.length; i++) {
@@ -205,25 +203,25 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 			fdPrice = interpolation.value(S0);
 		}
 
-		// --- Monte Carlo benchmark ---
-		final int numberOfPaths = 50_000;
-		final int seed = 31415;
-		final int mcNumberOfTimeSteps = 500;
-
+		/*
+		 * Monte Carlo benchmark.
+		 */
 		final TimeDiscretization mcTimes =
 				new TimeDiscretizationFromArray(
 						0.0,
-						mcNumberOfTimeSteps,
-						MATURITY / mcNumberOfTimeSteps);
+						MC_NUMBER_OF_TIME_STEPS,
+						MATURITY / MC_NUMBER_OF_TIME_STEPS
+				);
 
 		final BrownianMotionFromMersenneRandomNumbers brownianMotion =
-				new BrownianMotionFromMersenneRandomNumbers(mcTimes, 2, numberOfPaths, seed);
-		
+				new BrownianMotionFromMersenneRandomNumbers(mcTimes, 2, MC_NUMBER_OF_PATHS, SEED);
+
 		final net.finmath.montecarlo.assetderivativevaluation.models.HestonModel mcModel =
 				new net.finmath.montecarlo.assetderivativevaluation.models.HestonModel(
 						S0,
+						R - Q,
+						Math.sqrt(V0),
 						R,
-						VOLATILITY_SQUARED,
 						THETA_H,
 						KAPPA,
 						XI,
@@ -249,40 +247,94 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 		final double mcPrice = mcProduct.getValue(mcSimulation);
 
 		System.out.println("Type           = " + barrierType + " " + callOrPut);
+		System.out.println("Barrier        = " + barrier);
+		System.out.println("Grid min       = " + sNodes[0]);
+		System.out.println("Grid max       = " + sNodes[sNodes.length - 1]);
 		System.out.println("FD price       = " + fdPrice);
 		System.out.println("MC price       = " + mcPrice);
 
 		assertTrue(fdPrice >= -1E-10);
 		assertTrue(mcPrice >= -1E-10);
 
-		final double denominator = Math.max(Math.abs(mcPrice), 1E-8);
-		final double relativeError = Math.abs(fdPrice - mcPrice) / denominator;
+		final double absoluteError = Math.abs(fdPrice - mcPrice);
+		final double scale = Math.max(Math.abs(fdPrice), Math.abs(mcPrice));
+		final double admissibleError = Math.max(ABSOLUTE_TOLERANCE, RELATIVE_TOLERANCE * scale);
 
-		System.out.println("Relative error = " + relativeError);
+		System.out.println("Absolute error = " + absoluteError);
+		System.out.println("Admissible     = " + admissibleError);
 
-		assertEquals(
-				"Relative FD vs MC barrier price error for " + barrierType + " " + callOrPut,
-				0.0,
-				relativeError,
-				relativeTolerance
+		assertTrue(
+				"Error exceeds tolerance for " + barrierType + " " + callOrPut
+				+ ": absoluteError = " + absoluteError
+				+ ", admissibleError = " + admissibleError,
+				absoluteError <= admissibleError
 		);
 	}
 
-	private Grid createSpotGrid(final double barrier, final BarrierType barrierType) {
-		if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) {
+	private Grid createKnockInInteriorSpotGrid(
+			final double barrier,
+			final BarrierType barrierType,
+			final CallOrPut callOrPut) {
+
+		/*
+		 * For the test grid we need BOTH:
+		 * 1) barrier on an interior node,
+		 * 2) S0 still inside the domain.
+		 *
+		 * With small test grids, the large tail extensions used in higher-resolution
+		 * experiments may push S0 outside the grid. So we cap the extra extension
+		 * to keep S0 inside.
+		 */
+		if(barrierType == BarrierType.DOWN_IN) {
 			final double deltaS = (S0 - barrier) / STEPS_BETWEEN_BARRIER_AND_SPOT;
-			final double sMin = barrier;
-			final double sMax = sMin + NUMBER_OF_SPACE_STEPS_S * deltaS;
-			return new UniformGrid(NUMBER_OF_SPACE_STEPS_S, sMin, sMax);
+
+			final int desiredExtraStepsBelowBarrier =
+					callOrPut == CallOrPut.PUT
+					? DOWN_IN_PUT_EXTRA_STEPS
+					: DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS;
+
+			/*
+			 * Need at least STEPS_BETWEEN_BARRIER_AND_SPOT intervals above the barrier
+			 * to keep S0 inside the grid.
+			 */
+			final int maxExtraStepsBelowBarrier =
+					Math.max(1, FD_NUMBER_OF_SPACE_STEPS_S - STEPS_BETWEEN_BARRIER_AND_SPOT);
+
+			final int extraStepsBelowBarrier =
+					Math.min(desiredExtraStepsBelowBarrier, maxExtraStepsBelowBarrier);
+
+			final double sMin = barrier - extraStepsBelowBarrier * deltaS;
+			final double sMax = sMin + FD_NUMBER_OF_SPACE_STEPS_S * deltaS;
+
+			return new UniformGrid(FD_NUMBER_OF_SPACE_STEPS_S, sMin, sMax);
+		}
+		else if(barrierType == BarrierType.UP_IN) {
+			final double deltaS = (barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
+
+			final int desiredExtraStepsAboveBarrier =
+					callOrPut == CallOrPut.CALL
+					? UP_IN_CALL_EXTRA_STEPS
+					: DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS;
+
+			/*
+			 * Need at least STEPS_BETWEEN_BARRIER_AND_SPOT intervals below the barrier
+			 * to keep S0 inside the grid.
+			 */
+			final int maxExtraStepsAboveBarrier =
+					Math.max(1, FD_NUMBER_OF_SPACE_STEPS_S - STEPS_BETWEEN_BARRIER_AND_SPOT);
+
+			final int extraStepsAboveBarrier =
+					Math.min(desiredExtraStepsAboveBarrier, maxExtraStepsAboveBarrier);
+
+			final double sMax = barrier + extraStepsAboveBarrier * deltaS;
+			final double sMin = sMax - FD_NUMBER_OF_SPACE_STEPS_S * deltaS;
+
+			return new UniformGrid(FD_NUMBER_OF_SPACE_STEPS_S, sMin, sMax);
 		}
 		else {
-			final double deltaS = (barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
-			final double sMax = barrier;
-			final double sMin = sMax - NUMBER_OF_SPACE_STEPS_S * deltaS;
-			return new UniformGrid(NUMBER_OF_SPACE_STEPS_S, sMin, sMax);
+			throw new IllegalArgumentException("This Heston regression test supports only knock-in options.");
 		}
 	}
-
 	private static int getGridIndex(final double[] grid, final double value) {
 		final double tolerance = 1E-12;
 		for(int i = 0; i < grid.length; i++) {

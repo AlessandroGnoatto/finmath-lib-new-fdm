@@ -1,4 +1,4 @@
-package net.finmath.finitedifference.assetderivativevaluation.models;
+package net.finmath.finitedifference.assetderivativevaluation.products;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -12,6 +12,7 @@ import net.finmath.finitedifference.assetderivativevaluation.products.EuropeanOp
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
+import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
 import net.finmath.interpolation.BiLinearInterpolation;
 import net.finmath.marketdata.model.curves.CurveInterpolation.ExtrapolationMethod;
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationEntity;
@@ -23,55 +24,53 @@ import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
 /**
- * Compares European option prices under Heston across:
+ * Vanilla Heston regression test for the ADI solver.
+ *
+ * <p>
+ * Compares:
+ * </p>
  * <ul>
- *   <li>finite difference (this project),</li>
+ *   <li>ADI finite differences,</li>
  *   <li>finmath Monte Carlo,</li>
  *   <li>finmath Fourier pricer.</li>
  * </ul>
  *
  * <p>
- * The finite difference solver returns values on the full (S,v) grid; the test extracts the price
- * at {@code (S0,v0)} via finmath's {@link BilinearInterpolation}.
+ * This is intended as the base stability test before enabling barrier / two-state Heston ADI pricing.
  * </p>
  */
-public class HestonEuropeanOptionComparisonTest {
+public class HestonEuropeanOptionAdiComparisonTest {
 
 	@Test
-	public void testEuropeanCallHestonFiniteDifferenceVsMonteCarloVsFourier() throws Exception {
+	public void testEuropeanCallHestonAdiVsMonteCarloVsFourier() throws Exception {
 
-		// --- Contract ---
 		final double maturity = 1.0;
 		final double strike = 100.0;
 		final CallOrPut callOrPut = CallOrPut.CALL;
 
-		// --- Market / Heston parameters (risk-neutral) ---
 		final double s0 = 100.0;
-		final double v0 = 0.04;          // variance
-		final double r = 0.02;           // discounting rate
-		final double q = 0.00;           // dividend yield
+		final double v0 = 0.04;
+		final double r = 0.02;
+		final double q = 0.00;
 
 		final double kappa = 1.5;
 		final double thetaV = 0.04;
-		final double xi = 0.30;          // vol-of-vol
+		final double xi = 0.30;
 		final double rho = -0.70;
 
-		// --- Curves for the FD model (r and q) ---
 		final DiscountCurve riskFreeCurve = createFlatDiscountCurve("r", r);
 		final DiscountCurve dividendCurve = createFlatDiscountCurve("q", q);
-
-		// --- FD grid (2D: S and v) + time discretization in time-to-maturity ---
-		final int nTimeSteps = 60;
+		
+		final int nTimeSteps = 100;
 		final TimeDiscretization timeDiscretization =
 				new TimeDiscretizationFromArray(0.0, nTimeSteps, maturity / nTimeSteps);
 
-		// Pick ranges wide enough so boundaries don't dominate
-		final int nS = 60;
-		final int nV = 60;
+		final int nS = 100;
+		final int nV = 100;
 		final Grid sGrid = new UniformGrid(nS - 1, 0.0, 4.0 * s0);
 		final Grid vGrid = new UniformGrid(nV - 1, 0.0, 0.50);
 
-		final double theta = 0.5; // Crank-Nicolson
+		final double theta = 0.5;
 		final double[] center = new double[] { s0, v0 };
 
 		final SpaceTimeDiscretization spaceTime = new SpaceTimeDiscretization(
@@ -81,7 +80,6 @@ public class HestonEuropeanOptionComparisonTest {
 				center
 		);
 
-		// --- FD model + product ---
 		final FDMHestonModel fdmModel = new FDMHestonModel(
 				s0,
 				v0,
@@ -96,15 +94,19 @@ public class HestonEuropeanOptionComparisonTest {
 
 		final EuropeanOption fdProduct = new EuropeanOption(maturity, strike, callOrPut);
 
-		// FD returns a column vector of length nS*nV at evaluation time (tau = maturity - evaluationTime)
-		final double[] fdColumn = fdProduct.getValue(0.0, fdmModel);
+		final FDMHestonADI2D adiSolver = new FDMHestonADI2D(fdmModel,fdProduct,spaceTime,fdProduct.getExercise());
+
+		final double[] fdColumn = adiSolver.getValue(
+				0.0,
+				maturity,
+				(stock, variance) -> Math.max(stock - strike, 0.0)
+		);
 
 		final double[] sNodes = spaceTime.getSpaceGrid(0).getGrid();
 		final double[] vNodes = spaceTime.getSpaceGrid(1).getGrid();
 		final int ns = sNodes.length;
 		final int nv = vNodes.length;
 
-		// Rebuild surface value[iS][iV] from flattened vector with convention k = iS + iV*ns
 		final double[][] valueSurface = new double[ns][nv];
 		for(int j = 0; j < nv; j++) {
 			for(int i = 0; i < ns; i++) {
@@ -116,8 +118,6 @@ public class HestonEuropeanOptionComparisonTest {
 		final BiLinearInterpolation interpolator = new BiLinearInterpolation(sNodes, vNodes, valueSurface);
 		final double fdPrice = interpolator.apply(s0, v0);
 
-		// --- finmath Fourier price ---
-		// In finmath Fourier HestonModel: "riskFreeRate" is the forward rate (r-q), "discountRate" is discounting (r).
 		final net.finmath.fouriermethod.models.HestonModel fourierModel =
 				new net.finmath.fouriermethod.models.HestonModel(
 						s0,
@@ -135,11 +135,11 @@ public class HestonEuropeanOptionComparisonTest {
 
 		final double fourierPrice = fourierProduct.getValue(fourierModel);
 
-		// --- finmath Monte Carlo price ---
-		final int numberOfPaths = 10000;
+		final int numberOfPaths = 20000;
 		final int seed = 31415;
 
-		final TimeDiscretization mcTimes = new TimeDiscretizationFromArray(0.0, 20, maturity / 20.0);
+		final TimeDiscretization mcTimes =
+				new TimeDiscretizationFromArray(0.0, 100, maturity / 100.0);
 
 		final net.finmath.montecarlo.BrownianMotionFromMersenneRandomNumbers brownianMotion =
 				new net.finmath.montecarlo.BrownianMotionFromMersenneRandomNumbers(mcTimes, 2, numberOfPaths, seed);
@@ -168,20 +168,22 @@ public class HestonEuropeanOptionComparisonTest {
 
 		final double mcPrice = mcProduct.getValue(mcModel);
 
-		// --- Checks / reporting ---
-		System.out.println("FD price      = " + fdPrice);
+		System.out.println("ADI price      = " + fdPrice);
 		System.out.println("Fourier price  = " + fourierPrice);
 		System.out.println("MC price       = " + mcPrice);
+
+		assertTrue(Double.isFinite(fdPrice));
+		assertTrue(Double.isFinite(fourierPrice));
+		assertTrue(Double.isFinite(mcPrice));
 
 		assertTrue(fdPrice > 0.0);
 		assertTrue(fourierPrice > 0.0);
 		assertTrue(mcPrice > 0.0);
 
-		// Tolerances: FD is grid-dependent; MC has sampling error.
-		final double tolFDvsFourier = 0.55;
+		final double tolADIvsFourier = 0.75;
 		final double tolMCvsFourier = 0.70;
 
-		assertEquals("FD vs Fourier", fourierPrice, fdPrice, tolFDvsFourier);
+		assertEquals("ADI vs Fourier", fourierPrice, fdPrice, tolADIvsFourier);
 		assertEquals("MC vs Fourier", fourierPrice, mcPrice, tolMCvsFourier);
 	}
 

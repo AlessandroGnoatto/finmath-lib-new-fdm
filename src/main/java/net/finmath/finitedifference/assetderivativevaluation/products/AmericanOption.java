@@ -8,6 +8,7 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDiffer
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
+import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
 import net.finmath.modelling.AmericanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
@@ -171,7 +172,8 @@ public class AmericanOption implements FiniteDifferenceProduct {
 			solver = new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else if(model instanceof FDMHestonModel) {
-			solver = new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+			//solver = new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+			solver = new FDMHestonADI2D((FDMHestonModel) model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else {
 			throw new IllegalArgumentException(
@@ -200,7 +202,8 @@ public class AmericanOption implements FiniteDifferenceProduct {
 			solver = new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else if(model instanceof FDMHestonModel) {
-			solver = new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+			//solver = new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+			solver = new FDMHestonADI2D((FDMHestonModel) model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else {
 			throw new IllegalArgumentException(
