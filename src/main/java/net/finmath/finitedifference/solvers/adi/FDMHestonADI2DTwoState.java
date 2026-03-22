@@ -8,6 +8,8 @@ import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.BarrierOption;
+import net.finmath.finitedifference.solvers.ThomasSolver;
+import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.finitedifference.solvers.TwoStateActiveBoundaryProvider2D;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;

@@ -1,6 +1,7 @@
 package net.finmath.finitedifference.solvers.adi;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
+import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 
 /**
  * Builds tridiagonal line matrices for ADI solves under the Heston model.

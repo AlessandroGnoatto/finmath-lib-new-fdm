@@ -2,13 +2,6 @@ package net.finmath.finitedifference.solvers;
 
 import java.util.function.DoubleUnaryOperator;
 
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.DecompositionSolver;
-import org.apache.commons.math3.linear.DiagonalMatrix;
-import org.apache.commons.math3.linear.LUDecomposition;
-import org.apache.commons.math3.linear.MatrixUtils;
-import org.apache.commons.math3.linear.RealMatrix;
-
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
@@ -56,6 +49,10 @@ import net.finmath.modelling.Exercise;
  * as internal Dirichlet rows.
  * </p>
  *
+ * <p>
+ * This implementation is matrix-free and assembles the theta-step directly as a tridiagonal system.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  * @author Ralph Rudd
  * @author Christian Fries
@@ -86,22 +83,16 @@ public class FDMThetaMethod1D implements FDMSolver {
 		final int nX = xGrid.length;
 
 		final double theta = spaceTimeDiscretization.getTheta();
-
 		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 		final int M = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
 
-		final FiniteDifferenceMatrixBuilder fdBuilder = new FiniteDifferenceMatrixBuilder(xGrid);
-		final RealMatrix T1 = fdBuilder.getFirstDerivativeMatrix();
-		final RealMatrix T2 = fdBuilder.getSecondDerivativeMatrix();
-		final RealMatrix I = MatrixUtils.createRealIdentityMatrix(nX);
+		double[] u = new double[nX];
+		final double[][] z = new double[nX][timeLength];
 
-		RealMatrix U = MatrixUtils.createRealMatrix(nX, 1);
 		for(int i = 0; i < nX; i++) {
-			U.setEntry(i, 0, valueAtMaturity.applyAsDouble(xGrid[i]));
+			u[i] = valueAtMaturity.applyAsDouble(xGrid[i]);
+			z[i][0] = u[i];
 		}
-
-		final RealMatrix z = MatrixUtils.createRealMatrix(nX, timeLength);
-		z.setColumnMatrix(0, U);
 
 		for(int m = 0; m < M; m++) {
 
@@ -110,15 +101,14 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(M - m);
 			final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(M - (m + 1));
 
-			final double tSafe_m = (t_m == 0.0 ? 1e-6 : t_m);
-			final double tSafe_mp1 = (t_mp1 == 0.0 ? 1e-6 : t_mp1);
+			final double tSafe_m = (t_m == 0.0 ? 1E-6 : t_m);
+			final double tSafe_mp1 = (t_mp1 == 0.0 ? 1E-6 : t_mp1);
 
 			final double r_m = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_m)) / tSafe_m;
 			final double r_mp1 = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_mp1)) / tSafe_mp1;
 
 			final double[] mu_m = new double[nX];
 			final double[] mu_mp1 = new double[nX];
-
 			final double[] a_m = new double[nX];
 			final double[] a_mp1 = new double[nX];
 
@@ -147,24 +137,13 @@ public class FDMThetaMethod1D implements FDMSolver {
 				a_mp1[i] = ap;
 			}
 
-			final RealMatrix Mu_m = new DiagonalMatrix(mu_m);
-			final RealMatrix Mu_mp1 = new DiagonalMatrix(mu_mp1);
-			final RealMatrix A_m = new DiagonalMatrix(a_m);
-			final RealMatrix A_mp1 = new DiagonalMatrix(a_mp1);
+			final TridiagonalMatrix lhs = new TridiagonalMatrix(nX);
+			final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(nX);
 
-			final RealMatrix driftTerm_m = Mu_m.scalarMultiply(deltaTau).multiply(T1);
-			final RealMatrix driftTerm_mp1 = Mu_mp1.scalarMultiply(deltaTau).multiply(T1);
+			buildThetaLeftHandSide(lhs, xGrid, mu_mp1, a_mp1, r_mp1, deltaTau, theta);
+			buildThetaRightHandSide(rhsOperator, xGrid, mu_m, a_m, r_m, deltaTau, theta);
 
-			final RealMatrix diffTerm_m = A_m.scalarMultiply(0.5 * deltaTau).multiply(T2);
-			final RealMatrix diffTerm_mp1 = A_mp1.scalarMultiply(0.5 * deltaTau).multiply(T2);
-
-			final RealMatrix F = I.scalarMultiply(1.0 - r_m * deltaTau).add(driftTerm_m).add(diffTerm_m);
-			final RealMatrix G = I.scalarMultiply(1.0 + r_mp1 * deltaTau).subtract(driftTerm_mp1).subtract(diffTerm_mp1);
-
-			RealMatrix H = G.scalarMultiply(theta).add(I.scalarMultiply(1.0 - theta));
-			final RealMatrix A = F.scalarMultiply(1.0 - theta).add(I.scalarMultiply(theta));
-
-			RealMatrix rhs = A.multiply(U);
+			final double[] rhs = apply(rhsOperator, u);
 
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
 			final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
@@ -173,115 +152,66 @@ public class FDMThetaMethod1D implements FDMSolver {
 					model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, xGrid[0])[0];
 
 			if(lowerCondition.isDirichlet()) {
-				for(int col = 0; col < nX; col++) {
-					H.setEntry(0, col, 0.0);
-				}
-				H.setEntry(0, 0, 1.0);
-				rhs.setEntry(0, 0, lowerCondition.getValue());
+				overwriteAsDirichlet(lhs, rhs, 0, lowerCondition.getValue());
 			}
 
 			final BoundaryCondition upperCondition =
 					model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, xGrid[nX - 1])[0];
 
 			if(upperCondition.isDirichlet()) {
-				for(int col = 0; col < nX; col++) {
-					H.setEntry(nX - 1, col, 0.0);
-				}
-				H.setEntry(nX - 1, nX - 1, 1.0);
-				rhs.setEntry(nX - 1, 0, upperCondition.getValue());
+				overwriteAsDirichlet(lhs, rhs, nX - 1, upperCondition.getValue());
 			}
 
-			/*
-			 * Internal state constraints:
-			 * overwrite interior constrained nodes as internal Dirichlet rows.
-			 */
 			for(int i = 1; i < nX - 1; i++) {
 				final double x = xGrid[i];
-
 				if(isInternalConstraintActive(boundaryTime, x)) {
-					final double constrainedValue = getInternalConstrainedValue(boundaryTime, x);
-
-					for(int col = 0; col < nX; col++) {
-						H.setEntry(i, col, 0.0);
-					}
-					H.setEntry(i, i, 1.0);
-					rhs.setEntry(i, 0, constrainedValue);
+					overwriteAsDirichlet(lhs, rhs, i, getInternalConstrainedValue(boundaryTime, x));
 				}
 			}
 
 			final boolean isExerciseDate =
 					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
 
-			if(exercise.isAmerican()) {
-				final double omega = 1.2;
-				final SORDecomposition sor = new SORDecomposition(H);
-				final RealMatrix zz = sor.getSol(U, rhs, omega, 500);
+			final double[] nextU;
+			if(exercise.isAmerican() && isExerciseDate) {
+				final double[] obstacle = buildObstacleVector(
+						xGrid,
+						boundaryTime,
+						valueAtMaturity,
+						lowerCondition,
+						upperCondition);
 
-				if(isExerciseDate) {
-					for(int i = 0; i < nX; i++) {
-						if(i == 0 && lowerCondition.isDirichlet()) {
-							U.setEntry(i, 0, lowerCondition.getValue());
-						}
-						else if(i == nX - 1 && upperCondition.isDirichlet()) {
-							U.setEntry(i, 0, upperCondition.getValue());
-						}
-						else if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
-							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
-						}
-						else {
-							U.setEntry(i, 0, Math.max(zz.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
-						}
-					}
-				}
-				else {
-					U = zz;
+				nextU = ProjectedTridiagonalSOR.solve(
+						lhs,
+						rhs,
+						obstacle,
+						u,
+						1.2,
+						500,
+						1E-10);
 
-					/*
-					 * Re-impose internal constraints explicitly after the solve for numerical safety.
-					 */
-					for(int i = 1; i < nX - 1; i++) {
-						if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
-							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
-						}
-					}
-				}
+				reimposeInternalConstraints(nextU, xGrid, boundaryTime);
+				reimposeBoundaryValues(nextU, lowerCondition, upperCondition);
 			}
 			else {
-				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
-				U = solver.solve(rhs);
+				nextU = ThomasSolver.solve(lhs.lower, lhs.diag, lhs.upper, rhs);
 
 				if(isExerciseDate) {
-					for(int i = 0; i < nX; i++) {
-						if(i == 0 && lowerCondition.isDirichlet()) {
-							U.setEntry(i, 0, lowerCondition.getValue());
-						}
-						else if(i == nX - 1 && upperCondition.isDirichlet()) {
-							U.setEntry(i, 0, upperCondition.getValue());
-						}
-						else if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
-							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
-						}
-						else {
-							U.setEntry(i, 0, Math.max(U.getEntry(i, 0), valueAtMaturity.applyAsDouble(xGrid[i])));
-						}
-					}
+					applyExerciseProjection(nextU, xGrid, boundaryTime, valueAtMaturity, lowerCondition, upperCondition);
 				}
 				else {
-					/*
-					 * Re-impose internal constraints explicitly after the solve for numerical safety.
-					 */
-					for(int i = 1; i < nX - 1; i++) {
-						if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
-							U.setEntry(i, 0, getInternalConstrainedValue(boundaryTime, xGrid[i]));
-						}
-					}
+					reimposeInternalConstraints(nextU, xGrid, boundaryTime);
+					reimposeBoundaryValues(nextU, lowerCondition, upperCondition);
 				}
 			}
 
-			z.setColumnMatrix(m + 1, U);
+			u = nextU;
+			for(int i = 0; i < nX; i++) {
+				z[i][m + 1] = u[i];
+			}
 		}
 
-		return z.getData();
+		return z;
 	}
 
 	@Override
@@ -290,12 +220,213 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final double time,
 			final DoubleUnaryOperator valueAtMaturity) {
 
-		final RealMatrix values = new Array2DRowRealMatrix(getValues(time, valueAtMaturity));
+		final double[][] values = getValues(time, valueAtMaturity);
 
 		final double tau = time - evaluationTime;
 		final int timeIndex = this.spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
 
-		return values.getColumn(timeIndex);
+		final double[] column = new double[values.length];
+		for(int i = 0; i < values.length; i++) {
+			column[i] = values[i][timeIndex];
+		}
+		return column;
+	}
+
+	private void buildThetaLeftHandSide(
+			final TridiagonalMatrix lhs,
+			final double[] xGrid,
+			final double[] mu,
+			final double[] a,
+			final double r,
+			final double deltaTau,
+			final double theta) {
+
+		final double alpha = theta * deltaTau;
+		for(int i = 0; i < xGrid.length; i++) {
+			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, mu[i], a[i], r);
+			lhs.lower[i] = -alpha * spatial.lower;
+			lhs.diag[i] = 1.0 - alpha * spatial.diag;
+			lhs.upper[i] = -alpha * spatial.upper;
+		}
+	}
+
+	private void buildThetaRightHandSide(
+			final TridiagonalMatrix rhsOperator,
+			final double[] xGrid,
+			final double[] mu,
+			final double[] a,
+			final double r,
+			final double deltaTau,
+			final double theta) {
+
+		final double alpha = (1.0 - theta) * deltaTau;
+		for(int i = 0; i < xGrid.length; i++) {
+			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, mu[i], a[i], r);
+			rhsOperator.lower[i] = alpha * spatial.lower;
+			rhsOperator.diag[i] = 1.0 + alpha * spatial.diag;
+			rhsOperator.upper[i] = alpha * spatial.upper;
+		}
+	}
+
+	private RowCoefficients spatialOperatorRow(
+			final int i,
+			final double[] x,
+			final double mu,
+			final double variance,
+			final double r) {
+
+		final int n = x.length;
+		final double halfVariance = 0.5 * variance;
+
+		double t1Lower = 0.0;
+		double t1Diag = 0.0;
+		double t1Upper = 0.0;
+
+		double t2Lower = 0.0;
+		double t2Diag = 0.0;
+		double t2Upper = 0.0;
+
+		if(i == 0) {
+			final double h1 = x[1] - x[0];
+			final double h2 = x[2] - x[1];
+
+			t1Diag = -1.0 / h1;
+			t1Upper = 1.0 / h1;
+
+			t2Diag = -2.0 / (h1 * h2);
+			t2Upper = 2.0 / (h1 * (h1 + h2));
+		}
+		else if(i == n - 1) {
+			final double h0 = x[i] - x[i - 1];
+			final double h3 = x[i - 1] - x[i - 2];
+
+			t1Lower = -1.0 / h0;
+			t1Diag = 1.0 / h0;
+
+			t2Lower = 2.0 / (h0 * (h0 + h3));
+			t2Diag = -2.0 / (h3 * h0);
+		}
+		else {
+			final double h0 = x[i] - x[i - 1];
+			final double h1 = x[i + 1] - x[i];
+
+			t1Lower = -h1 / (h0 * (h1 + h0));
+			t1Diag = (h1 - h0) / (h1 * h0);
+			t1Upper = h0 / (h1 * (h0 + h1));
+
+			t2Lower = 2.0 / (h0 * (h0 + h1));
+			t2Diag = -2.0 / (h0 * h1);
+			t2Upper = 2.0 / (h1 * (h0 + h1));
+		}
+
+		return new RowCoefficients(
+				mu * t1Lower + halfVariance * t2Lower,
+				mu * t1Diag + halfVariance * t2Diag - r,
+				mu * t1Upper + halfVariance * t2Upper);
+	}
+
+	private double[] apply(final TridiagonalMatrix matrix, final double[] vector) {
+		final int n = vector.length;
+		final double[] result = new double[n];
+
+		for(int i = 0; i < n; i++) {
+			double value = matrix.diag[i] * vector[i];
+			if(i > 0) {
+				value += matrix.lower[i] * vector[i - 1];
+			}
+			if(i < n - 1) {
+				value += matrix.upper[i] * vector[i + 1];
+			}
+			result[i] = value;
+		}
+
+		return result;
+	}
+
+	private void overwriteAsDirichlet(
+			final TridiagonalMatrix lhs,
+			final double[] rhs,
+			final int row,
+			final double value) {
+
+		lhs.lower[row] = 0.0;
+		lhs.diag[row] = 1.0;
+		lhs.upper[row] = 0.0;
+		rhs[row] = value;
+	}
+
+	private double[] buildObstacleVector(
+			final double[] xGrid,
+			final double boundaryTime,
+			final DoubleUnaryOperator valueAtMaturity,
+			final BoundaryCondition lowerCondition,
+			final BoundaryCondition upperCondition) {
+
+		final double[] obstacle = new double[xGrid.length];
+		for(int i = 0; i < xGrid.length; i++) {
+			if(i == 0 && lowerCondition.isDirichlet()) {
+				obstacle[i] = lowerCondition.getValue();
+			}
+			else if(i == xGrid.length - 1 && upperCondition.isDirichlet()) {
+				obstacle[i] = upperCondition.getValue();
+			}
+			else if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+				obstacle[i] = getInternalConstrainedValue(boundaryTime, xGrid[i]);
+			}
+			else {
+				obstacle[i] = valueAtMaturity.applyAsDouble(xGrid[i]);
+			}
+		}
+		return obstacle;
+	}
+
+	private void applyExerciseProjection(
+			final double[] u,
+			final double[] xGrid,
+			final double boundaryTime,
+			final DoubleUnaryOperator valueAtMaturity,
+			final BoundaryCondition lowerCondition,
+			final BoundaryCondition upperCondition) {
+
+		for(int i = 0; i < xGrid.length; i++) {
+			if(i == 0 && lowerCondition.isDirichlet()) {
+				u[i] = lowerCondition.getValue();
+			}
+			else if(i == xGrid.length - 1 && upperCondition.isDirichlet()) {
+				u[i] = upperCondition.getValue();
+			}
+			else if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+				u[i] = getInternalConstrainedValue(boundaryTime, xGrid[i]);
+			}
+			else {
+				u[i] = Math.max(u[i], valueAtMaturity.applyAsDouble(xGrid[i]));
+			}
+		}
+	}
+
+	private void reimposeInternalConstraints(
+			final double[] u,
+			final double[] xGrid,
+			final double boundaryTime) {
+
+		for(int i = 1; i < xGrid.length - 1; i++) {
+			if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+				u[i] = getInternalConstrainedValue(boundaryTime, xGrid[i]);
+			}
+		}
+	}
+
+	private void reimposeBoundaryValues(
+			final double[] u,
+			final BoundaryCondition lowerCondition,
+			final BoundaryCondition upperCondition) {
+
+		if(lowerCondition.isDirichlet()) {
+			u[0] = lowerCondition.getValue();
+		}
+		if(upperCondition.isDirichlet()) {
+			u[u.length - 1] = upperCondition.getValue();
+		}
 	}
 
 	private boolean isInternalConstraintActive(final double time, final double x) {
@@ -307,5 +438,17 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 	private double getInternalConstrainedValue(final double time, final double x) {
 		return ((FiniteDifferenceInternalStateConstraint) product).getConstrainedValue(time, x);
+	}
+
+	private static final class RowCoefficients {
+		private final double lower;
+		private final double diag;
+		private final double upper;
+
+		private RowCoefficients(final double lower, final double diag, final double upper) {
+			this.lower = lower;
+			this.diag = diag;
+			this.upper = upper;
+		}
 	}
 }
