@@ -1,7 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
-import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory2D;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
@@ -14,7 +13,6 @@ import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
 import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
-import net.finmath.finitedifference.solvers.adi.FDMHestonADI2DTwoState;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
@@ -69,13 +67,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
 	private static final int DOWN_IN_PUT_EXTRA_STEPS_1D = 160;
 	private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
-
-	/*
-	 * 2D direct knock-in settings.
-	 */
-	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_2D = 40;
-	private static final int DOWN_IN_PUT_EXTRA_STEPS_2D = 160;
-	private static final int UP_IN_CALL_EXTRA_STEPS_2D = 160;
 
 	private final String underlyingName;
 	private final double maturity;
@@ -230,34 +221,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			);
 		}
 		else if(numberOfSpaceDimensions == 2 && model instanceof FDMHestonModel) {
-			final FiniteDifferenceEquityModel knockInModel = createAuxiliaryKnockInModel2D(model);
-			final FDMHestonModel hestonKnockInModel = (FDMHestonModel)knockInModel;
-
-			final FDMHestonADI2DTwoState solver = new FDMHestonADI2DTwoState(
-					hestonKnockInModel,
-					this,
-					knockInModel.getSpaceTimeDiscretization(),
-					exercise,
-					ActiveBoundaryProviderFactory2D.createProvider(
-							hestonKnockInModel,
-							strike,
-							maturity,
-							callOrPutSign
-					)
-			);
-
-			final double[][] knockInValuesOnAuxiliaryGrid = solver.getValues(
-					maturity,
-					(assetValue, varianceValue) -> callOrPutSign == CallOrPut.CALL
-							? Math.max(assetValue - strike, 0.0)
-							: Math.max(strike - assetValue, 0.0)
-			);
-
-			return interpolateSurfaceToOriginalGrid2DAlongFirstState(
-					knockInValuesOnAuxiliaryGrid,
-					knockInModel.getSpaceTimeDiscretization(),
-					model.getSpaceTimeDiscretization()
-			);
+		    return priceInOptionByParity(model);
 		}
 		else {
 			return priceInOptionByParity(model);
@@ -558,55 +522,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return originalModel.getCloneWithModifiedSpaceTimeDiscretization(knockInDiscretization);
 	}
 
-	private FiniteDifferenceEquityModel createAuxiliaryKnockInModel2D(final FiniteDifferenceEquityModel originalModel) {
-
-		final SpaceTimeDiscretization originalDiscretization = originalModel.getSpaceTimeDiscretization();
-		final TimeDiscretization timeDiscretization = originalDiscretization.getTimeDiscretization();
-		final double thetaValue = originalDiscretization.getTheta();
-
-		final double[] originalX0 = originalDiscretization.getSpaceGrid(0).getGrid();
-		final double[] originalX1 = originalDiscretization.getSpaceGrid(1).getGrid();
-
-		if(originalX0.length < 2) {
-			throw new IllegalArgumentException("First state-variable grid must contain at least two points.");
-		}
-
-		final double deltaX0 = originalX0[1] - originalX0[0];
-		final int numberOfStepsX0 = originalX0.length - 1;
-		final int extraStepsBeyondBarrier = getKnockInExtraStepsBeyondBarrier2D(originalModel);
-
-		final double x0Min;
-		final double x0Max;
-
-		if(barrierType == BarrierType.DOWN_IN) {
-			x0Min = barrierValue - extraStepsBeyondBarrier * deltaX0;
-			x0Max = x0Min + numberOfStepsX0 * deltaX0;
-		}
-		else if(barrierType == BarrierType.UP_IN) {
-			x0Max = barrierValue + extraStepsBeyondBarrier * deltaX0;
-			x0Min = x0Max - numberOfStepsX0 * deltaX0;
-		}
-		else {
-			throw new IllegalArgumentException("Auxiliary knock-in model requested for non knock-in barrier type.");
-		}
-
-		validateBarrierIsInteriorGridNode(x0Min, x0Max, deltaX0, numberOfStepsX0);
-
-		final Grid shiftedX0Grid = new UniformGrid(numberOfStepsX0, x0Min, x0Max);
-		final Grid preservedX1Grid = new UniformGrid(originalX1.length - 1, originalX1[0], originalX1[originalX1.length - 1]);
-
-		final double[] initialValue = originalModel.getInitialValue();
-
-		final SpaceTimeDiscretization knockInDiscretization = new SpaceTimeDiscretization(
-				new Grid[] { shiftedX0Grid, preservedX1Grid },
-				timeDiscretization,
-				thetaValue,
-				initialValue
-		);
-
-		return originalModel.getCloneWithModifiedSpaceTimeDiscretization(knockInDiscretization);
-	}
-
 	private int getKnockInExtraStepsBeyondBarrier1D() {
 		if(barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT) {
 			return DOWN_IN_PUT_EXTRA_STEPS_1D;
@@ -615,37 +530,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			return UP_IN_CALL_EXTRA_STEPS_1D;
 		}
 		return DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D;
-	}
-
-	private int getKnockInExtraStepsBeyondBarrier2D(final FiniteDifferenceEquityModel model) {
-
-		final double[] x0Grid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-		if(x0Grid.length < 2) {
-			throw new IllegalArgumentException("First state-variable grid must contain at least two points.");
-		}
-
-		final int numberOfStepsX0 = x0Grid.length - 1;
-		final double initialSpot = model.getInitialValue()[0];
-		final double deltaX0 = x0Grid[1] - x0Grid[0];
-
-		final int desiredExtraSteps;
-		if(barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT) {
-			desiredExtraSteps = DOWN_IN_PUT_EXTRA_STEPS_2D;
-		}
-		else if(barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL) {
-			desiredExtraSteps = UP_IN_CALL_EXTRA_STEPS_2D;
-		}
-		else {
-			desiredExtraSteps = DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_2D;
-		}
-
-		final int stepsBetweenBarrierAndSpot =
-				(int)Math.round(Math.abs(initialSpot - barrierValue) / deltaX0);
-
-		final int maxExtraSteps =
-				Math.max(1, numberOfStepsX0 - stepsBetweenBarrierAndSpot - 1);
-
-		return Math.min(desiredExtraSteps, maxExtraSteps);
 	}
 
 	private void validateBarrierIsInteriorGridNode(

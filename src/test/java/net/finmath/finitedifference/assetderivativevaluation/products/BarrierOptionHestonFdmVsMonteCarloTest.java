@@ -50,9 +50,9 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 
 	private static final double THETA = 0.5;
 
-	private static final int NUMBER_OF_TIME_STEPS = 80;
+	private static final int NUMBER_OF_TIME_STEPS = 100;
 	private static final int NUMBER_OF_SPACE_STEPS_S = 160;
-	private static final int NUMBER_OF_SPACE_STEPS_V = 40;
+	private static final int NUMBER_OF_SPACE_STEPS_V = 100;
 
 	private static final int STEPS_BETWEEN_BARRIER_AND_SPOT = 40;
 
@@ -68,12 +68,12 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 
 	@Test
 	public void testUpAndOutEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.UP_OUT, 140.0, 0.20);
+		runBarrierTest(CallOrPut.CALL, BarrierType.UP_OUT, 120.0, 0.20);
 	}
 
 	@Test
 	public void testUpAndInEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.UP_IN, 140.0, 0.25);
+		runBarrierTest(CallOrPut.CALL, BarrierType.UP_IN, 120.0, 0.25);
 	}
 
 	@Test
@@ -88,7 +88,7 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 
 	@Test
 	public void testUpAndOutEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.UP_OUT, 140.0, 0.20);
+		runBarrierTest(CallOrPut.PUT, BarrierType.UP_OUT, 120.0, 0.20);
 	}
 
 	@Test
