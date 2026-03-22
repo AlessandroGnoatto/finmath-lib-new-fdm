@@ -16,10 +16,15 @@ import net.finmath.modelling.products.CallOrPut;
  * boundaries are left untouched via {@link StandardBoundaryCondition#none()}.
  * </p>
  *
+ * <p>
+ * This implementation uses grid-aware asset-direction boundary values: instead of
+ * applying asymptotic formulas blindly, it evaluates discounted intrinsic value at
+ * the actual boundary stock level.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
-public class EuropeanOptionHestonModelBoundary
-		implements FiniteDifferenceBoundary {
+public class EuropeanOptionHestonModelBoundary implements FiniteDifferenceBoundary {
 
 	private static final double EPSILON = 1E-6;
 
@@ -36,27 +41,15 @@ public class EuropeanOptionHestonModelBoundary
 			final double... stateVariables) {
 
 		final EuropeanOption option = (EuropeanOption) product;
-		final CallOrPut sign = option.getCallOrPut();
-
 		time = Math.max(time, EPSILON);
 
-		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
-		final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
-
-		final double strike = option.getStrike();
-		final double maturity = option.getMaturity();
+		final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
 		final BoundaryCondition[] result = new BoundaryCondition[2];
 
-		// S -> 0
-		if(sign == CallOrPut.CALL) {
-			result[0] = StandardBoundaryCondition.dirichlet(0.0);
-		}
-		else {
-			result[0] = StandardBoundaryCondition.dirichlet(
-					strike * Math.exp(-riskFreeRate * (maturity - time))
-			);
-		}
+		result[0] = StandardBoundaryCondition.dirichlet(
+				getDiscountedIntrinsicValue(option, time, S)
+		);
 
 		// v -> lower boundary: leave PDE row intact
 		result[1] = StandardBoundaryCondition.none();
@@ -71,39 +64,41 @@ public class EuropeanOptionHestonModelBoundary
 			final double... stateVariables) {
 
 		final EuropeanOption option = (EuropeanOption) product;
-		final CallOrPut sign = option.getCallOrPut();
-
 		time = Math.max(time, EPSILON);
-
-		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
-		final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
-
-		final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(time);
-		final double dividendYieldRate = -Math.log(discountFactorDividend) / time;
-
-		final double strike = option.getStrike();
-		final double maturity = option.getMaturity();
 
 		final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
 		final BoundaryCondition[] result = new BoundaryCondition[2];
 
-		// S -> infinity
-		if(sign == CallOrPut.CALL) {
-			final double dividendAdjustedStockPrice =
-					S * Math.exp(-dividendYieldRate * (maturity - time));
-			result[0] = StandardBoundaryCondition.dirichlet(
-					dividendAdjustedStockPrice
-					- strike * Math.exp(-riskFreeRate * (maturity - time))
-			);
-		}
-		else {
-			result[0] = StandardBoundaryCondition.dirichlet(0.0);
-		}
+		result[0] = StandardBoundaryCondition.dirichlet(
+				getDiscountedIntrinsicValue(option, time, S)
+		);
 
 		// v -> upper boundary: leave PDE row intact
 		result[1] = StandardBoundaryCondition.none();
 
 		return result;
+	}
+
+	private double getDiscountedIntrinsicValue(
+			final EuropeanOption option,
+			final double evaluationTime,
+			final double stock) {
+
+		final double maturity = option.getMaturity();
+		final double tau = Math.max(maturity - evaluationTime, 0.0);
+
+		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(tau);
+		final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(tau);
+
+		final double discountedForwardLikeSpot = stock * discountFactorDividend;
+		final double discountedStrike = option.getStrike() * discountFactorRiskFree;
+
+		if(option.getCallOrPut() == CallOrPut.CALL) {
+			return Math.max(discountedForwardLikeSpot - discountedStrike, 0.0);
+		}
+		else {
+			return Math.max(discountedStrike - discountedForwardLikeSpot, 0.0);
+		}
 	}
 }

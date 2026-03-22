@@ -127,6 +127,7 @@ public class BermudanOption implements FiniteDifferenceProduct {
 			return new FDMThetaMethod1D(model, this, spaceTimeDiscretization, exercise);
 		}
 		else if(model instanceof FDMHestonModel) {
+			//return new FDMThetaMethod2D(model, this, spaceTimeDiscretization, exercise);
 			return new FDMHestonADI2D((FDMHestonModel) model, this, model.getSpaceTimeDiscretization(), exercise);//FDMThetaMethod2D(model, this, spaceTimeDiscretization, exercise);
 		}
 		else {

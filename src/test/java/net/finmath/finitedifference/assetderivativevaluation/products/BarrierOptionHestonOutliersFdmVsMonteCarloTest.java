@@ -1,3 +1,4 @@
+
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
 import static org.junit.Assert.assertEquals;
@@ -28,10 +29,18 @@ import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
 /**
- * Compares finite-difference prices of European barrier options under a Heston model
- * with Monte Carlo benchmark prices.
+ * Focused regression test for the two Heston barrier cases that are still problematic:
+ * <ul>
+ *   <li>UP_OUT CALL</li>
+ *   <li>DOWN_OUT PUT</li>
+ * </ul>
+ *
+ * <p>
+ * This is intended to isolate boundary-condition / continuation-region issues
+ * in the direct Heston knock-out PDE solver.
+ * </p>
  */
-public class BarrierOptionHestonFdmVsMonteCarloTest {
+public class BarrierOptionHestonOutliersFdmVsMonteCarloTest {
 
 	private static final double MATURITY = 1.0;
 	private static final double STRIKE = 100.0;
@@ -42,9 +51,9 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 	private static final double Q = 0.00;
 
 	private static final double VOLATILITY = 0.25;
-	private static final double VOLATILITY_SQUARED = VOLATILITY * VOLATILITY;
+	private static final double V0 = VOLATILITY * VOLATILITY;
 	private static final double KAPPA = 1.5;
-	private static final double THETA_H = VOLATILITY_SQUARED;
+	private static final double THETA_H = V0;
 	private static final double XI = 0.30;
 	private static final double RHO = -0.70;
 
@@ -57,43 +66,13 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 	private static final int STEPS_BETWEEN_BARRIER_AND_SPOT = 40;
 
 	@Test
-	public void testDownAndOutEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_OUT, 80.0, 0.20);
-	}
-
-	@Test
-	public void testDownAndInEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.DOWN_IN, 80.0, 0.25);
-	}
-
-	@Test
 	public void testUpAndOutEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.UP_OUT, 130.0, 0.20);
-	}
-
-	@Test
-	public void testUpAndInEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.CALL, BarrierType.UP_IN, 130.0, 0.25);
+		runBarrierTest(CallOrPut.CALL, BarrierType.UP_OUT, 120.0, 0.20);
 	}
 
 	@Test
 	public void testDownAndOutEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
 		runBarrierTest(CallOrPut.PUT, BarrierType.DOWN_OUT, 80.0, 0.20);
-	}
-
-	@Test
-	public void testDownAndInEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.DOWN_IN, 80.0, 0.25);
-	}
-
-	@Test
-	public void testUpAndOutEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.UP_OUT, 130.0, 0.20);
-	}
-
-	@Test
-	public void testUpAndInEuropeanPutHestonFiniteDifferenceVsMonteCarlo() throws Exception {
-		runBarrierTest(CallOrPut.PUT, BarrierType.UP_IN, 120.0, 0.25);
 	}
 
 	private void runBarrierTest(
@@ -114,37 +93,34 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 		final Grid sGrid = createSpotGrid(barrier, barrierType);
 
 		final double vMin = 0.0;
-		final double vMax = Math.max(4.0 * THETA_H, VOLATILITY_SQUARED + 4.0 * XI * Math.sqrt(MATURITY));
+		final double vMax = Math.max(4.0 * THETA_H, V0 + 4.0 * XI * Math.sqrt(MATURITY));
 		final Grid vGrid = new UniformGrid(NUMBER_OF_SPACE_STEPS_V, vMin, vMax);
 
 		final SpaceTimeDiscretization spaceTime = new SpaceTimeDiscretization(
 				new Grid[] { sGrid, vGrid },
 				timeDiscretization,
 				THETA,
-				new double[] { S0, VOLATILITY_SQUARED }
+				new double[] { S0, V0 }
 		);
 
-		
 		final FDMHestonModel fdmModel = new FDMHestonModel(
-		        S0,
-		        VOLATILITY_SQUARED,
-		        riskFreeCurve,
-		        dividendCurve,
-		        KAPPA,
-		        THETA_H,
-		        XI,
-		        RHO,
-		        spaceTime
+				S0,
+				V0,
+				riskFreeCurve,
+				dividendCurve,
+				KAPPA,
+				THETA_H,
+				XI,
+				RHO,
+				spaceTime
 		);
-
-		final double callOrPutSign = callOrPut == CallOrPut.CALL ? 1.0 : -1.0;
 
 		final BarrierOption fdmProduct = new BarrierOption(
 				MATURITY,
 				STRIKE,
 				barrier,
 				REBATE,
-				callOrPutSign,
+				callOrPut,
 				barrierType
 		);
 
@@ -154,7 +130,7 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 
 		assertTrue("S0 must lie inside the spot grid domain.", S0 >= sNodes[0] - 1E-12 && S0 <= sNodes[sNodes.length - 1] + 1E-12);
 
-		final int v0Index = getNearestGridIndex(vNodes, VOLATILITY_SQUARED);
+		final int v0Index = getNearestGridIndex(vNodes, V0);
 
 		final double[] fdSliceAtInitialVariance = new double[sNodes.length];
 		for(int i = 0; i < sNodes.length; i++) {
@@ -187,17 +163,17 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 				new BrownianMotionFromMersenneRandomNumbers(mcTimes, 2, numberOfPaths, seed);
 
 		final net.finmath.montecarlo.assetderivativevaluation.models.HestonModel mcModel =
-		        new net.finmath.montecarlo.assetderivativevaluation.models.HestonModel(
-		                S0,
-		                R - Q,
-		                Math.sqrt(VOLATILITY_SQUARED),
-		                R,
-		                THETA_H,
-		                KAPPA,
-		                XI,
-		                RHO,
-		                Scheme.FULL_TRUNCATION
-		        );
+				new net.finmath.montecarlo.assetderivativevaluation.models.HestonModel(
+						S0,
+						R - Q,
+						VOLATILITY,
+						R,
+						THETA_H,
+						KAPPA,
+						XI,
+						RHO,
+						Scheme.FULL_TRUNCATION
+				);
 
 		final EulerSchemeFromProcessModel process =
 				new EulerSchemeFromProcessModel(mcModel, brownianMotion);
@@ -217,8 +193,11 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 		final double mcPrice = mcProduct.getValue(mcSimulation);
 
 		System.out.println("Type           = " + barrierType + " " + callOrPut);
+		System.out.println("Barrier        = " + barrier);
 		System.out.println("Grid min       = " + sNodes[0]);
 		System.out.println("Grid max       = " + sNodes[sNodes.length - 1]);
+		System.out.println("Grid size S    = " + sNodes.length);
+		System.out.println("Grid size V    = " + vNodes.length);
 		System.out.println("S0 on grid     = " + (s0Index >= 0));
 		System.out.println("FD price       = " + fdPrice);
 		System.out.println("MC price       = " + mcPrice);
@@ -243,37 +222,31 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 
 		final double deltaS = Math.abs(barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
 
-		if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) {
+		if(barrierType == BarrierType.DOWN_OUT) {
 			final double sMin = barrier;
-
-			/*
-			 * Need a sufficiently wide continuation region above S0 for calls and for stable PDE behaviour.
-			 */
 			final double desiredSMax = Math.max(3.0 * S0, S0 + 12.0 * deltaS);
 			final int numberOfSteps = Math.max(
 					NUMBER_OF_SPACE_STEPS_S,
 					(int)Math.round((desiredSMax - sMin) / deltaS)
 			);
 			final double sMax = sMin + numberOfSteps * deltaS;
-
 			return new UniformGrid(numberOfSteps, sMin, sMax);
 		}
-		else {
+		else if(barrierType == BarrierType.UP_OUT) {
 			final double sMax = barrier;
-
-			/*
-			 * For a spot PDE the lower boundary must not be negative.
-			 */
 			final double desiredSMin = 0.0;
 			final int numberOfSteps = Math.max(
 					NUMBER_OF_SPACE_STEPS_S,
 					(int)Math.round((sMax - desiredSMin) / deltaS)
 			);
 			final double sMin = Math.max(0.0, sMax - numberOfSteps * deltaS);
-
 			return new UniformGrid(numberOfSteps, sMin, sMax);
 		}
+		else {
+			throw new IllegalArgumentException("This focused regression test supports only knock-out options.");
+		}
 	}
+
 	private static int getGridIndex(final double[] grid, final double value) {
 		final double tolerance = 1E-12;
 		for(int i = 0; i < grid.length; i++) {

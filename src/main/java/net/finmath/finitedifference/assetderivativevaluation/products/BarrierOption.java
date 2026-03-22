@@ -1,6 +1,11 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory2D;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -8,7 +13,8 @@ import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
-import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
+import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
+import net.finmath.finitedifference.solvers.adi.FDMHestonADI2DTwoState;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
@@ -34,16 +40,18 @@ import net.finmath.time.TimeDiscretization;
  *       using internal state constraints on the original product grid,</li>
  *   <li>1D knock-in options are priced directly through a coupled two-state PDE
  *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
- *   <li>the resulting 1D knock-in surface is interpolated back to the original product grid,</li>
- *   <li>2D knock-in options currently fall back to parity,</li>
+ *   <li>2D Heston knock-in options are priced directly through a coupled two-state ADI PDE
+ *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
+ *   <li>the resulting direct knock-in surface is interpolated back to the original product grid,</li>
+ *   <li>other 2D knock-in options currently fall back to parity,</li>
  *   <li>exercise is currently European only.</li>
  * </ul>
  *
  * <p>
- * The auxiliary interior-barrier grid used for 1D knock-ins is chosen because
- * the direct coupled formulation requires an activated state evolving on a full
- * domain, unlike knock-out pricing where it is natural to place the barrier on
- * the outer grid boundary.
+ * The auxiliary interior-barrier grid used for direct knock-ins is chosen because
+ * the coupled formulation requires an activated state evolving on a full domain,
+ * unlike knock-out pricing where it is natural to place the barrier on the
+ * outer grid boundary.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -63,8 +71,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
 
 	/*
-	 * 2D capped settings are kept only for possible future use.
-	 * For now 2D knock-ins fall back to parity.
+	 * 2D direct knock-in settings.
 	 */
 	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_2D = 40;
 	private static final int DOWN_IN_PUT_EXTRA_STEPS_2D = 160;
@@ -193,10 +200,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 					"priceInOptionThroughActivationPolicy was called for a non knock-in barrier type.");
 		}
 
-		/*
-		 * Direct coupled-PDE knock-in pricing is currently implemented only in 1D.
-		 * 2D knock-ins fall back to parity for now.
-		 */
 		if(numberOfSpaceDimensions == 1) {
 			final FiniteDifferenceEquityModel knockInModel = createAuxiliaryKnockInModel1D(model);
 
@@ -226,6 +229,36 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 					model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid()
 			);
 		}
+		else if(numberOfSpaceDimensions == 2 && model instanceof FDMHestonModel) {
+			final FiniteDifferenceEquityModel knockInModel = createAuxiliaryKnockInModel2D(model);
+			final FDMHestonModel hestonKnockInModel = (FDMHestonModel)knockInModel;
+
+			final FDMHestonADI2DTwoState solver = new FDMHestonADI2DTwoState(
+					hestonKnockInModel,
+					this,
+					knockInModel.getSpaceTimeDiscretization(),
+					exercise,
+					ActiveBoundaryProviderFactory2D.createProvider(
+							hestonKnockInModel,
+							strike,
+							maturity,
+							callOrPutSign
+					)
+			);
+
+			final double[][] knockInValuesOnAuxiliaryGrid = solver.getValues(
+					maturity,
+					(assetValue, varianceValue) -> callOrPutSign == CallOrPut.CALL
+							? Math.max(assetValue - strike, 0.0)
+							: Math.max(strike - assetValue, 0.0)
+			);
+
+			return interpolateSurfaceToOriginalGrid2DAlongFirstState(
+					knockInValuesOnAuxiliaryGrid,
+					knockInModel.getSpaceTimeDiscretization(),
+					model.getSpaceTimeDiscretization()
+			);
+		}
 		else {
 			return priceInOptionByParity(model);
 		}
@@ -241,28 +274,57 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		final FiniteDifferenceEquityModel vanillaModel = createAuxiliaryVanillaModel(barrierModel);
 		final double[][] vanillaValues = vanillaOption.getValues(vanillaModel);
 
-		final double[] barrierGrid = barrierModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-		final double[] vanillaGrid = vanillaModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+		final SpaceTimeDiscretization barrierDiscretization = barrierModel.getSpaceTimeDiscretization();
+		final SpaceTimeDiscretization vanillaDiscretization = vanillaModel.getSpaceTimeDiscretization();
 
-		final int numberOfColumns = outValues[0].length;
-		final double[][] inValues = new double[outValues.length][numberOfColumns];
+		final int dims = barrierDiscretization.getNumberOfSpaceGrids();
 
-		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
-			final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
-					vanillaGrid,
-					getColumn(vanillaValues, timeIndex),
-					InterpolationMethod.LINEAR,
-					ExtrapolationMethod.CONSTANT
+		if(dims == 1) {
+			final double[] barrierGrid = barrierDiscretization.getSpaceGrid(0).getGrid();
+			final double[] vanillaGrid = vanillaDiscretization.getSpaceGrid(0).getGrid();
+
+			final int numberOfColumns = outValues[0].length;
+			final double[][] inValues = new double[outValues.length][numberOfColumns];
+
+			for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+				final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+						vanillaGrid,
+						getColumn(vanillaValues, timeIndex),
+						InterpolationMethod.LINEAR,
+						ExtrapolationMethod.CONSTANT
+				);
+
+				for(int i = 0; i < barrierGrid.length; i++) {
+					final double stock = barrierGrid[i];
+					final double vanillaValue = interpolator.getValue(stock);
+					inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
+				}
+			}
+
+			return inValues;
+		}
+		else if(dims == 2) {
+			final double[][] vanillaOnBarrierGrid = interpolateSurfaceToOriginalGrid2DAlongFirstState(
+					vanillaValues,
+					vanillaDiscretization,
+					barrierDiscretization
 			);
 
-			for(int i = 0; i < barrierGrid.length; i++) {
-				final double stock = barrierGrid[i];
-				final double vanillaValue = interpolator.getValue(stock);
-				inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
-			}
-		}
+			final int numberOfRows = outValues.length;
+			final int numberOfColumns = outValues[0].length;
+			final double[][] inValues = new double[numberOfRows][numberOfColumns];
 
-		return inValues;
+			for(int i = 0; i < numberOfRows; i++) {
+				for(int j = 0; j < numberOfColumns; j++) {
+					inValues[i][j] = vanillaOnBarrierGrid[i][j] - outValues[i][j];
+				}
+			}
+
+			return inValues;
+		}
+		else {
+			throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+		}
 	}
 
 	private double[][] interpolateSurfaceToOriginalGrid1D(
@@ -313,7 +375,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 
 		final int auxiliaryN0 = auxiliaryX0.length;
-		final int auxiliaryN1 = auxiliaryX1.length;
 		final int originalN0 = originalX0.length;
 		final int originalN1 = originalX1.length;
 
@@ -347,18 +408,32 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private FDMSolver createSolver(final FiniteDifferenceEquityModel model) {
-		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+		if(model instanceof FDMBlackScholesModel) {
+			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
+		else if(model instanceof FDMCevModel) {
+			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
+		else if(model instanceof FDMBachelierModel) {
+			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
+		else if(model instanceof FDMHestonModel) {
+			//solver = new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+			return new FDMHestonADI2D((FDMHestonModel) model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
+		else {
+			throw new IllegalArgumentException(
+					"BarrierOption currently supports only 1D or 2D finite-difference models.");
+		}
+		/*final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
 		if(numberOfSpaceDimensions == 1) {
 			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else if(numberOfSpaceDimensions == 2) {
 			return new FDMThetaMethod2D(model, this, model.getSpaceTimeDiscretization(), exercise);
-		}
-		else {
-			throw new IllegalArgumentException(
-					"BarrierOption currently supports only 1D or 2D finite-difference models.");
-		}
+		}*/
+		
 	}
 
 	private EuropeanOption createVanillaOption() {
@@ -406,16 +481,36 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		final double sMax = Math.ceil(targetMax / deltaS) * deltaS;
 		final int numberOfSteps = (int)Math.round((sMax - sMin) / deltaS);
 
-		final Grid vanillaGrid = new UniformGrid(numberOfSteps, sMin, sMax);
+		final Grid vanillaSpotGrid = new UniformGrid(numberOfSteps, sMin, sMax);
 
-		final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
-				vanillaGrid,
-				timeDiscretization,
-				thetaValue,
-				new double[] { initialValue }
-		);
+		if(barrierDiscretization.getNumberOfSpaceGrids() == 1) {
+			final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
+					vanillaSpotGrid,
+					timeDiscretization,
+					thetaValue,
+					new double[] { initialValue }
+			);
+			return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
+		}
+		else if(barrierDiscretization.getNumberOfSpaceGrids() == 2) {
+			final double[] varianceGrid = barrierDiscretization.getSpaceGrid(1).getGrid();
+			final Grid preservedVarianceGrid = new UniformGrid(
+					varianceGrid.length - 1,
+					varianceGrid[0],
+					varianceGrid[varianceGrid.length - 1]
+			);
 
-		return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
+			final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
+					new Grid[] { vanillaSpotGrid, preservedVarianceGrid },
+					timeDiscretization,
+					thetaValue,
+					barrierModel.getInitialValue()
+			);
+			return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
+		}
+		else {
+			throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+		}
 	}
 
 	private FiniteDifferenceEquityModel createAuxiliaryKnockInModel1D(final FiniteDifferenceEquityModel originalModel) {

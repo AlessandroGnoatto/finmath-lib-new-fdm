@@ -21,21 +21,14 @@ import net.finmath.modelling.products.BarrierType;
  * </p>
  *
  * <p>
- * This implementation mirrors the stabilized vanilla Heston ADI solver:
+ * This rewrite enforces the coupling condition much more strongly than the
+ * previous version:
  * </p>
  * <ul>
- *   <li>Douglas-style ADI,</li>
- *   <li>two half-substeps per PDE time step,</li>
- *   <li>same corrected directional line matrices from {@link HestonADIStencilBuilder}.</li>
- * </ul>
- *
- * <p>
- * Two-state logic is added only via overlays:
- * </p>
- * <ul>
- *   <li>active outer boundaries from the injected provider,</li>
- *   <li>inactive continuation-side boundary = discounted no-hit value,</li>
- *   <li>inactive = active on the whole already-hit region in spot.</li>
+ *   <li>the whole hit region in the inactive state is clamped to the active state,</li>
+ *   <li>that clamp is imposed inside the implicit line solves, not only afterward,</li>
+ *   <li>the inactive continuation-side far boundary remains the no-hit boundary,</li>
+ *   <li>active-state outer boundaries are imposed from the injected provider.</li>
  * </ul>
  *
  * <p>
@@ -46,6 +39,7 @@ import net.finmath.modelling.products.BarrierType;
 public class FDMHestonADI2DTwoState {
 
 	private static final double EPSILON = 1E-10;
+	private static final double MAX_ABS_VALUE = 1E12;
 
 	private final FDMHestonModel model;
 	private final BarrierOption product;
@@ -61,6 +55,7 @@ public class FDMHestonADI2DTwoState {
 	private final int nV;
 	private final int n;
 
+	private final int barrierSpotIndex;
 	private final HestonADIStencilBuilder stencilBuilder;
 
 	public FDMHestonADI2DTwoState(
@@ -94,8 +89,7 @@ public class FDMHestonADI2DTwoState {
 		this.nV = vGrid.length;
 		this.n = nS * nV;
 
-		validateBarrierOnGridNode(sGrid, product.getBarrierValue());
-
+		this.barrierSpotIndex = getBarrierIndex(sGrid, product.getBarrierValue());
 		this.stencilBuilder = new HestonADIStencilBuilder(model, sGrid, vGrid);
 	}
 
@@ -112,7 +106,6 @@ public class FDMHestonADI2DTwoState {
 		double[] uActive = new double[n];
 
 		initializeTerminalStates(uInactive, uActive, valueAtMaturity);
-
 		applyTwoStateConditions(time, uInactive, uActive);
 
 		final RealMatrix solutionSurface = new Array2DRowRealMatrix(n, timeLength);
@@ -125,11 +118,10 @@ public class FDMHestonADI2DTwoState {
 
 			final TwoStateStepResult next = performStableDouglasStep(uInactive, uActive, currentTime, dt);
 
-			uInactive = next.uInactive;
-			uActive = next.uActive;
+			uInactive = sanitize(next.uInactive);
+			uActive = sanitize(next.uActive);
 
 			applyTwoStateConditions(currentTime, uInactive, uActive);
-
 			uInactive = sanitize(uInactive);
 			uActive = sanitize(uActive);
 
@@ -164,9 +156,6 @@ public class FDMHestonADI2DTwoState {
 			final double[] uActive,
 			final DoubleBinaryOperator valueAtMaturity) {
 
-		final BarrierType barrierType = product.getBarrierType();
-		final double barrier = product.getBarrierValue();
-
 		for(int j = 0; j < nV; j++) {
 			for(int i = 0; i < nS; i++) {
 				final int k = flatten(i, j);
@@ -175,15 +164,11 @@ public class FDMHestonADI2DTwoState {
 				final double payoff = valueAtMaturity.applyAsDouble(s, v);
 
 				uActive[k] = payoff;
-				uInactive[k] = isAlreadyHitRegion(s, barrierType, barrier) ? payoff : product.getRebate();
+				uInactive[k] = isHitIndex(i) ? payoff : product.getRebate();
 			}
 		}
 	}
 
-	/**
-	 * Conservative stabilization-first step:
-	 * split one PDE step into two half Douglas ADI steps for both states.
-	 */
 	private TwoStateStepResult performStableDouglasStep(
 			final double[] uInactive,
 			final double[] uActive,
@@ -208,6 +193,8 @@ public class FDMHestonADI2DTwoState {
 			final double currentTime,
 			final double dt) {
 
+		applyTwoStateConditions(currentTime, uInactive, uActive);
+
 		final double[] explicitInactive = applyFullExplicitOperator(uInactive, currentTime);
 		final double[] explicitActive = applyFullExplicitOperator(uActive, currentTime);
 
@@ -222,19 +209,19 @@ public class FDMHestonADI2DTwoState {
 		final double[] rhs1Inactive = subtract(y0Inactive, scale(a1Inactive, theta * dt));
 		final double[] rhs1Active = subtract(y0Active, scale(a1Active, theta * dt));
 
-		double[] y1Inactive = solveSpotLinesInactive(rhs1Inactive, currentTime, dt);
 		double[] y1Active = solveSpotLinesActive(rhs1Active, currentTime, dt);
+		double[] y1Inactive = solveSpotLinesInactive(rhs1Inactive, y1Active, currentTime, dt);
 
 		applyTwoStateConditions(currentTime, y1Inactive, y1Active);
 
-		final double[] a2Inactive = applyA2Explicit(uInactive, currentTime);
-		final double[] a2Active = applyA2Explicit(uActive, currentTime);
+		final double[] a2Inactive = applyA2Explicit(y1Inactive, currentTime);
+		final double[] a2Active = applyA2Explicit(y1Active, currentTime);
 
 		final double[] rhs2Inactive = subtract(y1Inactive, scale(a2Inactive, theta * dt));
 		final double[] rhs2Active = subtract(y1Active, scale(a2Active, theta * dt));
 
-		double[] y2Inactive = solveVarianceLinesInactive(rhs2Inactive, currentTime, dt);
 		double[] y2Active = solveVarianceLinesActive(rhs2Active, currentTime, dt);
+		double[] y2Inactive = solveVarianceLinesInactive(rhs2Inactive, y2Active, currentTime, dt);
 
 		applyTwoStateConditions(currentTime, y2Inactive, y2Active);
 
@@ -301,13 +288,10 @@ public class FDMHestonADI2DTwoState {
 
 	private void applyCouplingOnHitSet(final double[] uInactive, final double[] uActive) {
 
-		final BarrierType barrierType = product.getBarrierType();
-		final double barrier = product.getBarrierValue();
-
 		for(int j = 0; j < nV; j++) {
 			for(int i = 0; i < nS; i++) {
-				final int k = flatten(i, j);
-				if(isAlreadyHitRegion(sGrid[i], barrierType, barrier)) {
+				if(isHitIndex(i)) {
+					final int k = flatten(i, j);
 					uInactive[k] = uActive[k];
 				}
 			}
@@ -475,8 +459,6 @@ public class FDMHestonADI2DTwoState {
 
 	/**
 	 * Implicit solve along spot lines for fixed variance in the active regime.
-	 * Uses the same stabilized line solve style as the vanilla solver, with active
-	 * spot boundaries injected from the provider.
 	 */
 	protected double[] solveSpotLinesActive(
 			final double[] rhs,
@@ -515,11 +497,15 @@ public class FDMHestonADI2DTwoState {
 
 	/**
 	 * Implicit solve along spot lines for fixed variance in the inactive regime.
-	 * Uses continuation-side no-hit boundary and leaves the hit-side boundary to the
-	 * two-state overlay re-imposition.
+	 *
+	 * <p>
+	 * The whole hit region is clamped directly to the current active state inside
+	 * the tridiagonal system. This is the main stabilization change.
+	 * </p>
 	 */
 	protected double[] solveSpotLinesInactive(
 			final double[] rhs,
+			final double[] activeReference,
 			final double time,
 			final double dt) {
 
@@ -535,23 +521,21 @@ public class FDMHestonADI2DTwoState {
 				lineRhs[i] = rhs[flatten(i, j)];
 			}
 
-			final double lowerBoundaryValue;
-			final double upperBoundaryValue;
-
 			if(barrierType == BarrierType.DOWN_IN) {
-				lowerBoundaryValue = lineRhs[0];
-				upperBoundaryValue = noHitValue;
+				for(int i = 0; i <= barrierSpotIndex; i++) {
+					overwriteBoundaryRow(m, lineRhs, i, activeReference[flatten(i, j)]);
+				}
+				overwriteBoundaryRow(m, lineRhs, nS - 1, noHitValue);
 			}
 			else if(barrierType == BarrierType.UP_IN) {
-				lowerBoundaryValue = noHitValue;
-				upperBoundaryValue = lineRhs[nS - 1];
+				overwriteBoundaryRow(m, lineRhs, 0, noHitValue);
+				for(int i = barrierSpotIndex; i < nS; i++) {
+					overwriteBoundaryRow(m, lineRhs, i, activeReference[flatten(i, j)]);
+				}
 			}
 			else {
 				throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
 			}
-
-			overwriteBoundaryRow(m, lineRhs, 0, lowerBoundaryValue);
-			overwriteBoundaryRow(m, lineRhs, nS - 1, upperBoundaryValue);
 
 			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
 
@@ -565,7 +549,6 @@ public class FDMHestonADI2DTwoState {
 
 	/**
 	 * Implicit solve along variance lines for fixed spot in the active regime.
-	 * Variance boundaries are taken from the provider where supplied, otherwise from rhs.
 	 */
 	protected double[] solveVarianceLinesActive(
 			final double[] rhs,
@@ -604,16 +587,28 @@ public class FDMHestonADI2DTwoState {
 
 	/**
 	 * Implicit solve along variance lines for fixed spot in the inactive regime.
-	 * Keeps incoming variance-edge values, like the stabilized vanilla solver.
+	 *
+	 * <p>
+	 * For spot nodes already in the hit region, the whole inactive variance line is
+	 * clamped to the active reference line.
+	 * </p>
 	 */
 	protected double[] solveVarianceLinesInactive(
 			final double[] rhs,
+			final double[] activeReference,
 			final double time,
 			final double dt) {
 
 		final double[] out = rhs.clone();
 
 		for(int i = 0; i < nS; i++) {
+			if(isHitIndex(i)) {
+				for(int j = 0; j < nV; j++) {
+					out[flatten(i, j)] = activeReference[flatten(i, j)];
+				}
+				continue;
+			}
+
 			final TridiagonalMatrix m = stencilBuilder.buildVarianceLineMatrix(time, dt, theta, i);
 
 			final double[] lineRhs = new double[nV];
@@ -646,28 +641,25 @@ public class FDMHestonADI2DTwoState {
 		rhs[row] = value;
 	}
 
-	private void validateBarrierOnGridNode(final double[] grid, final double barrier) {
-		for(final double x : grid) {
-			if(Math.abs(x - barrier) < 1E-12) {
-				return;
+	private int getBarrierIndex(final double[] grid, final double barrier) {
+		for(int i = 0; i < grid.length; i++) {
+			if(Math.abs(grid[i] - barrier) < 1E-12) {
+				return i;
 			}
 		}
 		throw new IllegalArgumentException(
 				"Barrier must coincide with a first-state-variable grid node for direct two-state Heston pricing.");
 	}
 
-	private boolean isAlreadyHitRegion(
-			final double s,
-			final BarrierType barrierType,
-			final double barrier) {
-
-		switch(barrierType) {
-		case DOWN_IN:
-			return s <= barrier;
-		case UP_IN:
-			return s >= barrier;
-		default:
-			throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
+	private boolean isHitIndex(final int i) {
+		if(product.getBarrierType() == BarrierType.DOWN_IN) {
+			return i <= barrierSpotIndex;
+		}
+		else if(product.getBarrierType() == BarrierType.UP_IN) {
+			return i >= barrierSpotIndex;
+		}
+		else {
+			throw new IllegalArgumentException("Unsupported barrier type: " + product.getBarrierType());
 		}
 	}
 
@@ -706,11 +698,11 @@ public class FDMHestonADI2DTwoState {
 			if(!Double.isFinite(value)) {
 				out[i] = 0.0;
 			}
-			else if(value > 1E12) {
-				out[i] = 1E12;
+			else if(value > MAX_ABS_VALUE) {
+				out[i] = MAX_ABS_VALUE;
 			}
-			else if(value < -1E12) {
-				out[i] = -1E12;
+			else if(value < -MAX_ABS_VALUE) {
+				out[i] = -MAX_ABS_VALUE;
 			}
 			else {
 				out[i] = value;

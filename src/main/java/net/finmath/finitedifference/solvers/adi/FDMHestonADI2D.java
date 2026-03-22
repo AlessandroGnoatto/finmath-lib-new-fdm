@@ -6,6 +6,7 @@ import java.util.function.DoubleUnaryOperator;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
@@ -20,8 +21,7 @@ import net.finmath.modelling.Exercise;
  *
  * <p>
  * This implementation uses a conservative Douglas-style ADI step with two half-substeps
- * per PDE time step. It is intended to produce a stable base solver for vanilla Heston
- * before enabling more advanced barrier / two-state ADI logic.
+ * per PDE time step.
  * </p>
  *
  * <p>
@@ -37,8 +37,16 @@ import net.finmath.modelling.Exercise;
  * Flattening convention:
  * {@code k = iS + iV * nS}, where {@code iS} is the fastest index.
  * </p>
+ *
+ * <p>
+ * Obstacle handling:
+ * For American and Bermudan exercise, this solver applies a post-step projection
+ * {@code u = max(u, payoff)} whenever exercise is allowed at the current running time.
+ * Internal state constraints (e.g. barriers) remain hard constraints and take precedence
+ * over the exercise obstacle.
+ * </p>
  */
-public class FDMHestonADI2D implements FDMSolver{
+public class FDMHestonADI2D implements FDMSolver {
 
 	private final FDMHestonModel model;
 	private final FiniteDifferenceProduct product;
@@ -67,10 +75,6 @@ public class FDMHestonADI2D implements FDMSolver{
 		this.spaceTimeDiscretization = spaceTimeDiscretization;
 		this.exercise = exercise;
 
-		if(!exercise.isEuropean()) {
-			throw new IllegalArgumentException("FDMHestonADI2D currently supports only European exercise.");
-		}
-
 		final Grid sGridObj = spaceTimeDiscretization.getSpaceGrid(0);
 		final Grid vGridObj = spaceTimeDiscretization.getSpaceGrid(1);
 		if(sGridObj == null || vGridObj == null) {
@@ -88,6 +92,7 @@ public class FDMHestonADI2D implements FDMSolver{
 		this.stencilBuilder = new HestonADIStencilBuilder(model, sGrid, vGrid);
 	}
 
+	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 		return getValues(time, (s, v) -> valueAtMaturity.applyAsDouble(s));
 	}
@@ -106,18 +111,35 @@ public class FDMHestonADI2D implements FDMSolver{
 
 		applyOuterBoundaries(time, u);
 		applyInternalConstraints(time, u);
+		u = sanitize(u);
 
 		final RealMatrix solutionSurface = new Array2DRowRealMatrix(n, timeLength);
 		solutionSurface.setColumn(0, u.clone());
 
 		for(int m = 0; m < numberOfTimeSteps; m++) {
 			final double dt = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
-			final double currentTime =
-					spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-			u = performStableDouglasStep(u, currentTime, dt);
-			applyOuterBoundaries(currentTime, u);
-			applyInternalConstraints(currentTime, u);
+			final double tauNext = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+			final double runningTimeNext =
+					spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tauNext;
+
+			u = performStableDouglasStep(u, runningTimeNext, dt);
+
+			/*
+			 * End-of-step enforcement:
+			 * 1) internal hard constraints
+			 * 2) outer boundaries
+			 * 3) early-exercise obstacle, if allowed
+			 * 4) restore hard constraints / boundaries after projection
+			 */
+			applyInternalConstraints(runningTimeNext, u);
+			applyOuterBoundaries(runningTimeNext, u);
+
+			applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, valueAtMaturity);
+
+			applyInternalConstraints(runningTimeNext, u);
+			applyOuterBoundaries(runningTimeNext, u);
+
 			u = sanitize(u);
 
 			solutionSurface.setColumn(m + 1, u.clone());
@@ -126,6 +148,7 @@ public class FDMHestonADI2D implements FDMSolver{
 		return solutionSurface.getData();
 	}
 
+	@Override
 	public double[] getValue(
 			final double evaluationTime,
 			final double time,
@@ -176,8 +199,11 @@ public class FDMHestonADI2D implements FDMSolver{
 		final double[] explicit = applyFullExplicitOperator(u, currentTime);
 		final double[] y0 = add(u, scale(explicit, dt));
 
+		/*
+		 * During a half-step, keep outer boundaries consistent, but do not clamp the
+		 * internal constraint or early-exercise obstacle yet.
+		 */
 		applyOuterBoundaries(currentTime, y0);
-		applyInternalConstraints(currentTime, y0);
 
 		final double[] a1u = applyA1Explicit(u, currentTime);
 		final double[] rhs1 = subtract(y0, scale(a1u, theta * dt));
@@ -185,15 +211,18 @@ public class FDMHestonADI2D implements FDMSolver{
 		y1 = sanitize(y1);
 
 		applyOuterBoundaries(currentTime, y1);
-		applyInternalConstraints(currentTime, y1);
 
 		final double[] a2u = applyA2Explicit(u, currentTime);
 		final double[] rhs2 = subtract(y1, scale(a2u, theta * dt));
 		double[] y2 = solveVarianceLines(rhs2, currentTime, dt);
 		y2 = sanitize(y2);
 
-		applyOuterBoundaries(currentTime, y2);
+		/*
+		 * Only now, at the end of the half-step, enforce internal hard constraints.
+		 * Early exercise is still deferred to the completed full step.
+		 */
 		applyInternalConstraints(currentTime, y2);
+		applyOuterBoundaries(currentTime, y2);
 
 		return y2;
 	}
@@ -425,7 +454,7 @@ public class FDMHestonADI2D implements FDMSolver{
 		}
 
 		final FiniteDifferenceInternalStateConstraint constraint =
-				(FiniteDifferenceInternalStateConstraint)product;
+				(FiniteDifferenceInternalStateConstraint) product;
 
 		for(int j = 0; j < nV; j++) {
 			for(int i = 0; i < nS; i++) {
@@ -435,6 +464,39 @@ public class FDMHestonADI2D implements FDMSolver{
 				}
 			}
 		}
+	}
+
+	protected void applyExerciseObstacleIfNeeded(
+			final double runningTime,
+			final double tau,
+			final double[] u,
+			final DoubleBinaryOperator valueAtMaturity) {
+
+		final boolean isExerciseAllowed =
+				FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau, exercise);
+
+		if(!isExerciseAllowed) {
+			return;
+		}
+
+		for(int j = 0; j < nV; j++) {
+			for(int i = 0; i < nS; i++) {
+				if(isInternalConstraintActive(runningTime, sGrid[i], vGrid[j])) {
+					continue;
+				}
+
+				final int k = flatten(i, j);
+				final double payoff = valueAtMaturity.applyAsDouble(sGrid[i], vGrid[j]);
+				u[k] = Math.max(u[k], payoff);
+			}
+		}
+	}
+
+	protected boolean isInternalConstraintActive(final double time, final double s, final double v) {
+		if(product instanceof FiniteDifferenceInternalStateConstraint) {
+			return ((FiniteDifferenceInternalStateConstraint) product).isConstraintActive(time, s, v);
+		}
+		return false;
 	}
 
 	private double getLowerBoundaryValueForSpot(final double time, final int varianceIndex, final double fallback) {
