@@ -1,0 +1,555 @@
+package net.finmath.finitedifference.solvers.adi;
+
+import java.util.function.DoubleBinaryOperator;
+import java.util.function.DoubleUnaryOperator;
+
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
+
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
+import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
+import net.finmath.finitedifference.grids.Grid;
+import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.finitedifference.solvers.FDMSolver;
+import net.finmath.finitedifference.solvers.ThomasSolver;
+import net.finmath.finitedifference.solvers.TridiagonalMatrix;
+import net.finmath.modelling.Exercise;
+
+/**
+ * Generic two-dimensional alternating direction implicit finite difference solver.
+ *
+ * <p>
+ * The solver works on two state variables and applies a stabilized Douglas-type
+ * ADI splitting. The operator is split into:
+ * </p>
+ * <ul>
+ *   <li>{@code A0}: mixed derivative term plus discount term, treated explicitly,</li>
+ *   <li>{@code A1}: first-direction drift and diffusion terms, treated implicitly,</li>
+ *   <li>{@code A2}: second-direction drift and diffusion terms, treated implicitly.</li>
+ * </ul>
+ *
+ * <p>
+ * The flattening convention is
+ * </p>
+ * <pre>
+ * k = i0 + i1 * n0
+ * </pre>
+ * <p>
+ * where {@code i0} is the index in the first spatial direction.
+ * </p>
+ *
+ * @author Alessandro Gnoatto
+ */
+public abstract class AbstractADI2D implements FDMSolver {
+
+	protected final FiniteDifferenceEquityModel model;
+	protected final FiniteDifferenceProduct product;
+	protected final SpaceTimeDiscretization spaceTimeDiscretization;
+	protected final Exercise exercise;
+
+	protected final double theta;
+
+	protected final double[] x0Grid;
+	protected final double[] x1Grid;
+
+	protected final int n0;
+	protected final int n1;
+	protected final int n;
+
+	protected final ADI2DStencilBuilder stencilBuilder;
+
+	protected AbstractADI2D(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise) {
+
+		this.model = model;
+		this.product = product;
+		this.spaceTimeDiscretization = spaceTimeDiscretization;
+		this.exercise = exercise;
+
+		final Grid x0GridObj = spaceTimeDiscretization.getSpaceGrid(0);
+		final Grid x1GridObj = spaceTimeDiscretization.getSpaceGrid(1);
+		if(x0GridObj == null || x1GridObj == null) {
+			throw new IllegalArgumentException("AbstractADI2D requires a 2D discretization.");
+		}
+
+		this.x0Grid = x0GridObj.getGrid();
+		this.x1Grid = x1GridObj.getGrid();
+
+		this.n0 = x0Grid.length;
+		this.n1 = x1Grid.length;
+		this.n = n0 * n1;
+
+		this.theta = Math.max(0.5, spaceTimeDiscretization.getTheta());
+		this.stencilBuilder = new ADI2DStencilBuilder(model, x0Grid, x1Grid);
+	}
+
+	@Override
+	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
+		return getValues(time, (x0, x1) -> valueAtMaturity.applyAsDouble(x0));
+	}
+
+	public double[][] getValues(final double time, final DoubleBinaryOperator valueAtMaturity) {
+
+		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
+		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
+
+		double[] u = new double[n];
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				u[flatten(i, j)] = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
+			}
+		}
+
+		applyOuterBoundaries(time, u);
+		applyInternalConstraints(time, u);
+		u = sanitize(u);
+
+		final RealMatrix solutionSurface = new Array2DRowRealMatrix(n, timeLength);
+		solutionSurface.setColumn(0, u.clone());
+
+		for(int m = 0; m < numberOfTimeSteps; m++) {
+			final double dt = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
+
+			final double tauNext = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+			final double runningTimeNext =
+					spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tauNext;
+
+			u = performStableDouglasStep(u, runningTimeNext, dt);
+
+			applyInternalConstraints(runningTimeNext, u);
+			applyOuterBoundaries(runningTimeNext, u);
+
+			applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, valueAtMaturity);
+
+			applyInternalConstraints(runningTimeNext, u);
+			applyOuterBoundaries(runningTimeNext, u);
+
+			u = sanitize(u);
+
+			solutionSurface.setColumn(m + 1, u.clone());
+		}
+
+		return solutionSurface.getData();
+	}
+
+	@Override
+	public double[] getValue(
+			final double evaluationTime,
+			final double time,
+			final DoubleUnaryOperator valueAtMaturity) {
+
+		final RealMatrix values = new Array2DRowRealMatrix(getValues(time, valueAtMaturity));
+		final double tau = time - evaluationTime;
+		final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
+		return values.getColumn(timeIndex);
+	}
+
+	public double[] getValue(
+			final double evaluationTime,
+			final double time,
+			final DoubleBinaryOperator valueAtMaturity) {
+
+		final RealMatrix values = new Array2DRowRealMatrix(getValues(time, valueAtMaturity));
+		final double tau = time - evaluationTime;
+		final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
+		return values.getColumn(timeIndex);
+	}
+
+	protected double[] performStableDouglasStep(
+			final double[] u,
+			final double currentTime,
+			final double dt) {
+
+		final double halfDt = 0.5 * dt;
+
+		double[] uMid = performDouglasHalfStep(u, currentTime + halfDt, halfDt);
+		uMid = sanitize(uMid);
+
+		double[] uNext = performDouglasHalfStep(uMid, currentTime, halfDt);
+		uNext = sanitize(uNext);
+
+		return uNext;
+	}
+
+	protected double[] performDouglasHalfStep(
+			final double[] u,
+			final double currentTime,
+			final double dt) {
+
+		final double[] explicit = applyFullExplicitOperator(u, currentTime);
+		final double[] y0 = add(u, scale(explicit, dt));
+
+		applyOuterBoundaries(currentTime, y0);
+
+		final double[] a1u = applyA1Explicit(u, currentTime);
+		final double[] rhs1 = subtract(y0, scale(a1u, theta * dt));
+		double[] y1 = solveFirstDirectionLines(rhs1, currentTime, dt);
+		y1 = sanitize(y1);
+
+		applyOuterBoundaries(currentTime, y1);
+
+		final double[] a2u = applyA2Explicit(u, currentTime);
+		final double[] rhs2 = subtract(y1, scale(a2u, theta * dt));
+		double[] y2 = solveSecondDirectionLines(rhs2, currentTime, dt);
+		y2 = sanitize(y2);
+
+		applyInternalConstraints(currentTime, y2);
+		applyOuterBoundaries(currentTime, y2);
+
+		return y2;
+	}
+
+	protected double[] applyFullExplicitOperator(final double[] u, final double time) {
+		return add(add(applyA0Explicit(u, time), applyA1Explicit(u, time)), applyA2Explicit(u, time));
+	}
+
+	protected double[] applyA0Explicit(final double[] u, final double time) {
+
+		final double[] out = new double[n];
+
+		final double tSafe = Math.max(time, 1E-10);
+		final double discountFactor = model.getRiskFreeCurve().getDiscountFactor(tSafe);
+		final double r = -Math.log(discountFactor) / tSafe;
+
+		for(int j = 1; j < n1 - 1; j++) {
+			for(int i = 1; i < n0 - 1; i++) {
+				final int k = flatten(i, j);
+
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final double[][] b = model.getFactorLoading(time, x0, x1);
+
+				double a01 = 0.0;
+				for(int f = 0; f < b[0].length; f++) {
+					a01 += b[0][f] * b[1][f];
+				}
+
+				final double dx0Down = x0Grid[i] - x0Grid[i - 1];
+				final double dx0Up = x0Grid[i + 1] - x0Grid[i];
+				final double dx1Down = x1Grid[j] - x1Grid[j - 1];
+				final double dx1Up = x1Grid[j + 1] - x1Grid[j];
+
+				final double d0d1 =
+						(
+								u[flatten(i + 1, j + 1)]
+								- u[flatten(i + 1, j - 1)]
+								- u[flatten(i - 1, j + 1)]
+								+ u[flatten(i - 1, j - 1)]
+						)
+						/ ((dx0Down + dx0Up) * (dx1Down + dx1Up));
+
+				out[k] = a01 * d0d1 - r * u[k];
+			}
+		}
+
+		return out;
+	}
+
+	protected double[] applyA1Explicit(final double[] u, final double time) {
+
+		final double[] out = new double[n];
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 1; i < n0 - 1; i++) {
+				final int k = flatten(i, j);
+
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final double[] drift = model.getDrift(time, x0, x1);
+				final double[][] b = model.getFactorLoading(time, x0, x1);
+
+				final double mu0 = drift[0];
+
+				double a00 = 0.0;
+				for(int f = 0; f < b[0].length; f++) {
+					a00 += b[0][f] * b[0][f];
+				}
+
+				final double dxDown = x0Grid[i] - x0Grid[i - 1];
+				final double dxUp = x0Grid[i + 1] - x0Grid[i];
+
+				final double d1 =
+						(u[flatten(i + 1, j)] - u[flatten(i - 1, j)])
+						/ (dxDown + dxUp);
+
+				final double d2 =
+						2.0 * (
+								(u[flatten(i + 1, j)] - u[k]) / dxUp
+								- (u[k] - u[flatten(i - 1, j)]) / dxDown
+						)
+						/ (dxDown + dxUp);
+
+				out[k] = mu0 * d1 + 0.5 * a00 * d2;
+			}
+		}
+
+		return out;
+	}
+
+	protected double[] applyA2Explicit(final double[] u, final double time) {
+
+		final double[] out = new double[n];
+
+		for(int j = 1; j < n1 - 1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j);
+
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final double[] drift = model.getDrift(time, x0, x1);
+				final double[][] b = model.getFactorLoading(time, x0, x1);
+
+				final double mu1 = drift[1];
+
+				double a11 = 0.0;
+				for(int f = 0; f < b[1].length; f++) {
+					a11 += b[1][f] * b[1][f];
+				}
+
+				final double dxDown = x1Grid[j] - x1Grid[j - 1];
+				final double dxUp = x1Grid[j + 1] - x1Grid[j];
+
+				final double d1 =
+						(u[flatten(i, j + 1)] - u[flatten(i, j - 1)])
+						/ (dxDown + dxUp);
+
+				final double d2 =
+						2.0 * (
+								(u[flatten(i, j + 1)] - u[k]) / dxUp
+								- (u[k] - u[flatten(i, j - 1)]) / dxDown
+						)
+						/ (dxDown + dxUp);
+
+				out[k] = mu1 * d1 + 0.5 * a11 * d2;
+			}
+		}
+
+		return out;
+	}
+
+	protected double[] solveFirstDirectionLines(
+			final double[] rhs,
+			final double time,
+			final double dt) {
+
+		final double[] out = rhs.clone();
+
+		for(int j = 0; j < n1; j++) {
+			final TridiagonalMatrix m = stencilBuilder.buildFirstDirectionLineMatrix(time, dt, theta, j);
+
+			final double[] lineRhs = new double[n0];
+			for(int i = 0; i < n0; i++) {
+				lineRhs[i] = rhs[flatten(i, j)];
+			}
+
+			final double lowerBoundaryValue = getLowerBoundaryValueForFirstDirection(time, j, lineRhs[0]);
+			final double upperBoundaryValue = getUpperBoundaryValueForFirstDirection(time, j, lineRhs[n0 - 1]);
+
+			overwriteBoundaryRow(m, lineRhs, 0, lowerBoundaryValue);
+			overwriteBoundaryRow(m, lineRhs, n0 - 1, upperBoundaryValue);
+
+			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
+
+			for(int i = 0; i < n0; i++) {
+				out[flatten(i, j)] = solved[i];
+			}
+		}
+
+		return out;
+	}
+
+	protected double[] solveSecondDirectionLines(
+			final double[] rhs,
+			final double time,
+			final double dt) {
+
+		final double[] out = rhs.clone();
+
+		for(int i = 0; i < n0; i++) {
+			final TridiagonalMatrix m = stencilBuilder.buildSecondDirectionLineMatrix(time, dt, theta, i);
+
+			final double[] lineRhs = new double[n1];
+			for(int j = 0; j < n1; j++) {
+				lineRhs[j] = rhs[flatten(i, j)];
+			}
+
+			final double lowerBoundaryValue = getLowerBoundaryValueForSecondDirection(time, i, lineRhs[0]);
+			final double upperBoundaryValue = getUpperBoundaryValueForSecondDirection(time, i, lineRhs[n1 - 1]);
+
+			overwriteBoundaryRow(m, lineRhs, 0, lowerBoundaryValue);
+			overwriteBoundaryRow(m, lineRhs, n1 - 1, upperBoundaryValue);
+
+			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
+
+			for(int j = 0; j < n1; j++) {
+				out[flatten(i, j)] = solved[j];
+			}
+		}
+
+		return out;
+	}
+
+	protected void applyOuterBoundaries(final double time, final double[] u) {
+
+		for(int j = 0; j < n1; j++) {
+			u[flatten(0, j)] = getLowerBoundaryValueForFirstDirection(time, j, u[flatten(0, j)]);
+			u[flatten(n0 - 1, j)] = getUpperBoundaryValueForFirstDirection(time, j, u[flatten(n0 - 1, j)]);
+		}
+
+		for(int i = 0; i < n0; i++) {
+			u[flatten(i, 0)] = getLowerBoundaryValueForSecondDirection(time, i, u[flatten(i, 0)]);
+			u[flatten(i, n1 - 1)] = getUpperBoundaryValueForSecondDirection(time, i, u[flatten(i, n1 - 1)]);
+		}
+	}
+
+	protected void applyInternalConstraints(final double time, final double[] u) {
+		if(!(product instanceof FiniteDifferenceInternalStateConstraint)) {
+			return;
+		}
+
+		final FiniteDifferenceInternalStateConstraint constraint =
+				(FiniteDifferenceInternalStateConstraint) product;
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j);
+				if(constraint.isConstraintActive(time, x0Grid[i], x1Grid[j])) {
+					u[k] = constraint.getConstrainedValue(time, x0Grid[i], x1Grid[j]);
+				}
+			}
+		}
+	}
+
+	protected void applyExerciseObstacleIfNeeded(
+			final double runningTime,
+			final double tau,
+			final double[] u,
+			final DoubleBinaryOperator valueAtMaturity) {
+
+		final boolean isExerciseAllowed =
+				FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau, exercise);
+
+		if(!isExerciseAllowed) {
+			return;
+		}
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				if(isInternalConstraintActive(runningTime, x0Grid[i], x1Grid[j])) {
+					continue;
+				}
+
+				final int k = flatten(i, j);
+				final double payoff = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
+				u[k] = Math.max(u[k], payoff);
+			}
+		}
+	}
+
+	protected boolean isInternalConstraintActive(final double time, final double x0, final double x1) {
+		if(product instanceof FiniteDifferenceInternalStateConstraint) {
+			return ((FiniteDifferenceInternalStateConstraint) product).isConstraintActive(time, x0, x1);
+		}
+		return false;
+	}
+
+	protected double getLowerBoundaryValueForFirstDirection(final double time, final int secondIndex, final double fallback) {
+		final BoundaryCondition[] conditions =
+				model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[0], x1Grid[secondIndex]);
+		return extractBoundaryValue(conditions[0], fallback);
+	}
+
+	protected double getUpperBoundaryValueForFirstDirection(final double time, final int secondIndex, final double fallback) {
+		final BoundaryCondition[] conditions =
+				model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[n0 - 1], x1Grid[secondIndex]);
+		return extractBoundaryValue(conditions[0], fallback);
+	}
+
+	protected double getLowerBoundaryValueForSecondDirection(final double time, final int firstIndex, final double fallback) {
+		final BoundaryCondition[] conditions =
+				model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[firstIndex], x1Grid[0]);
+		return extractBoundaryValue(conditions[1], fallback);
+	}
+
+	protected double getUpperBoundaryValueForSecondDirection(final double time, final int firstIndex, final double fallback) {
+		final BoundaryCondition[] conditions =
+				model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[firstIndex], x1Grid[n1 - 1]);
+		return extractBoundaryValue(conditions[1], fallback);
+	}
+
+	protected double extractBoundaryValue(final BoundaryCondition condition, final double fallback) {
+		if(condition != null && condition.isDirichlet()) {
+			return condition.getValue();
+		}
+		return fallback;
+	}
+
+	protected void overwriteBoundaryRow(
+			final TridiagonalMatrix m,
+			final double[] rhs,
+			final int row,
+			final double value) {
+
+		m.lower[row] = 0.0;
+		m.diag[row] = 1.0;
+		m.upper[row] = 0.0;
+		rhs[row] = value;
+	}
+
+	protected int flatten(final int i0, final int i1) {
+		return i0 + i1 * n0;
+	}
+
+	protected double[] add(final double[] a, final double[] b) {
+		final double[] out = new double[a.length];
+		for(int i = 0; i < a.length; i++) {
+			out[i] = a[i] + b[i];
+		}
+		return out;
+	}
+
+	protected double[] subtract(final double[] a, final double[] b) {
+		final double[] out = new double[a.length];
+		for(int i = 0; i < a.length; i++) {
+			out[i] = a[i] - b[i];
+		}
+		return out;
+	}
+
+	protected double[] scale(final double[] a, final double c) {
+		final double[] out = new double[a.length];
+		for(int i = 0; i < a.length; i++) {
+			out[i] = c * a[i];
+		}
+		return out;
+	}
+
+	protected double[] sanitize(final double[] u) {
+		final double[] out = new double[u.length];
+		for(int i = 0; i < u.length; i++) {
+			final double value = u[i];
+			if(!Double.isFinite(value)) {
+				out[i] = 0.0;
+			}
+			else if(value > 1E12) {
+				out[i] = 1E12;
+			}
+			else if(value < -1E12) {
+				out[i] = -1E12;
+			}
+			else {
+				out[i] = value;
+			}
+		}
+		return out;
+	}
+}

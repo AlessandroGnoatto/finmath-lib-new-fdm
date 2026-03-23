@@ -5,6 +5,7 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelier
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -12,6 +13,7 @@ import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
+import net.finmath.finitedifference.solvers.adi.FDMSabrADI2D;
 import net.finmath.modelling.BermudanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
@@ -127,8 +129,10 @@ public class BermudanOption implements FiniteDifferenceProduct {
 			return new FDMThetaMethod1D(model, this, spaceTimeDiscretization, exercise);
 		}
 		else if(model instanceof FDMHestonModel) {
-			//return new FDMThetaMethod2D(model, this, spaceTimeDiscretization, exercise);
 			return new FDMHestonADI2D((FDMHestonModel) model, this, model.getSpaceTimeDiscretization(), exercise);//FDMThetaMethod2D(model, this, spaceTimeDiscretization, exercise);
+		}
+		else if(model instanceof FDMSabrModel) {
+			return new FDMSabrADI2D((FDMSabrModel) model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
 		else {
 			throw new IllegalArgumentException(
