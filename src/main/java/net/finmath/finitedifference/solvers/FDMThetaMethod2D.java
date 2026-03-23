@@ -27,7 +27,7 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * {@code dX_i(t) = mu_i(t, X0, X1) dt + sum_k b_{i,k}(t, X0, X1) dW_k(t)},  i=0,1.
+ * {@code dX_i(t) = mu_i(t, X0, X1) dt + sum_k b_{i,k}(t, X0, X1) dW_k(t)}, i = 0,1.
  * </p>
  *
  * <p>
@@ -53,6 +53,11 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
+ * For American exercise, the solver formulates each backward step as a linear complementarity
+ * problem and solves it with projected SOR. For non-American exercise, a direct linear solve is used.
+ * </p>
+ *
+ * <p>
  * The solver returns the full time history as a flattened matrix of dimension
  * {@code (n0*n1) x (nT+1)}.
  * Flattening convention: {@code k = i0 + i1*n0} where {@code i0} is the fastest index.
@@ -63,11 +68,26 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMThetaMethod2D implements FDMSolver {
 
+	private static final double PSOR_OMEGA = 1.2;
+	private static final int PSOR_MAX_ITERATIONS = 500;
+	private static final double PSOR_TOLERANCE = 1E-10;
+
 	private final FiniteDifferenceEquityModel model;
 	private final FiniteDifferenceProduct product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
 
+	/**
+	 * Creates a two-dimensional theta-method finite-difference solver.
+	 *
+	 * @param model The finite-difference equity model providing drift, factor loadings,
+	 *        discounting, and boundary conditions.
+	 * @param product The product to be valued. It may optionally implement
+	 *        {@link FiniteDifferenceInternalStateConstraint}.
+	 * @param spaceTimeDiscretization The joint space-time discretization, including
+	 *        both spatial grids and the theta parameter.
+	 * @param exercise The exercise specification controlling whether and when exercise is allowed.
+	 */
 	public FDMThetaMethod2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -79,358 +99,135 @@ public class FDMThetaMethod2D implements FDMSolver {
 		this.exercise = exercise;
 	}
 
+	/**
+	 * Solves the PDE using a payoff that depends only on the first state variable.
+	 *
+	 * <p>
+	 * This overload promotes the one-dimensional terminal payoff into a two-dimensional one by
+	 * ignoring the second state variable.
+	 * </p>
+	 *
+	 * @param time The maturity time of the claim.
+	 * @param valueAtMaturity The terminal payoff as a function of the first state variable.
+	 * @return The full flattened space-time solution surface.
+	 */
 	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 		return getValues(time, (x0, x1) -> valueAtMaturity.applyAsDouble(x0));
 	}
 
+	/**
+	 * Solves the backward PDE on the full two-dimensional space-time grid.
+	 *
+	 * <p>
+	 * The returned matrix is indexed as {@code values[flattenedSpaceIndex][timeIndex]}.
+	 * The first column corresponds to maturity and subsequent columns correspond to earlier
+	 * times in backward time-stepping order.
+	 * </p>
+	 *
+	 * <p>
+	 * At each time step, the method
+	 * </p>
+	 * <ul>
+	 *   <li>builds model coefficients at the two theta evaluation times,</li>
+	 *   <li>assembles the left- and right-hand-side theta operators,</li>
+	 *   <li>enforces outer boundary conditions and internal constraints,</li>
+	 *   <li>solves either a linear system or a linear complementarity problem,</li>
+	 *   <li>reimposes constraints and Dirichlet boundaries for numerical safety.</li>
+	 * </ul>
+	 *
+	 * @param time The maturity time of the claim.
+	 * @param valueAtMaturity The terminal payoff as a function of both state variables.
+	 * @return The full flattened space-time solution surface.
+	 * @throws IllegalArgumentException If the discretization does not provide two spatial grids.
+	 */
 	public double[][] getValues(final double time, final DoubleBinaryOperator valueAtMaturity) {
 
-		final Grid x0GridObj = spaceTimeDiscretization.getSpaceGrid(0);
-		final Grid x1GridObj = spaceTimeDiscretization.getSpaceGrid(1);
-		if(x0GridObj == null || x1GridObj == null) {
+		final Grid x0GridObject = spaceTimeDiscretization.getSpaceGrid(0);
+		final Grid x1GridObject = spaceTimeDiscretization.getSpaceGrid(1);
+
+		if(x0GridObject == null || x1GridObject == null) {
 			throw new IllegalArgumentException(
 					"SpaceTimeDiscretization must provide two space grids (dimension 0 and dimension 1).");
 		}
 
-		final double[] x0Grid = x0GridObj.getGrid();
-		final double[] x1Grid = x1GridObj.getGrid();
+		final double[] x0Grid = x0GridObject.getGrid();
+		final double[] x1Grid = x1GridObject.getGrid();
 
 		final int n0 = x0Grid.length;
 		final int n1 = x1Grid.length;
-		final int n = n0 * n1;
 
+		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
+		final int timeLength = numberOfTimeSteps + 1;
 		final double theta = spaceTimeDiscretization.getTheta();
 
-		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
-		final int M = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
+		final DifferentialOperators2D operators = buildDifferentialOperators(x0Grid, x1Grid);
+		final boolean[] isBoundary = buildBoundaryMask(n0, n1);
 
-		final FiniteDifferenceMatrixBuilder b0 = new FiniteDifferenceMatrixBuilder(x0Grid);
-		final RealMatrix T1_0 = b0.getFirstDerivativeMatrix();
-		final RealMatrix T2_0 = b0.getSecondDerivativeMatrix();
+		RealMatrix u = buildTerminalValues(x0Grid, x1Grid, valueAtMaturity);
+		final RealMatrix z = MatrixUtils.createRealMatrix(n0 * n1, timeLength);
+		z.setColumnMatrix(0, u);
 
-		final FiniteDifferenceMatrixBuilder b1 = new FiniteDifferenceMatrixBuilder(x1Grid);
-		final RealMatrix T1_1 = b1.getFirstDerivativeMatrix();
-		final RealMatrix T2_1 = b1.getSecondDerivativeMatrix();
-
-		/*
-		 * Build 2D differential operators on flattened state (x0 fastest, then x1).
-		 *   D0  = I1 ⊗ T1_0
-		 *   D00 = I1 ⊗ T2_0
-		 *   D1  = T1_1 ⊗ I0
-		 *   D11 = T2_1 ⊗ I0
-		 *   D01 = T1_1 ⊗ T1_0
-		 */
-		final RealMatrix D0 = buildBlockDiagonal(T1_0, n1);
-		final RealMatrix D00 = buildBlockDiagonal(T2_0, n1);
-
-		final RealMatrix D1 = buildKronWithIdentityLeft(T1_1, n0);
-		final RealMatrix D11 = buildKronWithIdentityLeft(T2_1, n0);
-
-		final RealMatrix D01 = buildKron(T1_1, T1_0);
-
-		final boolean[] isBoundary = new boolean[n];
-		for(int j = 0; j < n1; j++) {
-			for(int i = 0; i < n0; i++) {
-				final int k = i + j * n0;
-				isBoundary[k] = (i == 0 || i == n0 - 1 || j == 0 || j == n1 - 1);
-			}
-		}
-
-		RealMatrix U = MatrixUtils.createRealMatrix(n, 1);
-		for(int j = 0; j < n1; j++) {
-			for(int i = 0; i < n0; i++) {
-				final int k = i + j * n0;
-				U.setEntry(k, 0, valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]));
-			}
-		}
-
-		final RealMatrix z = MatrixUtils.createRealMatrix(n, timeLength);
-		z.setColumnMatrix(0, U);
-
-		for(int m = 0; m < M; m++) {
+		for(int m = 0; m < numberOfTimeSteps; m++) {
 
 			final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-			final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(M - m);
-			final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(M - (m + 1));
+			final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
+			final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-			final double tSafe_m = (t_m == 0.0 ? 1e-6 : t_m);
-			final double tSafe_mp1 = (t_mp1 == 0.0 ? 1e-6 : t_mp1);
+			final ModelCoefficients2D coefficients_m = buildModelCoefficients(x0Grid, x1Grid, t_m);
+			final ModelCoefficients2D coefficients_mp1 = buildModelCoefficients(x0Grid, x1Grid, t_mp1);
 
-			final double r_m = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_m)) / tSafe_m;
-			final double r_mp1 = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_mp1)) / tSafe_mp1;
-
-			final double[] mu0_m = new double[n];
-			final double[] mu0_mp1 = new double[n];
-			final double[] mu1_m = new double[n];
-			final double[] mu1_mp1 = new double[n];
-
-			final double[] a00_m = new double[n];
-			final double[] a00_mp1 = new double[n];
-			final double[] a11_m = new double[n];
-			final double[] a11_mp1 = new double[n];
-			final double[] a01_m = new double[n];
-			final double[] a01_mp1 = new double[n];
-
-			for(int j = 0; j < n1; j++) {
-				for(int i = 0; i < n0; i++) {
-					final int k = i + j * n0;
-					final double x0 = x0Grid[i];
-					final double x1 = x1Grid[j];
-
-					final double[] drift_m = model.getDrift(t_m, x0, x1);
-					final double[] drift_mp1 = model.getDrift(t_mp1, x0, x1);
-
-					mu0_m[k] = drift_m.length > 0 ? drift_m[0] : 0.0;
-					mu1_m[k] = drift_m.length > 1 ? drift_m[1] : 0.0;
-
-					mu0_mp1[k] = drift_mp1.length > 0 ? drift_mp1[0] : 0.0;
-					mu1_mp1[k] = drift_mp1.length > 1 ? drift_mp1[1] : 0.0;
-
-					final double[][] b_m = model.getFactorLoading(t_m, x0, x1);
-					final double[][] b_mp1 = model.getFactorLoading(t_mp1, x0, x1);
-
-					double a00v_m = 0.0;
-					double a11v_m = 0.0;
-					double a01v_m = 0.0;
-
-					final int nFactors_m = b_m[0].length;
-					for(int f = 0; f < nFactors_m; f++) {
-						final double b00 = b_m[0][f];
-						final double b10 = b_m.length > 1 ? b_m[1][f] : 0.0;
-						a00v_m += b00 * b00;
-						a11v_m += b10 * b10;
-						a01v_m += b00 * b10;
-					}
-
-					double a00v_p = 0.0;
-					double a11v_p = 0.0;
-					double a01v_p = 0.0;
-
-					final int nFactors_p = b_mp1[0].length;
-					for(int f = 0; f < nFactors_p; f++) {
-						final double b00 = b_mp1[0][f];
-						final double b10 = b_mp1.length > 1 ? b_mp1[1][f] : 0.0;
-						a00v_p += b00 * b00;
-						a11v_p += b10 * b10;
-						a01v_p += b00 * b10;
-					}
-
-					a00_m[k] = a00v_m;
-					a11_m[k] = a11v_m;
-					a01_m[k] = a01v_m;
-
-					a00_mp1[k] = a00v_p;
-					a11_mp1[k] = a11v_p;
-					a01_mp1[k] = a01v_p;
-				}
-			}
-
-			final RealMatrix Mu0_m = MatrixUtils.createRealDiagonalMatrix(mu0_m);
-			final RealMatrix Mu0_mp1 = MatrixUtils.createRealDiagonalMatrix(mu0_mp1);
-			final RealMatrix Mu1_m = MatrixUtils.createRealDiagonalMatrix(mu1_m);
-			final RealMatrix Mu1_mp1 = MatrixUtils.createRealDiagonalMatrix(mu1_mp1);
-
-			final RealMatrix A00_m = MatrixUtils.createRealDiagonalMatrix(a00_m);
-			final RealMatrix A00_mp1 = MatrixUtils.createRealDiagonalMatrix(a00_mp1);
-			final RealMatrix A11_m = MatrixUtils.createRealDiagonalMatrix(a11_m);
-			final RealMatrix A11_mp1 = MatrixUtils.createRealDiagonalMatrix(a11_mp1);
-			final RealMatrix A01_m = MatrixUtils.createRealDiagonalMatrix(a01_m);
-			final RealMatrix A01_mp1 = MatrixUtils.createRealDiagonalMatrix(a01_mp1);
-
-			final RealMatrix I = MatrixUtils.createRealIdentityMatrix(n);
-
-			final RealMatrix driftTerm_m =
-					Mu0_m.scalarMultiply(deltaTau).multiply(D0)
-					.add(Mu1_m.scalarMultiply(deltaTau).multiply(D1));
-
-			final RealMatrix driftTerm_mp1 =
-					Mu0_mp1.scalarMultiply(deltaTau).multiply(D0)
-					.add(Mu1_mp1.scalarMultiply(deltaTau).multiply(D1));
-
-			final RealMatrix diffTerm_m =
-					A00_m.multiply(D00.scalarMultiply(0.5 * deltaTau))
-					.add(A11_m.multiply(D11.scalarMultiply(0.5 * deltaTau)))
-					.add(A01_m.multiply(D01.scalarMultiply(deltaTau)));
-
-			final RealMatrix diffTerm_mp1 =
-					A00_mp1.multiply(D00.scalarMultiply(0.5 * deltaTau))
-					.add(A11_mp1.multiply(D11.scalarMultiply(0.5 * deltaTau)))
-					.add(A01_mp1.multiply(D01.scalarMultiply(deltaTau)));
-
-			final RealMatrix F = I.scalarMultiply(1.0 - r_m * deltaTau).add(driftTerm_m).add(diffTerm_m);
-			final RealMatrix G = I.scalarMultiply(1.0 + r_mp1 * deltaTau).subtract(driftTerm_mp1).subtract(diffTerm_mp1);
-
-			RealMatrix H = G.scalarMultiply(theta).add(I.scalarMultiply(1.0 - theta));
-			final RealMatrix A = F.scalarMultiply(1.0 - theta).add(I.scalarMultiply(theta));
-
-			RealMatrix rhs = A.multiply(U);
+			final RealMatrix lhs = buildThetaLeftHandSide(operators, coefficients_mp1, deltaTau, theta);
+			final RealMatrix rhsOperator = buildThetaRightHandSide(operators, coefficients_m, deltaTau, theta);
+			final RealMatrix rhs = rhsOperator.multiply(u);
 
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
-			final double boundaryTime =
-					spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
+			final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
 
-			/*
-			 * Outer boundary enforcement.
-			 */
-			for(int j = 0; j < n1; j++) {
-				for(int i = 0; i < n0; i++) {
-					final int k = i + j * n0;
-					if(!isBoundary[k]) {
-						continue;
-					}
-
-					final double x0 = x0Grid[i];
-					final double x1 = x1Grid[j];
-
-					final BoundaryCondition[] lowerConditions =
-							model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, x0, x1);
-					final BoundaryCondition[] upperConditions =
-							model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, x0, x1);
-
-					final BoundaryCondition x0Lower = lowerConditions[0];
-					final BoundaryCondition x0Upper = upperConditions[0];
-					final BoundaryCondition x1Lower = lowerConditions[1];
-					final BoundaryCondition x1Upper = upperConditions[1];
-
-					BoundaryCondition chosenCondition = null;
-					if(i == 0) {
-						chosenCondition = x0Lower;
-					}
-					else if(i == n0 - 1) {
-						chosenCondition = x0Upper;
-					}
-					else if(j == 0) {
-						chosenCondition = x1Lower;
-					}
-					else if(j == n1 - 1) {
-						chosenCondition = x1Upper;
-					}
-
-					if(chosenCondition != null && chosenCondition.isDirichlet()) {
-						for(int col = 0; col < n; col++) {
-							H.setEntry(k, col, 0.0);
-						}
-						H.setEntry(k, k, 1.0);
-						rhs.setEntry(k, 0, chosenCondition.getValue());
-					}
-				}
-			}
-
-			/*
-			 * Internal state constraints:
-			 * overwrite constrained nodes as internal Dirichlet rows.
-			 */
-			for(int j = 0; j < n1; j++) {
-				for(int i = 0; i < n0; i++) {
-					final int k = i + j * n0;
-					final double x0 = x0Grid[i];
-					final double x1 = x1Grid[j];
-
-					if(isInternalConstraintActive(boundaryTime, x0, x1)) {
-						final double constrainedValue = getInternalConstrainedValue(boundaryTime, x0, x1);
-
-						for(int col = 0; col < n; col++) {
-							H.setEntry(k, col, 0.0);
-						}
-						H.setEntry(k, k, 1.0);
-						rhs.setEntry(k, 0, constrainedValue);
-					}
-				}
-			}
+			applyOuterBoundaryConditions(lhs, rhs, x0Grid, x1Grid, isBoundary, boundaryTime);
+			applyInternalConstraints(lhs, rhs, x0Grid, x1Grid, boundaryTime);
 
 			final boolean isExerciseDate =
 					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
 
-			if(exercise.isAmerican()) {
-				final double omega = 1.2;
-				final SORDecomposition sor = new SORDecomposition(H);
-				final RealMatrix zz = sor.getSol(U, rhs, omega, 500);
+			final RealMatrix nextU;
+			if(exercise.isAmerican() && isExerciseDate) {
+				final RealMatrix obstacle = buildObstacleVector(x0Grid, x1Grid, boundaryTime, valueAtMaturity);
+				nextU = solveProjectedSOR(lhs, rhs, obstacle, u, PSOR_OMEGA, PSOR_MAX_ITERATIONS, PSOR_TOLERANCE);
 
-				if(isExerciseDate) {
-					for(int j = 0; j < n1; j++) {
-						for(int i = 0; i < n0; i++) {
-							final int k = i + j * n0;
-							final double x0 = x0Grid[i];
-							final double x1 = x1Grid[j];
-
-							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
-								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
-							}
-							else {
-								final double payoff = valueAtMaturity.applyAsDouble(x0, x1);
-								U.setEntry(k, 0, Math.max(zz.getEntry(k, 0), payoff));
-							}
-						}
-					}
-				}
-				else {
-					U = zz;
-
-					/*
-					 * Re-impose internal constraints explicitly after the solve for numerical safety.
-					 */
-					for(int j = 0; j < n1; j++) {
-						for(int i = 0; i < n0; i++) {
-							final int k = i + j * n0;
-							final double x0 = x0Grid[i];
-							final double x1 = x1Grid[j];
-
-							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
-								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
-							}
-						}
-					}
-				}
-
-				z.setColumnMatrix(m + 1, U);
+				reimposeInternalConstraints(nextU, x0Grid, x1Grid, boundaryTime);
+				reimposeBoundaryValues(nextU, x0Grid, x1Grid, isBoundary, boundaryTime);
 			}
 			else {
-				final DecompositionSolver solver = new LUDecomposition(H).getSolver();
-				U = solver.solve(rhs);
+				final DecompositionSolver solver = new LUDecomposition(lhs).getSolver();
+				nextU = solver.solve(rhs);
 
 				if(isExerciseDate) {
-					for(int j = 0; j < n1; j++) {
-						for(int i = 0; i < n0; i++) {
-							final int k = i + j * n0;
-							final double x0 = x0Grid[i];
-							final double x1 = x1Grid[j];
-
-							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
-								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
-							}
-							else {
-								final double payoff = valueAtMaturity.applyAsDouble(x0, x1);
-								U.setEntry(k, 0, Math.max(U.getEntry(k, 0), payoff));
-							}
-						}
-					}
+					applyExerciseProjection(nextU, x0Grid, x1Grid, boundaryTime, valueAtMaturity);
 				}
 				else {
-					/*
-					 * Re-impose internal constraints explicitly after the solve for numerical safety.
-					 */
-					for(int j = 0; j < n1; j++) {
-						for(int i = 0; i < n0; i++) {
-							final int k = i + j * n0;
-							final double x0 = x0Grid[i];
-							final double x1 = x1Grid[j];
-
-							if(isInternalConstraintActive(boundaryTime, x0, x1)) {
-								U.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
-							}
-						}
-					}
+					reimposeInternalConstraints(nextU, x0Grid, x1Grid, boundaryTime);
+					reimposeBoundaryValues(nextU, x0Grid, x1Grid, isBoundary, boundaryTime);
 				}
-
-				z.setColumnMatrix(m + 1, U);
 			}
+
+			u = nextU;
+			z.setColumnMatrix(m + 1, u);
 		}
 
 		return z.getData();
 	}
 
+	/**
+	 * Returns the flattened value vector at a given evaluation time for a payoff that depends only
+	 * on the first state variable.
+	 *
+	 * @param evaluationTime The time at which the value is requested.
+	 * @param time The maturity time of the claim.
+	 * @param valueAtMaturity The terminal payoff as a function of the first state variable.
+	 * @return The flattened value vector at the requested evaluation time.
+	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final double time, final DoubleUnaryOperator valueAtMaturity) {
 		final RealMatrix values = new Array2DRowRealMatrix(getValues(time, valueAtMaturity));
@@ -439,6 +236,632 @@ public class FDMThetaMethod2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
+	/**
+	 * Returns the flattened value vector at a given evaluation time for a genuinely two-dimensional payoff.
+	 *
+	 * @param evaluationTime The time at which the value is requested.
+	 * @param time The maturity time of the claim.
+	 * @param valueAtMaturity The terminal payoff as a function of both state variables.
+	 * @return The flattened value vector at the requested evaluation time.
+	 */
+	public double[] getValue(final double evaluationTime, final double time, final DoubleBinaryOperator valueAtMaturity) {
+		final RealMatrix values = new Array2DRowRealMatrix(getValues(time, valueAtMaturity));
+		final double tau = time - evaluationTime;
+		final int timeIndex = this.spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
+		return values.getColumn(timeIndex);
+	}
+
+	/**
+	 * Builds the terminal value vector at maturity.
+	 *
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param valueAtMaturity The payoff function evaluated at maturity.
+	 * @return A column matrix containing the flattened terminal values.
+	 */
+	private RealMatrix buildTerminalValues(
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final DoubleBinaryOperator valueAtMaturity) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+		final int n = n0 * n1;
+
+		final RealMatrix u = MatrixUtils.createRealMatrix(n, 1);
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+				u.setEntry(k, 0, valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]));
+			}
+		}
+
+		return u;
+	}
+
+	/**
+	 * Builds a mask identifying whether each flattened grid node lies on the outer spatial boundary.
+	 *
+	 * @param n0 The number of grid points in the first dimension.
+	 * @param n1 The number of grid points in the second dimension.
+	 * @return A boolean array whose entries are {@code true} exactly on the outer boundary.
+	 */
+	private boolean[] buildBoundaryMask(final int n0, final int n1) {
+		final boolean[] isBoundary = new boolean[n0 * n1];
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+				isBoundary[k] = (i == 0 || i == n0 - 1 || j == 0 || j == n1 - 1);
+			}
+		}
+
+		return isBoundary;
+	}
+
+	/**
+	 * Builds the discrete first- and second-order differential operators on the flattened two-dimensional grid.
+	 *
+	 * <p>
+	 * The flattening convention is {@code k = i0 + i1*n0}, where the first dimension is the fast index.
+	 * </p>
+	 *
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @return The assembled differential operators.
+	 */
+	private DifferentialOperators2D buildDifferentialOperators(final double[] x0Grid, final double[] x1Grid) {
+
+		final FiniteDifferenceMatrixBuilder builder0 = new FiniteDifferenceMatrixBuilder(x0Grid);
+		final RealMatrix t1_0 = builder0.getFirstDerivativeMatrix();
+		final RealMatrix t2_0 = builder0.getSecondDerivativeMatrix();
+
+		final FiniteDifferenceMatrixBuilder builder1 = new FiniteDifferenceMatrixBuilder(x1Grid);
+		final RealMatrix t1_1 = builder1.getFirstDerivativeMatrix();
+		final RealMatrix t2_1 = builder1.getSecondDerivativeMatrix();
+
+		final RealMatrix d0 = buildBlockDiagonal(t1_0, x1Grid.length);
+		final RealMatrix d00 = buildBlockDiagonal(t2_0, x1Grid.length);
+		final RealMatrix d1 = buildKronWithIdentityLeft(t1_1, x0Grid.length);
+		final RealMatrix d11 = buildKronWithIdentityLeft(t2_1, x0Grid.length);
+		final RealMatrix d01 = buildKron(t1_1, t1_0);
+
+		return new DifferentialOperators2D(d0, d1, d00, d11, d01);
+	}
+
+	/**
+	 * Builds the model coefficient matrices at a given time.
+	 *
+	 * <p>
+	 * The returned object contains diagonal matrices for drift and covariance entries, together with
+	 * the instantaneous short rate implied by the risk-free discount curve.
+	 * </p>
+	 *
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param time The model time at which coefficients are evaluated.
+	 * @return The model coefficients evaluated on the full grid.
+	 */
+	private ModelCoefficients2D buildModelCoefficients(
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final double time) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+		final int n = n0 * n1;
+
+		final double[] mu0 = new double[n];
+		final double[] mu1 = new double[n];
+		final double[] a00 = new double[n];
+		final double[] a11 = new double[n];
+		final double[] a01 = new double[n];
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final double[] drift = model.getDrift(time, x0, x1);
+				mu0[k] = drift.length > 0 ? drift[0] : 0.0;
+				mu1[k] = drift.length > 1 ? drift[1] : 0.0;
+
+				final double[][] factorLoadings = model.getFactorLoading(time, x0, x1);
+
+				double variance00 = 0.0;
+				double variance11 = 0.0;
+				double covariance01 = 0.0;
+
+				if(factorLoadings.length > 0) {
+					final int numberOfFactors = factorLoadings[0].length;
+					for(int factor = 0; factor < numberOfFactors; factor++) {
+						final double b0 = factorLoadings[0][factor];
+						final double b1 = factorLoadings.length > 1 ? factorLoadings[1][factor] : 0.0;
+
+						variance00 += b0 * b0;
+						variance11 += b1 * b1;
+						covariance01 += b0 * b1;
+					}
+				}
+
+				a00[k] = variance00;
+				a11[k] = variance11;
+				a01[k] = covariance01;
+			}
+		}
+
+		return new ModelCoefficients2D(
+				MatrixUtils.createRealDiagonalMatrix(mu0),
+				MatrixUtils.createRealDiagonalMatrix(mu1),
+				MatrixUtils.createRealDiagonalMatrix(a00),
+				MatrixUtils.createRealDiagonalMatrix(a11),
+				MatrixUtils.createRealDiagonalMatrix(a01),
+				getShortRate(time));
+	}
+
+	/**
+	 * Builds the theta-method left-hand-side matrix for one backward step.
+	 *
+	 * @param operators The discrete differential operators.
+	 * @param coefficients The model coefficients evaluated at the implicit theta time level.
+	 * @param deltaTau The backward time step size in time-to-maturity coordinates.
+	 * @param theta The theta-method parameter.
+	 * @return The left-hand-side matrix of the theta step.
+	 */
+	private RealMatrix buildThetaLeftHandSide(
+			final DifferentialOperators2D operators,
+			final ModelCoefficients2D coefficients,
+			final double deltaTau,
+			final double theta) {
+
+		final int n = operators.getD0().getRowDimension();
+		final RealMatrix identity = MatrixUtils.createRealIdentityMatrix(n);
+
+		final RealMatrix driftTerm =
+				coefficients.getMu0().scalarMultiply(deltaTau).multiply(operators.getD0())
+				.add(coefficients.getMu1().scalarMultiply(deltaTau).multiply(operators.getD1()));
+
+		final RealMatrix diffusionTerm =
+				coefficients.getA00().multiply(operators.getD00().scalarMultiply(0.5 * deltaTau))
+				.add(coefficients.getA11().multiply(operators.getD11().scalarMultiply(0.5 * deltaTau)))
+				.add(coefficients.getA01().multiply(operators.getD01().scalarMultiply(deltaTau)));
+
+		final RealMatrix generatorStep =
+				identity.scalarMultiply(1.0 + coefficients.getShortRate() * deltaTau)
+				.subtract(driftTerm)
+				.subtract(diffusionTerm);
+
+		return generatorStep.scalarMultiply(theta).add(identity.scalarMultiply(1.0 - theta));
+	}
+
+	/**
+	 * Builds the theta-method right-hand-side operator for one backward step.
+	 *
+	 * @param operators The discrete differential operators.
+	 * @param coefficients The model coefficients evaluated at the explicit theta time level.
+	 * @param deltaTau The backward time step size in time-to-maturity coordinates.
+	 * @param theta The theta-method parameter.
+	 * @return The right-hand-side operator of the theta step.
+	 */
+	private RealMatrix buildThetaRightHandSide(
+			final DifferentialOperators2D operators,
+			final ModelCoefficients2D coefficients,
+			final double deltaTau,
+			final double theta) {
+
+		final int n = operators.getD0().getRowDimension();
+		final RealMatrix identity = MatrixUtils.createRealIdentityMatrix(n);
+
+		final RealMatrix driftTerm =
+				coefficients.getMu0().scalarMultiply(deltaTau).multiply(operators.getD0())
+				.add(coefficients.getMu1().scalarMultiply(deltaTau).multiply(operators.getD1()));
+
+		final RealMatrix diffusionTerm =
+				coefficients.getA00().multiply(operators.getD00().scalarMultiply(0.5 * deltaTau))
+				.add(coefficients.getA11().multiply(operators.getD11().scalarMultiply(0.5 * deltaTau)))
+				.add(coefficients.getA01().multiply(operators.getD01().scalarMultiply(deltaTau)));
+
+		final RealMatrix generatorStep =
+				identity.scalarMultiply(1.0 - coefficients.getShortRate() * deltaTau)
+				.add(driftTerm)
+				.add(diffusionTerm);
+
+		return generatorStep.scalarMultiply(1.0 - theta).add(identity.scalarMultiply(theta));
+	}
+
+	/**
+	 * Applies outer Dirichlet boundary conditions by overwriting the corresponding matrix rows.
+	 *
+	 * @param lhs The left-hand-side matrix to be modified.
+	 * @param rhs The right-hand-side vector to be modified.
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param isBoundary The mask indicating which nodes lie on the outer boundary.
+	 * @param boundaryTime The current model time at which boundary values are evaluated.
+	 */
+	private void applyOuterBoundaryConditions(
+			final RealMatrix lhs,
+			final RealMatrix rhs,
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final boolean[] isBoundary,
+			final double boundaryTime) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+		final int n = n0 * n1;
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+				if(!isBoundary[k]) {
+					continue;
+				}
+
+				final BoundaryCondition boundaryCondition = chooseBoundaryCondition(i, j, x0Grid, x1Grid, boundaryTime);
+				if(boundaryCondition != null && boundaryCondition.isDirichlet()) {
+					overwriteAsDirichlet(lhs, rhs, k, boundaryCondition.getValue(), n);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Applies internal state constraints by overwriting the corresponding matrix rows as internal Dirichlet rows.
+	 *
+	 * @param lhs The left-hand-side matrix to be modified.
+	 * @param rhs The right-hand-side vector to be modified.
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param boundaryTime The current model time at which constraint values are evaluated.
+	 */
+	private void applyInternalConstraints(
+			final RealMatrix lhs,
+			final RealMatrix rhs,
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final double boundaryTime) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+		final int n = n0 * n1;
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+					overwriteAsDirichlet(lhs, rhs, k, getInternalConstrainedValue(boundaryTime, x0, x1), n);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Builds the obstacle vector used in the projected SOR solve for American exercise.
+	 *
+	 * <p>
+	 * At each node the obstacle is chosen in the following order:
+	 * </p>
+	 * <ul>
+	 *   <li>Dirichlet boundary value, if active,</li>
+	 *   <li>internal constrained value, if active,</li>
+	 *   <li>otherwise the intrinsic value given by {@code valueAtMaturity}.</li>
+	 * </ul>
+	 *
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param boundaryTime The current model time.
+	 * @param valueAtMaturity The intrinsic exercise value.
+	 * @return The obstacle vector as a column matrix.
+	 */
+	private RealMatrix buildObstacleVector(
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final double boundaryTime,
+			final DoubleBinaryOperator valueAtMaturity) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+		final RealMatrix obstacle = MatrixUtils.createRealMatrix(n0 * n1, 1);
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final BoundaryCondition boundaryCondition = chooseBoundaryCondition(i, j, x0Grid, x1Grid, boundaryTime);
+
+				if(boundaryCondition != null && boundaryCondition.isDirichlet()) {
+					obstacle.setEntry(k, 0, boundaryCondition.getValue());
+				}
+				else if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+					obstacle.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
+				}
+				else {
+					obstacle.setEntry(k, 0, valueAtMaturity.applyAsDouble(x0, x1));
+				}
+			}
+		}
+
+		return obstacle;
+	}
+
+	/**
+	 * Solves the linear complementarity problem
+	 * {@code lhs * u >= rhs}, {@code u >= obstacle},
+	 * together with the complementarity condition, using projected SOR.
+	 *
+	 * <p>
+	 * The iteration performs a Gauss-Seidel SOR update at each row and then projects the result
+	 * onto the obstacle set. The initial guess is typically the previous time-step solution.
+	 * </p>
+	 *
+	 * @param lhs The system matrix.
+	 * @param rhs The right-hand-side column vector.
+	 * @param obstacle The obstacle column vector.
+	 * @param initialGuess The initial guess for the iteration.
+	 * @param omega The relaxation parameter.
+	 * @param maxIterations The maximum number of SOR iterations.
+	 * @param tolerance The convergence tolerance in supremum norm.
+	 * @return The projected SOR solution as a column matrix.
+	 * @throws IllegalArgumentException If a diagonal entry is numerically zero.
+	 */
+	private RealMatrix solveProjectedSOR(
+			final RealMatrix lhs,
+			final RealMatrix rhs,
+			final RealMatrix obstacle,
+			final RealMatrix initialGuess,
+			final double omega,
+			final int maxIterations,
+			final double tolerance) {
+
+		final int n = lhs.getRowDimension();
+		final double[] u = new double[n];
+		for(int i = 0; i < n; i++) {
+			u[i] = Math.max(initialGuess.getEntry(i, 0), obstacle.getEntry(i, 0));
+		}
+
+		for(int iteration = 0; iteration < maxIterations; iteration++) {
+			double maxChange = 0.0;
+
+			for(int i = 0; i < n; i++) {
+				final double diagonal = lhs.getEntry(i, i);
+				if(Math.abs(diagonal) < 1E-14) {
+					throw new IllegalArgumentException("Projected SOR failed due to near-zero diagonal entry at row " + i + ".");
+				}
+
+				double sum = 0.0;
+				for(int j = 0; j < n; j++) {
+					if(j != i) {
+						sum += lhs.getEntry(i, j) * u[j];
+					}
+				}
+
+				final double gaussSeidelValue = (rhs.getEntry(i, 0) - sum) / diagonal;
+				final double relaxedValue = (1.0 - omega) * u[i] + omega * gaussSeidelValue;
+				final double projectedValue = Math.max(obstacle.getEntry(i, 0), relaxedValue);
+
+				maxChange = Math.max(maxChange, Math.abs(projectedValue - u[i]));
+				u[i] = projectedValue;
+			}
+
+			if(maxChange < tolerance) {
+				break;
+			}
+		}
+
+		final RealMatrix solution = MatrixUtils.createRealMatrix(n, 1);
+		for(int i = 0; i < n; i++) {
+			solution.setEntry(i, 0, u[i]);
+		}
+
+		return solution;
+	}
+
+	/**
+	 * Applies pointwise exercise projection to a solution vector at an exercise date.
+	 *
+	 * <p>
+	 * Dirichlet boundary values and internal state constraints take precedence over the intrinsic exercise value.
+	 * At all remaining nodes the solution is replaced by the maximum of continuation value and intrinsic value.
+	 * </p>
+	 *
+	 * @param u The solution vector to be modified in place.
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param boundaryTime The current model time.
+	 * @param valueAtMaturity The intrinsic exercise value.
+	 */
+	private void applyExerciseProjection(
+			final RealMatrix u,
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final double boundaryTime,
+			final DoubleBinaryOperator valueAtMaturity) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final BoundaryCondition boundaryCondition = chooseBoundaryCondition(i, j, x0Grid, x1Grid, boundaryTime);
+
+				if(boundaryCondition != null && boundaryCondition.isDirichlet()) {
+					u.setEntry(k, 0, boundaryCondition.getValue());
+				}
+				else if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+					u.setEntry(k, 0, getInternalConstrainedValue(boundaryTime, x0, x1));
+				}
+				else {
+					u.setEntry(k, 0, Math.max(u.getEntry(k, 0), valueAtMaturity.applyAsDouble(x0, x1)));
+				}
+			}
+		}
+	}
+
+	/**
+	 * Reapplies internal state constraints to the current solution vector.
+	 *
+	 * @param u The solution vector to be modified in place.
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param boundaryTime The current model time.
+	 */
+	private void reimposeInternalConstraints(
+			final RealMatrix u,
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final double boundaryTime) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				if(isInternalConstraintActive(boundaryTime, x0, x1)) {
+					u.setEntry(flatten(i, j, n0), 0, getInternalConstrainedValue(boundaryTime, x0, x1));
+				}
+			}
+		}
+	}
+
+	/**
+	 * Reapplies outer Dirichlet boundary values to the current solution vector.
+	 *
+	 * @param u The solution vector to be modified in place.
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param isBoundary The mask identifying outer boundary nodes.
+	 * @param boundaryTime The current model time.
+	 */
+	private void reimposeBoundaryValues(
+			final RealMatrix u,
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final boolean[] isBoundary,
+			final double boundaryTime) {
+
+		final int n0 = x0Grid.length;
+		final int n1 = x1Grid.length;
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j, n0);
+				if(!isBoundary[k]) {
+					continue;
+				}
+
+				final BoundaryCondition boundaryCondition = chooseBoundaryCondition(i, j, x0Grid, x1Grid, boundaryTime);
+				if(boundaryCondition != null && boundaryCondition.isDirichlet()) {
+					u.setEntry(k, 0, boundaryCondition.getValue());
+				}
+			}
+		}
+	}
+
+	/**
+	 * Selects the relevant boundary condition for a boundary node.
+	 *
+	 * <p>
+	 * If a node lies on multiple boundaries, precedence follows the order
+	 * x0-lower, x0-upper, x1-lower, x1-upper, matching the original implementation style.
+	 * </p>
+	 *
+	 * @param i The first-dimension grid index.
+	 * @param j The second-dimension grid index.
+	 * @param x0Grid The spatial grid in the first dimension.
+	 * @param x1Grid The spatial grid in the second dimension.
+	 * @param boundaryTime The current model time.
+	 * @return The boundary condition applicable to the node, or {@code null} for interior points.
+	 */
+	private BoundaryCondition chooseBoundaryCondition(
+			final int i,
+			final int j,
+			final double[] x0Grid,
+			final double[] x1Grid,
+			final double boundaryTime) {
+
+		final double x0 = x0Grid[i];
+		final double x1 = x1Grid[j];
+
+		final BoundaryCondition[] lowerConditions =
+				model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, x0, x1);
+		final BoundaryCondition[] upperConditions =
+				model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, x0, x1);
+
+		if(i == 0) {
+			return lowerConditions[0];
+		}
+		else if(i == x0Grid.length - 1) {
+			return upperConditions[0];
+		}
+		else if(j == 0) {
+			return lowerConditions[1];
+		}
+		else if(j == x1Grid.length - 1) {
+			return upperConditions[1];
+		}
+
+		return null;
+	}
+
+	/**
+	 * Overwrites a matrix row as a Dirichlet condition.
+	 *
+	 * @param lhs The left-hand-side matrix to modify.
+	 * @param rhs The right-hand-side vector to modify.
+	 * @param row The row index to overwrite.
+	 * @param value The Dirichlet value to impose.
+	 * @param dimension The matrix dimension.
+	 */
+	private void overwriteAsDirichlet(
+			final RealMatrix lhs,
+			final RealMatrix rhs,
+			final int row,
+			final double value,
+			final int dimension) {
+
+		for(int col = 0; col < dimension; col++) {
+			lhs.setEntry(row, col, 0.0);
+		}
+
+		lhs.setEntry(row, row, 1.0);
+		rhs.setEntry(row, 0, value);
+	}
+
+	/**
+	 * Computes the instantaneous short rate implied by the risk-free discount curve.
+	 *
+	 * @param time The time at which the short rate is required.
+	 * @return The continuously compounded short rate inferred from the discount factor.
+	 */
+	private double getShortRate(final double time) {
+		final double safeTime = (time == 0.0 ? 1E-6 : time);
+		return -Math.log(model.getRiskFreeCurve().getDiscountFactor(safeTime)) / safeTime;
+	}
+
+	/**
+	 * Checks whether an internal state constraint is active at the specified grid point.
+	 *
+	 * @param time The model time.
+	 * @param x0 The first state variable.
+	 * @param x1 The second state variable.
+	 * @return {@code true} if an internal constraint is active, {@code false} otherwise.
+	 */
 	private boolean isInternalConstraintActive(final double time, final double x0, final double x1) {
 		if(product instanceof FiniteDifferenceInternalStateConstraint) {
 			return ((FiniteDifferenceInternalStateConstraint) product).isConstraintActive(time, x0, x1);
@@ -446,10 +869,37 @@ public class FDMThetaMethod2D implements FDMSolver {
 		return false;
 	}
 
+	/**
+	 * Returns the constrained value prescribed by the product at the specified point.
+	 *
+	 * @param time The model time.
+	 * @param x0 The first state variable.
+	 * @param x1 The second state variable.
+	 * @return The constrained value.
+	 */
 	private double getInternalConstrainedValue(final double time, final double x0, final double x1) {
 		return ((FiniteDifferenceInternalStateConstraint) product).getConstrainedValue(time, x0, x1);
 	}
 
+	/**
+	 * Flattens a two-dimensional grid index into a one-dimensional index.
+	 *
+	 * @param i0 The index in the first dimension.
+	 * @param i1 The index in the second dimension.
+	 * @param n0 The size of the first dimension.
+	 * @return The flattened index {@code i0 + i1*n0}.
+	 */
+	private static int flatten(final int i0, final int i1, final int n0) {
+		return i0 + i1 * n0;
+	}
+
+	/**
+	 * Builds a block-diagonal sparse matrix with identical blocks on the diagonal.
+	 *
+	 * @param block The block to replicate.
+	 * @param numBlocks The number of blocks.
+	 * @return The block-diagonal sparse matrix.
+	 */
 	private static RealMatrix buildBlockDiagonal(final RealMatrix block, final int numBlocks) {
 		final int n = block.getRowDimension();
 		final int N = n * numBlocks;
@@ -458,69 +908,259 @@ public class FDMThetaMethod2D implements FDMSolver {
 		for(int b = 0; b < numBlocks; b++) {
 			final int row0 = b * n;
 			final int col0 = b * n;
+
 			for(int i = 0; i < n; i++) {
 				for(int j = Math.max(0, i - 2); j <= Math.min(n - 1, i + 2); j++) {
-					final double v = block.getEntry(i, j);
-					if(v != 0.0) {
-						out.setEntry(row0 + i, col0 + j, v);
+					final double value = block.getEntry(i, j);
+					if(value != 0.0) {
+						out.setEntry(row0 + i, col0 + j, value);
 					}
 				}
 			}
 		}
+
 		return out;
 	}
 
-	private static RealMatrix buildKron(final RealMatrix A, final RealMatrix B) {
-		final int aR = A.getRowDimension();
-		final int aC = A.getColumnDimension();
-		final int bR = B.getRowDimension();
-		final int bC = B.getColumnDimension();
+	/**
+	 * Builds the sparse Kronecker product of two matrices.
+	 *
+	 * @param a The left matrix.
+	 * @param b The right matrix.
+	 * @return The sparse Kronecker product {@code a ⊗ b}.
+	 */
+	private static RealMatrix buildKron(final RealMatrix a, final RealMatrix b) {
+		final int aRows = a.getRowDimension();
+		final int aCols = a.getColumnDimension();
+		final int bRows = b.getRowDimension();
+		final int bCols = b.getColumnDimension();
 
-		final OpenMapRealMatrix out = new OpenMapRealMatrix(aR * bR, aC * bC);
+		final OpenMapRealMatrix out = new OpenMapRealMatrix(aRows * bRows, aCols * bCols);
 
-		for(int i = 0; i < aR; i++) {
-			for(int j = Math.max(0, i - 2); j <= Math.min(aC - 1, i + 2); j++) {
-				final double a = A.getEntry(i, j);
-				if(a == 0.0) {
+		for(int i = 0; i < aRows; i++) {
+			for(int j = Math.max(0, i - 2); j <= Math.min(aCols - 1, i + 2); j++) {
+				final double aValue = a.getEntry(i, j);
+				if(aValue == 0.0) {
 					continue;
 				}
 
-				final int rowBase = i * bR;
-				final int colBase = j * bC;
+				final int rowBase = i * bRows;
+				final int colBase = j * bCols;
 
-				for(int p = 0; p < bR; p++) {
-					for(int q = Math.max(0, p - 2); q <= Math.min(bC - 1, p + 2); q++) {
-						final double b = B.getEntry(p, q);
-						if(b == 0.0) {
+				for(int p = 0; p < bRows; p++) {
+					for(int q = Math.max(0, p - 2); q <= Math.min(bCols - 1, p + 2); q++) {
+						final double bValue = b.getEntry(p, q);
+						if(bValue == 0.0) {
 							continue;
 						}
-						out.setEntry(rowBase + p, colBase + q, a * b);
+
+						out.setEntry(rowBase + p, colBase + q, aValue * bValue);
 					}
 				}
 			}
 		}
+
 		return out;
 	}
 
-	private static RealMatrix buildKronWithIdentityLeft(final RealMatrix A, final int nIdentity) {
-		final int aR = A.getRowDimension();
-		final int aC = A.getColumnDimension();
-		final int N = aR * nIdentity;
+	/**
+	 * Builds the sparse Kronecker product {@code A ⊗ I}, where {@code I} is an identity matrix.
+	 *
+	 * @param a The left matrix.
+	 * @param nIdentity The dimension of the identity matrix.
+	 * @return The sparse matrix {@code a ⊗ I}.
+	 */
+	private static RealMatrix buildKronWithIdentityLeft(final RealMatrix a, final int nIdentity) {
+		final int aRows = a.getRowDimension();
+		final int aCols = a.getColumnDimension();
+		final int N = aRows * nIdentity;
 
-		final OpenMapRealMatrix out = new OpenMapRealMatrix(N, aC * nIdentity);
+		final OpenMapRealMatrix out = new OpenMapRealMatrix(N, aCols * nIdentity);
 
-		for(int i = 0; i < aR; i++) {
-			for(int j = Math.max(0, i - 2); j <= Math.min(aC - 1, i + 2); j++) {
-				final double a = A.getEntry(i, j);
-				if(a == 0.0) {
+		for(int i = 0; i < aRows; i++) {
+			for(int j = Math.max(0, i - 2); j <= Math.min(aCols - 1, i + 2); j++) {
+				final double aValue = a.getEntry(i, j);
+				if(aValue == 0.0) {
 					continue;
 				}
 
 				for(int k = 0; k < nIdentity; k++) {
-					out.setEntry(i * nIdentity + k, j * nIdentity + k, a);
+					out.setEntry(i * nIdentity + k, j * nIdentity + k, aValue);
 				}
 			}
 		}
+
 		return out;
+	}
+
+	/**
+	 * Container for the discrete two-dimensional differential operators.
+	 */
+	private static final class DifferentialOperators2D {
+
+		private final RealMatrix d0;
+		private final RealMatrix d1;
+		private final RealMatrix d00;
+		private final RealMatrix d11;
+		private final RealMatrix d01;
+
+		/**
+		 * Creates a container for the discrete differential operators.
+		 *
+		 * @param d0 The first derivative operator with respect to the first state variable.
+		 * @param d1 The first derivative operator with respect to the second state variable.
+		 * @param d00 The second derivative operator with respect to the first state variable.
+		 * @param d11 The second derivative operator with respect to the second state variable.
+		 * @param d01 The mixed derivative operator.
+		 */
+		private DifferentialOperators2D(
+				final RealMatrix d0,
+				final RealMatrix d1,
+				final RealMatrix d00,
+				final RealMatrix d11,
+				final RealMatrix d01) {
+			this.d0 = d0;
+			this.d1 = d1;
+			this.d00 = d00;
+			this.d11 = d11;
+			this.d01 = d01;
+		}
+
+		/**
+		 * Returns the first derivative operator with respect to the first state variable.
+		 *
+		 * @return The operator {@code d/dx0}.
+		 */
+		private RealMatrix getD0() {
+			return d0;
+		}
+
+		/**
+		 * Returns the first derivative operator with respect to the second state variable.
+		 *
+		 * @return The operator {@code d/dx1}.
+		 */
+		private RealMatrix getD1() {
+			return d1;
+		}
+
+		/**
+		 * Returns the second derivative operator with respect to the first state variable.
+		 *
+		 * @return The operator {@code d^2/dx0^2}.
+		 */
+		private RealMatrix getD00() {
+			return d00;
+		}
+
+		/**
+		 * Returns the second derivative operator with respect to the second state variable.
+		 *
+		 * @return The operator {@code d^2/dx1^2}.
+		 */
+		private RealMatrix getD11() {
+			return d11;
+		}
+
+		/**
+		 * Returns the mixed derivative operator.
+		 *
+		 * @return The operator {@code d^2/(dx0 dx1)}.
+		 */
+		private RealMatrix getD01() {
+			return d01;
+		}
+	}
+
+	/**
+	 * Container for the model coefficients evaluated on the full flattened grid.
+	 */
+	private static final class ModelCoefficients2D {
+
+		private final RealMatrix mu0;
+		private final RealMatrix mu1;
+		private final RealMatrix a00;
+		private final RealMatrix a11;
+		private final RealMatrix a01;
+		private final double shortRate;
+
+		/**
+		 * Creates a container for the model coefficient matrices.
+		 *
+		 * @param mu0 The diagonal matrix of first-component drift values.
+		 * @param mu1 The diagonal matrix of second-component drift values.
+		 * @param a00 The diagonal matrix of first-component variances.
+		 * @param a11 The diagonal matrix of second-component variances.
+		 * @param a01 The diagonal matrix of covariances.
+		 * @param shortRate The instantaneous short rate.
+		 */
+		private ModelCoefficients2D(
+				final RealMatrix mu0,
+				final RealMatrix mu1,
+				final RealMatrix a00,
+				final RealMatrix a11,
+				final RealMatrix a01,
+				final double shortRate) {
+			this.mu0 = mu0;
+			this.mu1 = mu1;
+			this.a00 = a00;
+			this.a11 = a11;
+			this.a01 = a01;
+			this.shortRate = shortRate;
+		}
+
+		/**
+		 * Returns the diagonal drift matrix for the first state variable.
+		 *
+		 * @return The matrix of first-component drifts.
+		 */
+		private RealMatrix getMu0() {
+			return mu0;
+		}
+
+		/**
+		 * Returns the diagonal drift matrix for the second state variable.
+		 *
+		 * @return The matrix of second-component drifts.
+		 */
+		private RealMatrix getMu1() {
+			return mu1;
+		}
+
+		/**
+		 * Returns the diagonal variance matrix for the first state variable.
+		 *
+		 * @return The matrix of first-component variances.
+		 */
+		private RealMatrix getA00() {
+			return a00;
+		}
+
+		/**
+		 * Returns the diagonal variance matrix for the second state variable.
+		 *
+		 * @return The matrix of second-component variances.
+		 */
+		private RealMatrix getA11() {
+			return a11;
+		}
+
+		/**
+		 * Returns the diagonal covariance matrix.
+		 *
+		 * @return The matrix of covariances.
+		 */
+		private RealMatrix getA01() {
+			return a01;
+		}
+
+		/**
+		 * Returns the instantaneous short rate.
+		 *
+		 * @return The short rate.
+		 */
+		private double getShortRate() {
+			return shortRate;
+		}
 	}
 }

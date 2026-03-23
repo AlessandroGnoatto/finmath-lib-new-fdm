@@ -65,6 +65,21 @@ public class FDMThetaMethod1D implements FDMSolver {
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
 
+	/**
+	 * Creates a theta-method finite-difference solver for a one-dimensional backward PDE.
+	 *
+	 * <p>
+	 * The supplied model provides the local drift, variance, discounting, and boundary conditions
+	 * for the chosen state variable. The product may additionally define internal state constraints,
+	 * and the exercise specification determines whether exercise projection is applied at eligible dates.
+	 * </p>
+	 *
+	 * @param model The finite-difference equity model providing PDE coefficients and boundary conditions.
+	 * @param product The product to be valued. May optionally implement
+	 *        {@link FiniteDifferenceInternalStateConstraint} to impose internal Dirichlet constraints.
+	 * @param spaceTimeDiscretization The joint spatial and temporal discretization, including the theta parameter.
+	 * @param exercise The exercise specification controlling whether and when exercise is allowed.
+	 */
 	public FDMThetaMethod1D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -76,6 +91,37 @@ public class FDMThetaMethod1D implements FDMSolver {
 		this.exercise = exercise;
 	}
 
+	/**
+	 * Solves the backward PDE on the full space-time grid and returns the computed value surface.
+	 *
+	 * <p>
+	 * The method initializes the terminal condition from {@code valueAtMaturity}, then steps backward
+	 * in time using the theta scheme. At each step it
+	 * </p>
+	 * <ul>
+	 *   <li>assembles the tridiagonal left- and right-hand-side operators,</li>
+	 *   <li>applies model boundary conditions,</li>
+	 *   <li>imposes internal state constraints if provided by the product,</li>
+	 *   <li>handles Bermudan or American exercise where applicable.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * For American exercise dates, the method solves the resulting linear complementarity problem via
+	 * projected SOR. For non-American products, or for time steps where no early exercise is allowed,
+	 * a standard tridiagonal solve is performed.
+	 * </p>
+	 *
+	 * <p>
+	 * The returned matrix is indexed as {@code values[spaceIndex][timeIndex]}, where
+	 * {@code timeIndex = 0} corresponds to maturity and increasing indices move backward toward the
+	 * present in time-to-maturity coordinates.
+	 * </p>
+	 *
+	 * @param time The maturity time of the claim. This parameter is used consistently with the solver
+	 *        interface; the backward stepping itself is governed by the time discretization.
+	 * @param valueAtMaturity The terminal payoff function as a function of the spatial grid variable.
+	 * @return The full space-time value surface on the finite-difference grid.
+	 */
 	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 
@@ -84,7 +130,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 		final double theta = spaceTimeDiscretization.getTheta();
 		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
-		final int M = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
+		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
 
 		double[] u = new double[nX];
 		final double[][] z = new double[nX][timeLength];
@@ -94,56 +140,40 @@ public class FDMThetaMethod1D implements FDMSolver {
 			z[i][0] = u[i];
 		}
 
-		for(int m = 0; m < M; m++) {
+		for(int m = 0; m < numberOfTimeSteps; m++) {
 
 			final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-			final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(M - m);
-			final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(M - (m + 1));
+			final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
+			final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-			final double tSafe_m = (t_m == 0.0 ? 1E-6 : t_m);
-			final double tSafe_mp1 = (t_mp1 == 0.0 ? 1E-6 : t_mp1);
-
-			final double r_m = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_m)) / tSafe_m;
-			final double r_mp1 = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_mp1)) / tSafe_mp1;
-
-			final double[] mu_m = new double[nX];
-			final double[] mu_mp1 = new double[nX];
-			final double[] a_m = new double[nX];
-			final double[] a_mp1 = new double[nX];
-
-			for(int i = 0; i < nX; i++) {
-				final double x = xGrid[i];
-
-				mu_m[i] = model.getDrift(t_m, x)[0];
-				mu_mp1[i] = model.getDrift(t_mp1, x)[0];
-
-				final double[][] b_m = model.getFactorLoading(t_m, x);
-				final double[][] b_mp1 = model.getFactorLoading(t_mp1, x);
-
-				double am = 0.0;
-				for(int f = 0; f < b_m[0].length; f++) {
-					final double b = b_m[0][f];
-					am += b * b;
-				}
-
-				double ap = 0.0;
-				for(int f = 0; f < b_mp1[0].length; f++) {
-					final double b = b_mp1[0][f];
-					ap += b * b;
-				}
-
-				a_m[i] = am;
-				a_mp1[i] = ap;
-			}
+			final ThetaMethod1DAssembly.ModelCoefficients coefficients_m =
+					ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_m);
+			final ThetaMethod1DAssembly.ModelCoefficients coefficients_mp1 =
+					ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_mp1);
 
 			final TridiagonalMatrix lhs = new TridiagonalMatrix(nX);
 			final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(nX);
 
-			buildThetaLeftHandSide(lhs, xGrid, mu_mp1, a_mp1, r_mp1, deltaTau, theta);
-			buildThetaRightHandSide(rhsOperator, xGrid, mu_m, a_m, r_m, deltaTau, theta);
+			ThetaMethod1DAssembly.buildThetaLeftHandSide(
+					lhs,
+					xGrid,
+					coefficients_mp1.getDrift(),
+					coefficients_mp1.getVariance(),
+					coefficients_mp1.getShortRate(),
+					deltaTau,
+					theta);
 
-			final double[] rhs = apply(rhsOperator, u);
+			ThetaMethod1DAssembly.buildThetaRightHandSide(
+					rhsOperator,
+					xGrid,
+					coefficients_m.getDrift(),
+					coefficients_m.getVariance(),
+					coefficients_m.getShortRate(),
+					deltaTau,
+					theta);
+
+			final double[] rhs = ThetaMethod1DAssembly.apply(rhsOperator, u);
 
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
 			final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
@@ -152,20 +182,20 @@ public class FDMThetaMethod1D implements FDMSolver {
 					model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, xGrid[0])[0];
 
 			if(lowerCondition.isDirichlet()) {
-				overwriteAsDirichlet(lhs, rhs, 0, lowerCondition.getValue());
+				ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, 0, lowerCondition.getValue());
 			}
 
 			final BoundaryCondition upperCondition =
 					model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, xGrid[nX - 1])[0];
 
 			if(upperCondition.isDirichlet()) {
-				overwriteAsDirichlet(lhs, rhs, nX - 1, upperCondition.getValue());
+				ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, nX - 1, upperCondition.getValue());
 			}
 
 			for(int i = 1; i < nX - 1; i++) {
 				final double x = xGrid[i];
 				if(isInternalConstraintActive(boundaryTime, x)) {
-					overwriteAsDirichlet(lhs, rhs, i, getInternalConstrainedValue(boundaryTime, x));
+					ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, i, getInternalConstrainedValue(boundaryTime, x));
 				}
 			}
 
@@ -214,6 +244,21 @@ public class FDMThetaMethod1D implements FDMSolver {
 		return z;
 	}
 
+	/**
+	 * Returns the value vector at a specific evaluation time by extracting the appropriate time slice
+	 * from the full space-time solution.
+	 *
+	 * <p>
+	 * Internally, this method first computes the full value surface via {@link #getValues(double, DoubleUnaryOperator)}
+	 * and then selects the time column corresponding to the nearest discretization point with time-to-maturity
+	 * less than or equal to {@code time - evaluationTime}.
+	 * </p>
+	 *
+	 * @param evaluationTime The time at which the value is requested.
+	 * @param time The maturity time of the claim.
+	 * @param valueAtMaturity The terminal payoff function as a function of the spatial grid variable.
+	 * @return The value vector across the spatial grid at the requested evaluation time.
+	 */
 	@Override
 	public double[] getValue(
 			final double evaluationTime,
@@ -232,129 +277,26 @@ public class FDMThetaMethod1D implements FDMSolver {
 		return column;
 	}
 
-	private void buildThetaLeftHandSide(
-			final TridiagonalMatrix lhs,
-			final double[] xGrid,
-			final double[] mu,
-			final double[] a,
-			final double r,
-			final double deltaTau,
-			final double theta) {
-
-		final double alpha = theta * deltaTau;
-		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, mu[i], a[i], r);
-			lhs.lower[i] = -alpha * spatial.lower;
-			lhs.diag[i] = 1.0 - alpha * spatial.diag;
-			lhs.upper[i] = -alpha * spatial.upper;
-		}
-	}
-
-	private void buildThetaRightHandSide(
-			final TridiagonalMatrix rhsOperator,
-			final double[] xGrid,
-			final double[] mu,
-			final double[] a,
-			final double r,
-			final double deltaTau,
-			final double theta) {
-
-		final double alpha = (1.0 - theta) * deltaTau;
-		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, mu[i], a[i], r);
-			rhsOperator.lower[i] = alpha * spatial.lower;
-			rhsOperator.diag[i] = 1.0 + alpha * spatial.diag;
-			rhsOperator.upper[i] = alpha * spatial.upper;
-		}
-	}
-
-	private RowCoefficients spatialOperatorRow(
-			final int i,
-			final double[] x,
-			final double mu,
-			final double variance,
-			final double r) {
-
-		final int n = x.length;
-		final double halfVariance = 0.5 * variance;
-
-		double t1Lower = 0.0;
-		double t1Diag = 0.0;
-		double t1Upper = 0.0;
-
-		double t2Lower = 0.0;
-		double t2Diag = 0.0;
-		double t2Upper = 0.0;
-
-		if(i == 0) {
-			final double h1 = x[1] - x[0];
-			final double h2 = x[2] - x[1];
-
-			t1Diag = -1.0 / h1;
-			t1Upper = 1.0 / h1;
-
-			t2Diag = -2.0 / (h1 * h2);
-			t2Upper = 2.0 / (h1 * (h1 + h2));
-		}
-		else if(i == n - 1) {
-			final double h0 = x[i] - x[i - 1];
-			final double h3 = x[i - 1] - x[i - 2];
-
-			t1Lower = -1.0 / h0;
-			t1Diag = 1.0 / h0;
-
-			t2Lower = 2.0 / (h0 * (h0 + h3));
-			t2Diag = -2.0 / (h3 * h0);
-		}
-		else {
-			final double h0 = x[i] - x[i - 1];
-			final double h1 = x[i + 1] - x[i];
-
-			t1Lower = -h1 / (h0 * (h1 + h0));
-			t1Diag = (h1 - h0) / (h1 * h0);
-			t1Upper = h0 / (h1 * (h0 + h1));
-
-			t2Lower = 2.0 / (h0 * (h0 + h1));
-			t2Diag = -2.0 / (h0 * h1);
-			t2Upper = 2.0 / (h1 * (h0 + h1));
-		}
-
-		return new RowCoefficients(
-				mu * t1Lower + halfVariance * t2Lower,
-				mu * t1Diag + halfVariance * t2Diag - r,
-				mu * t1Upper + halfVariance * t2Upper);
-	}
-
-	private double[] apply(final TridiagonalMatrix matrix, final double[] vector) {
-		final int n = vector.length;
-		final double[] result = new double[n];
-
-		for(int i = 0; i < n; i++) {
-			double value = matrix.diag[i] * vector[i];
-			if(i > 0) {
-				value += matrix.lower[i] * vector[i - 1];
-			}
-			if(i < n - 1) {
-				value += matrix.upper[i] * vector[i + 1];
-			}
-			result[i] = value;
-		}
-
-		return result;
-	}
-
-	private void overwriteAsDirichlet(
-			final TridiagonalMatrix lhs,
-			final double[] rhs,
-			final int row,
-			final double value) {
-
-		lhs.lower[row] = 0.0;
-		lhs.diag[row] = 1.0;
-		lhs.upper[row] = 0.0;
-		rhs[row] = value;
-	}
-
+	/**
+	 * Builds the obstacle vector used in the projected solve for American exercise.
+	 *
+	 * <p>
+	 * At each grid node, the obstacle is chosen as follows:
+	 * </p>
+	 * <ul>
+	 *   <li>Dirichlet boundary value at the lower boundary, if active,</li>
+	 *   <li>Dirichlet boundary value at the upper boundary, if active,</li>
+	 *   <li>internal constrained value, if an internal state constraint is active,</li>
+	 *   <li>otherwise the intrinsic exercise value from {@code valueAtMaturity}.</li>
+	 * </ul>
+	 *
+	 * @param xGrid The spatial grid.
+	 * @param boundaryTime The current backward time level expressed in model time.
+	 * @param valueAtMaturity The intrinsic payoff function used as exercise value.
+	 * @param lowerCondition The boundary condition at the lower grid boundary.
+	 * @param upperCondition The boundary condition at the upper grid boundary.
+	 * @return The obstacle vector for the projected tridiagonal solver.
+	 */
 	private double[] buildObstacleVector(
 			final double[] xGrid,
 			final double boundaryTime,
@@ -380,6 +322,22 @@ public class FDMThetaMethod1D implements FDMSolver {
 		return obstacle;
 	}
 
+	/**
+	 * Applies pointwise exercise projection to a solution vector at an exercise date.
+	 *
+	 * <p>
+	 * The projection preserves active Dirichlet boundary values and active internal constraints.
+	 * At all unconstrained interior nodes, the continuation value is replaced by the maximum of
+	 * continuation and intrinsic value.
+	 * </p>
+	 *
+	 * @param u The solution vector to be modified in place.
+	 * @param xGrid The spatial grid corresponding to {@code u}.
+	 * @param boundaryTime The current backward time level expressed in model time.
+	 * @param valueAtMaturity The intrinsic payoff function used as exercise value.
+	 * @param lowerCondition The boundary condition at the lower grid boundary.
+	 * @param upperCondition The boundary condition at the upper grid boundary.
+	 */
 	private void applyExerciseProjection(
 			final double[] u,
 			final double[] xGrid,
@@ -404,6 +362,18 @@ public class FDMThetaMethod1D implements FDMSolver {
 		}
 	}
 
+	/**
+	 * Reapplies active internal state constraints to the interior grid nodes of a solution vector.
+	 *
+	 * <p>
+	 * This is used after a linear or projected solve to ensure that constrained nodes remain exactly
+	 * at their prescribed values, compensating for possible numerical drift.
+	 * </p>
+	 *
+	 * @param u The solution vector to be modified in place.
+	 * @param xGrid The spatial grid corresponding to {@code u}.
+	 * @param boundaryTime The current backward time level expressed in model time.
+	 */
 	private void reimposeInternalConstraints(
 			final double[] u,
 			final double[] xGrid,
@@ -416,6 +386,18 @@ public class FDMThetaMethod1D implements FDMSolver {
 		}
 	}
 
+	/**
+	 * Reapplies active Dirichlet boundary values to the solution vector.
+	 *
+	 * <p>
+	 * Boundary values are only overwritten if the corresponding boundary condition is of Dirichlet type.
+	 * If a boundary condition is not Dirichlet, the existing value is left unchanged.
+	 * </p>
+	 *
+	 * @param u The solution vector to be modified in place.
+	 * @param lowerCondition The lower boundary condition.
+	 * @param upperCondition The upper boundary condition.
+	 */
 	private void reimposeBoundaryValues(
 			final double[] u,
 			final BoundaryCondition lowerCondition,
@@ -429,6 +411,18 @@ public class FDMThetaMethod1D implements FDMSolver {
 		}
 	}
 
+	/**
+	 * Checks whether the product defines an active internal state constraint at the given time and state.
+	 *
+	 * <p>
+	 * The check is only performed if the product implements
+	 * {@link FiniteDifferenceInternalStateConstraint}. Otherwise this method returns {@code false}.
+	 * </p>
+	 *
+	 * @param time The model time at which the constraint is queried.
+	 * @param x The spatial state variable value.
+	 * @return {@code true} if an internal constraint is active at the specified point, {@code false} otherwise.
+	 */
 	private boolean isInternalConstraintActive(final double time, final double x) {
 		if(product instanceof FiniteDifferenceInternalStateConstraint) {
 			return ((FiniteDifferenceInternalStateConstraint) product).isConstraintActive(time, x);
@@ -436,19 +430,20 @@ public class FDMThetaMethod1D implements FDMSolver {
 		return false;
 	}
 
+	/**
+	 * Returns the value prescribed by the product's internal state constraint at the given time and state.
+	 *
+	 * <p>
+	 * This method assumes that {@code product} implements {@link FiniteDifferenceInternalStateConstraint}
+	 * and is typically called only after {@link #isInternalConstraintActive(double, double)} has returned
+	 * {@code true}.
+	 * </p>
+	 *
+	 * @param time The model time at which the constrained value is queried.
+	 * @param x The spatial state variable value.
+	 * @return The constrained value to be imposed at the specified point.
+	 */
 	private double getInternalConstrainedValue(final double time, final double x) {
 		return ((FiniteDifferenceInternalStateConstraint) product).getConstrainedValue(time, x);
-	}
-
-	private static final class RowCoefficients {
-		private final double lower;
-		private final double diag;
-		private final double upper;
-
-		private RowCoefficients(final double lower, final double diag, final double upper) {
-			this.lower = lower;
-			this.diag = diag;
-			this.upper = upper;
-		}
 	}
 }

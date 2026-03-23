@@ -4,39 +4,57 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonMod
 import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 
 /**
- * Builds tridiagonal line matrices for ADI solves under the Heston model.
- *
+ * Builder for the tridiagonal line matrices arising in alternating direction
+ * implicit (ADI) finite difference solves for the two-dimensional Heston PDE.
  * <p>
- * State variables:
+ * The state variables are:
  * </p>
  * <ul>
- *   <li>state 0 = spot S</li>
- *   <li>state 1 = variance v</li>
+ *   <li>state variable {@code 0}: spot {@code S},</li>
+ *   <li>state variable {@code 1}: variance {@code v}.</li>
  * </ul>
  *
  * <p>
- * We split the PDE operator into:
+ * In the ADI splitting used by the solver, the differential operator is
+ * decomposed into directional parts:
  * </p>
  * <ul>
- *   <li>A1 = spot-direction drift + diffusion</li>
- *   <li>A2 = variance-direction drift + diffusion</li>
+ *   <li>{@code A1}: spot-direction drift and diffusion terms,</li>
+ *   <li>{@code A2}: variance-direction drift and diffusion terms.</li>
  * </ul>
  *
  * <p>
- * This builder returns the tridiagonal matrix for
+ * This class constructs the tridiagonal matrices corresponding to the implicit
+ * one-dimensional line solves
  * </p>
- * <p>
+ * <pre>
  * (I - theta * dt * A1)
- * </p>
+ * </pre>
  * <p>
- * or
+ * for a fixed variance level, and
  * </p>
- * <p>
+ * <pre>
  * (I - theta * dt * A2)
- * </p>
+ * </pre>
  * <p>
- * on one fixed line.
+ * for a fixed spot level.
  * </p>
+ *
+ * <p>
+ * The coefficients are assembled from the local drift and factor loading
+ * returned by the {@link FDMHestonModel}. Spatial derivatives are discretized
+ * by central finite differences on possibly non-uniform grids. As a result,
+ * each directional operator gives rise to a tridiagonal matrix on the
+ * corresponding line.
+ * </p>
+ *
+ * <p>
+ * The boundary rows are initialized in a simple identity form and are intended
+ * to be overwritten by the calling solver when enforcing the appropriate
+ * boundary conditions.
+ * </p>
+ *
+ * @author Alessandro Gnoatto
  */
 public class HestonADIStencilBuilder {
 
@@ -44,6 +62,14 @@ public class HestonADIStencilBuilder {
 	private final double[] sGrid;
 	private final double[] vGrid;
 
+	/**
+	 * Creates a stencil builder for ADI line solves under a Heston model.
+	 *
+	 * @param model The finite difference Heston model providing drift and factor
+	 * 		loadings.
+	 * @param sGrid The spatial grid for the spot state variable.
+	 * @param vGrid The spatial grid for the variance state variable.
+	 */
 	public HestonADIStencilBuilder(
 			final FDMHestonModel model,
 			final double[] sGrid,
@@ -54,14 +80,40 @@ public class HestonADIStencilBuilder {
 	}
 
 	/**
-	 * Builds the tridiagonal matrix for the spot-direction implicit solve
-	 * on a fixed variance slice:
-	 *
+	 * Builds the tridiagonal matrix for the implicit spot-direction solve on a
+	 * fixed variance slice.
 	 * <p>
+	 * The returned matrix represents the operator
+	 * </p>
+	 * <pre>
 	 * (I - theta * dt * A1)
+	 * </pre>
+	 * <p>
+	 * where {@code A1} contains the spot-direction drift and diffusion terms
+	 * only. The variance level is kept fixed at the value corresponding to the
+	 * provided variance-grid index.
 	 * </p>
 	 *
-	 * where A1 contains only spot drift and spot diffusion terms.
+	 * <p>
+	 * For each interior spot node, the operator coefficients are obtained from:
+	 * </p>
+	 * <ul>
+	 *   <li>the spot drift component,</li>
+	 *   <li>the spot diffusion coefficient derived from the factor loading,</li>
+	 *   <li>central finite difference approximations on the possibly non-uniform
+	 *       spot grid.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * The first and last rows are initialized as identity rows. They are intended
+	 * to be replaced by the caller when applying the actual boundary conditions.
+	 * </p>
+	 *
+	 * @param time The running time at which the local operator coefficients are evaluated.
+	 * @param dt The time step size used in the ADI scheme.
+	 * @param theta The ADI weighting parameter.
+	 * @param vIndex The index of the fixed variance level.
+	 * @return The tridiagonal matrix representing the implicit spot-direction line solve.
 	 */
 	public TridiagonalMatrix buildSpotLineMatrix(
 			final double time,
@@ -127,14 +179,40 @@ public class HestonADIStencilBuilder {
 	}
 
 	/**
-	 * Builds the tridiagonal matrix for the variance-direction implicit solve
-	 * on a fixed spot slice:
-	 *
+	 * Builds the tridiagonal matrix for the implicit variance-direction solve on
+	 * a fixed spot slice.
 	 * <p>
+	 * The returned matrix represents the operator
+	 * </p>
+	 * <pre>
 	 * (I - theta * dt * A2)
+	 * </pre>
+	 * <p>
+	 * where {@code A2} contains the variance-direction drift and diffusion terms
+	 * only. The spot level is kept fixed at the value corresponding to the
+	 * provided spot-grid index.
 	 * </p>
 	 *
-	 * where A2 contains only variance drift and variance diffusion terms.
+	 * <p>
+	 * For each interior variance node, the operator coefficients are obtained from:
+	 * </p>
+	 * <ul>
+	 *   <li>the variance drift component,</li>
+	 *   <li>the variance diffusion coefficient derived from the factor loading,</li>
+	 *   <li>central finite difference approximations on the possibly non-uniform
+	 *       variance grid.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * The first and last rows are initialized as identity rows. They are intended
+	 * to be replaced by the caller when applying the actual boundary conditions.
+	 * </p>
+	 *
+	 * @param time The running time at which the local operator coefficients are evaluated.
+	 * @param dt The time step size used in the ADI scheme.
+	 * @param theta The ADI weighting parameter.
+	 * @param sIndex The index of the fixed spot level.
+	 * @return The tridiagonal matrix representing the implicit variance-direction line solve.
 	 */
 	public TridiagonalMatrix buildVarianceLineMatrix(
 			final double time,

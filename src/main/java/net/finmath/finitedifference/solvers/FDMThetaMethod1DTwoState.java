@@ -29,6 +29,8 @@ import net.finmath.modelling.products.BarrierType;
  * <p>
  * Currently supports only European exercise.
  * </p>
+ * 
+ * @author Alessandro Gnoatto
  */
 public class FDMThetaMethod1DTwoState implements FDMSolver {
 
@@ -40,6 +42,29 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 	private final Exercise exercise;
 	private final TwoStateActiveBoundaryProvider activeBoundaryProvider;
 
+	/**
+	 * Creates a direct two-state theta-method solver for one-dimensional knock-in barrier options.
+	 *
+	 * <p>
+	 * The solver evolves two coupled value functions:
+	 * </p>
+	 * <ul>
+	 *   <li>the <em>inactive</em> regime, representing the contract value before the barrier has been hit,</li>
+	 *   <li>the <em>active</em> regime, representing the value after activation, which behaves like the corresponding vanilla claim.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * The active regime is solved on the full spatial grid, while the inactive regime is solved only on the
+	 * portion of the grid where the barrier has not yet been triggered. On the already-hit region, the inactive
+	 * value is identified with the active one.
+	 * </p>
+	 *
+	 * @param model The finite-difference equity model providing local PDE coefficients and discounting.
+	 * @param product The knock-in barrier option to be valued.
+	 * @param spaceTimeDiscretization The spatial and temporal discretization, including the theta parameter.
+	 * @param exercise The exercise specification. Only European exercise is supported.
+	 * @param activeBoundaryProvider Provider for the boundary values of the already-activated regime.
+	 */
 	public FDMThetaMethod1DTwoState(
 			final FiniteDifferenceEquityModel model,
 			final BarrierOption product,
@@ -53,6 +78,33 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		this.activeBoundaryProvider = activeBoundaryProvider;
 	}
 
+	/**
+	 * Solves the two-state backward PDE on the full space-time grid and returns the inactive-regime value surface.
+	 *
+	 * <p>
+	 * At maturity, the active regime equals the plain payoff, while the inactive regime equals either
+	 * the payoff on the already-hit region or the contract rebate on the not-yet-hit region.
+	 * The method then steps backward in time:
+	 * </p>
+	 * <ul>
+	 *   <li>solving the activated regime on the full grid,</li>
+	 *   <li>solving the non-activated regime on the continuation-side subgrid,</li>
+	 *   <li>imposing the coupling condition {@code inactive = active} on the already-hit region.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * The returned surface stores the inactive-regime values only, since these represent the contract
+	 * value prior to barrier activation.
+	 * </p>
+	 *
+	 * @param time The maturity time of the product. This parameter is part of the solver interface and is
+	 *        used consistently with the supplied terminal payoff.
+	 * @param valueAtMaturity The terminal payoff as a function of the state variable.
+	 * @return The inactive-regime solution surface indexed as {@code values[spaceIndex][timeIndex]}.
+	 * @throws IllegalArgumentException If the exercise style is not European, if no active boundary provider
+	 *         is supplied, if the barrier type is unsupported, if the grid is too small, or if the barrier
+	 *         does not coincide with a grid point.
+	 */
 	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 
@@ -163,6 +215,20 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		return solutionSurface;
 	}
 
+	/**
+	 * Returns the inactive-regime value vector at the requested evaluation time.
+	 *
+	 * <p>
+	 * This method computes the full inactive-regime space-time surface using
+	 * {@link #getValues(double, DoubleUnaryOperator)} and then extracts the column corresponding to the
+	 * nearest discretized time-to-maturity less than or equal to {@code time - evaluationTime}.
+	 * </p>
+	 *
+	 * @param evaluationTime The time at which the value vector is requested.
+	 * @param time The maturity time of the claim.
+	 * @param valueAtMaturity The terminal payoff as a function of the state variable.
+	 * @return The inactive-regime value vector across the spatial grid at the specified evaluation time.
+	 */
 	@Override
 	public double[] getValue(
 			final double evaluationTime,
@@ -180,6 +246,31 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		return column;
 	}
 
+	/**
+	 * Advances the inactive regime by one time step for a down-in barrier option.
+	 *
+	 * <p>
+	 * For a down-in option, all states at or below the barrier belong to the already-hit region and therefore
+	 * satisfy {@code inactive = active}. Only the states strictly above the barrier remain in the non-activated
+	 * continuation region and require a PDE solve on the corresponding subgrid.
+	 * </p>
+	 *
+	 * <p>
+	 * The lower boundary of the continuation subproblem is coupled to the active regime at the barrier,
+	 * while the upper boundary corresponds to the discounted value of remaining unactivated until maturity.
+	 * </p>
+	 *
+	 * @param xGrid The full spatial grid.
+	 * @param barrierIndex The index of the barrier node on the spatial grid.
+	 * @param inactivePrevious The inactive-regime solution at the previous time level.
+	 * @param activePrevious The active-regime solution at the previous time level.
+	 * @param activeNext The active-regime solution at the new time level.
+	 * @param inactiveNext Output array receiving the inactive-regime solution at the new time level.
+	 * @param t_m The current backward time level used for the right-hand-side operator.
+	 * @param t_mp1 The next backward time level used for the left-hand-side operator.
+	 * @param deltaTau The time step size in time-to-maturity coordinates.
+	 * @param currentTime The corresponding forward model time.
+	 */
 	private void fillDownInInactiveStep(
 			final double[] xGrid,
 			final int barrierIndex,
@@ -229,6 +320,31 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		}
 	}
 
+	/**
+	 * Advances the inactive regime by one time step for an up-in barrier option.
+	 *
+	 * <p>
+	 * For an up-in option, all states at or above the barrier belong to the already-hit region and therefore
+	 * satisfy {@code inactive = active}. Only the states strictly below the barrier remain in the non-activated
+	 * continuation region and require a PDE solve on the corresponding subgrid.
+	 * </p>
+	 *
+	 * <p>
+	 * The upper boundary of the continuation subproblem is coupled to the active regime at the barrier,
+	 * while the lower boundary corresponds to the discounted value of remaining unactivated until maturity.
+	 * </p>
+	 *
+	 * @param xGrid The full spatial grid.
+	 * @param barrierIndex The index of the barrier node on the spatial grid.
+	 * @param inactivePrevious The inactive-regime solution at the previous time level.
+	 * @param activePrevious The active-regime solution at the previous time level.
+	 * @param activeNext The active-regime solution at the new time level.
+	 * @param inactiveNext Output array receiving the inactive-regime solution at the new time level.
+	 * @param t_m The current backward time level used for the right-hand-side operator.
+	 * @param t_mp1 The next backward time level used for the left-hand-side operator.
+	 * @param deltaTau The time step size in time-to-maturity coordinates.
+	 * @param currentTime The corresponding forward model time.
+	 */
 	private void fillUpInInactiveStep(
 			final double[] xGrid,
 			final int barrierIndex,
@@ -278,6 +394,28 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		}
 	}
 
+	/**
+	 * Solves one theta-method step for a vanilla one-dimensional tridiagonal PDE problem on a given grid.
+	 *
+	 * <p>
+	 * The method assembles the left- and right-hand-side theta operators, applies Dirichlet boundary
+	 * conditions at the two grid endpoints, and solves the resulting tridiagonal linear system.
+	 * </p>
+	 *
+	 * <p>
+	 * Degenerate grids with one or two nodes are handled explicitly by returning the boundary values directly.
+	 * </p>
+	 *
+	 * @param xGrid The spatial grid for the current subproblem.
+	 * @param previousValues The solution vector at the previous time level.
+	 * @param t_m The current backward time level used for the right-hand-side operator.
+	 * @param t_mp1 The next backward time level used for the left-hand-side operator.
+	 * @param deltaTau The time step size in time-to-maturity coordinates.
+	 * @param lowerBoundaryValue The Dirichlet value at the lower grid boundary.
+	 * @param upperBoundaryValue The Dirichlet value at the upper grid boundary.
+	 * @return The solution vector at the next time level.
+	 * @throws IllegalArgumentException If the grid and value vector sizes do not match.
+	 */
 	private double[] solveVanillaStep(
 			final double[] xGrid,
 			final double[] previousValues,
@@ -303,52 +441,36 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
 		final double theta = spaceTimeDiscretization.getTheta();
 
-		final double tSafe_m = Math.max(t_m, 1E-6);
-		final double tSafe_mp1 = Math.max(t_mp1, 1E-6);
-
-		final double r_m = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_m)) / tSafe_m;
-		final double r_mp1 = -Math.log(model.getRiskFreeCurve().getDiscountFactor(tSafe_mp1)) / tSafe_mp1;
-
-		final double[] mu_m = new double[n];
-		final double[] mu_mp1 = new double[n];
-		final double[] a_m = new double[n];
-		final double[] a_mp1 = new double[n];
-
-		for(int i = 0; i < n; i++) {
-			final double x = xGrid[i];
-
-			mu_m[i] = model.getDrift(t_m, x)[0];
-			mu_mp1[i] = model.getDrift(t_mp1, x)[0];
-
-			final double[][] b_m = model.getFactorLoading(t_m, x);
-			final double[][] b_mp1 = model.getFactorLoading(t_mp1, x);
-
-			double variance_m = 0.0;
-			for(int f = 0; f < b_m[0].length; f++) {
-				final double b = b_m[0][f];
-				variance_m += b * b;
-			}
-
-			double variance_mp1 = 0.0;
-			for(int f = 0; f < b_mp1[0].length; f++) {
-				final double b = b_mp1[0][f];
-				variance_mp1 += b * b;
-			}
-
-			a_m[i] = variance_m;
-			a_mp1[i] = variance_mp1;
-		}
+		final ThetaMethod1DAssembly.ModelCoefficients coefficients_m =
+				ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_m);
+		final ThetaMethod1DAssembly.ModelCoefficients coefficients_mp1 =
+				ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_mp1);
 
 		final TridiagonalMatrix lhs = new TridiagonalMatrix(n);
 		final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(n);
 
-		buildThetaLeftHandSide(lhs, xGrid, mu_mp1, a_mp1, r_mp1, deltaTau, theta);
-		buildThetaRightHandSide(rhsOperator, xGrid, mu_m, a_m, r_m, deltaTau, theta);
+		ThetaMethod1DAssembly.buildThetaLeftHandSide(
+				lhs,
+				xGrid,
+				coefficients_mp1.getDrift(),
+				coefficients_mp1.getVariance(),
+				coefficients_mp1.getShortRate(),
+				deltaTau,
+				theta);
 
-		final double[] rhs = apply(rhsOperator, previousValues);
+		ThetaMethod1DAssembly.buildThetaRightHandSide(
+				rhsOperator,
+				xGrid,
+				coefficients_m.getDrift(),
+				coefficients_m.getVariance(),
+				coefficients_m.getShortRate(),
+				deltaTau,
+				theta);
 
-		overwriteAsDirichlet(lhs, rhs, 0, lowerBoundaryValue);
-		overwriteAsDirichlet(lhs, rhs, n - 1, upperBoundaryValue);
+		final double[] rhs = ThetaMethod1DAssembly.apply(rhsOperator, previousValues);
+
+		ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, 0, lowerBoundaryValue);
+		ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, n - 1, upperBoundaryValue);
 
 		final double[] next = ThomasSolver.solve(lhs.lower, lhs.diag, lhs.upper, rhs);
 		next[0] = lowerBoundaryValue;
@@ -357,129 +479,22 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		return next;
 	}
 
-	private void buildThetaLeftHandSide(
-			final TridiagonalMatrix lhs,
-			final double[] xGrid,
-			final double[] mu,
-			final double[] a,
-			final double r,
-			final double deltaTau,
-			final double theta) {
-
-		final double alpha = theta * deltaTau;
-		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, mu[i], a[i], r);
-			lhs.lower[i] = -alpha * spatial.lower;
-			lhs.diag[i] = 1.0 - alpha * spatial.diag;
-			lhs.upper[i] = -alpha * spatial.upper;
-		}
-	}
-
-	private void buildThetaRightHandSide(
-			final TridiagonalMatrix rhsOperator,
-			final double[] xGrid,
-			final double[] mu,
-			final double[] a,
-			final double r,
-			final double deltaTau,
-			final double theta) {
-
-		final double alpha = (1.0 - theta) * deltaTau;
-		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, mu[i], a[i], r);
-			rhsOperator.lower[i] = alpha * spatial.lower;
-			rhsOperator.diag[i] = 1.0 + alpha * spatial.diag;
-			rhsOperator.upper[i] = alpha * spatial.upper;
-		}
-	}
-
-	private RowCoefficients spatialOperatorRow(
-			final int i,
-			final double[] x,
-			final double mu,
-			final double variance,
-			final double r) {
-
-		final int n = x.length;
-		final double halfVariance = 0.5 * variance;
-
-		double t1Lower = 0.0;
-		double t1Diag = 0.0;
-		double t1Upper = 0.0;
-
-		double t2Lower = 0.0;
-		double t2Diag = 0.0;
-		double t2Upper = 0.0;
-
-		if(i == 0) {
-			final double h1 = x[1] - x[0];
-			final double h2 = x[2] - x[1];
-
-			t1Diag = -1.0 / h1;
-			t1Upper = 1.0 / h1;
-
-			t2Diag = -2.0 / (h1 * h2);
-			t2Upper = 2.0 / (h1 * (h1 + h2));
-		}
-		else if(i == n - 1) {
-			final double h0 = x[i] - x[i - 1];
-			final double h3 = x[i - 1] - x[i - 2];
-
-			t1Lower = -1.0 / h0;
-			t1Diag = 1.0 / h0;
-
-			t2Lower = 2.0 / (h0 * (h0 + h3));
-			t2Diag = -2.0 / (h3 * h0);
-		}
-		else {
-			final double h0 = x[i] - x[i - 1];
-			final double h1 = x[i + 1] - x[i];
-
-			t1Lower = -h1 / (h0 * (h1 + h0));
-			t1Diag = (h1 - h0) / (h1 * h0);
-			t1Upper = h0 / (h1 * (h0 + h1));
-
-			t2Lower = 2.0 / (h0 * (h0 + h1));
-			t2Diag = -2.0 / (h0 * h1);
-			t2Upper = 2.0 / (h1 * (h0 + h1));
-		}
-
-		return new RowCoefficients(
-				mu * t1Lower + halfVariance * t2Lower,
-				mu * t1Diag + halfVariance * t2Diag - r,
-				mu * t1Upper + halfVariance * t2Upper);
-	}
-
-	private double[] apply(final TridiagonalMatrix matrix, final double[] vector) {
-		final int n = vector.length;
-		final double[] result = new double[n];
-
-		for(int i = 0; i < n; i++) {
-			double value = matrix.diag[i] * vector[i];
-			if(i > 0) {
-				value += matrix.lower[i] * vector[i - 1];
-			}
-			if(i < n - 1) {
-				value += matrix.upper[i] * vector[i + 1];
-			}
-			result[i] = value;
-		}
-
-		return result;
-	}
-
-	private void overwriteAsDirichlet(
-			final TridiagonalMatrix lhs,
-			final double[] rhs,
-			final int row,
-			final double value) {
-
-		lhs.lower[row] = 0.0;
-		lhs.diag[row] = 1.0;
-		lhs.upper[row] = 0.0;
-		rhs[row] = value;
-	}
-
+	/**
+	 * Returns the discounted value of the no-hit payoff used at the outer boundary of the inactive regime.
+	 *
+	 * <p>
+	 * This value corresponds to the rebate paid at maturity if the barrier has never been triggered.
+	 * It is discounted from maturity back to the current time using the model's risk-free curve.
+	 * </p>
+	 *
+	 * <p>
+	 * If the rebate is zero, the method returns zero immediately. If the current time is at or beyond
+	 * maturity, the rebate itself is returned.
+	 * </p>
+	 *
+	 * @param currentTime The current model time at which the boundary value is required.
+	 * @return The discounted no-hit rebate value.
+	 */
 	private double getDiscountedNoHitValue(final double currentTime) {
 
 		if(product.getRebate() == 0.0) {
@@ -499,6 +514,19 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		return product.getRebate() * discountFactorAtMaturity / discountFactorAtCurrentTime;
 	}
 
+	/**
+	 * Finds the index of the barrier on the spatial grid.
+	 *
+	 * <p>
+	 * This direct two-state implementation requires the barrier level to coincide exactly with a grid node,
+	 * up to a small numerical tolerance.
+	 * </p>
+	 *
+	 * @param grid The spatial grid.
+	 * @param barrier The barrier level.
+	 * @return The index of the grid node matching the barrier.
+	 * @throws IllegalArgumentException If the barrier does not coincide with any grid node.
+	 */
 	private int findBarrierIndex(final double[] grid, final double barrier) {
 		for(int i = 0; i < grid.length; i++) {
 			if(Math.abs(grid[i] - barrier) < 1E-12) {
@@ -510,6 +538,14 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 				"Barrier must coincide with a 1D grid node for direct two-state knock-in pricing.");
 	}
 
+	/**
+	 * Returns a contiguous slice of the spatial grid.
+	 *
+	 * @param grid The full spatial grid.
+	 * @param startInclusive The first index to include.
+	 * @param endInclusive The last index to include.
+	 * @return A new array containing {@code grid[startInclusive]}, ..., {@code grid[endInclusive]}.
+	 */
 	private double[] sliceGrid(final double[] grid, final int startInclusive, final int endInclusive) {
 		final double[] result = new double[endInclusive - startInclusive + 1];
 		for(int i = 0; i < result.length; i++) {
@@ -518,6 +554,20 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		return result;
 	}
 
+	/**
+	 * Determines whether a state lies in the already-hit region for the specified barrier type.
+	 *
+	 * <p>
+	 * For a down-in barrier, the already-hit region is {@code x <= barrier}. For an up-in barrier,
+	 * it is {@code x >= barrier}.
+	 * </p>
+	 *
+	 * @param x The current state variable value.
+	 * @param barrierType The barrier type.
+	 * @param barrier The barrier level.
+	 * @return {@code true} if the barrier is already considered hit at {@code x}, {@code false} otherwise.
+	 * @throws IllegalArgumentException If the barrier type is unsupported.
+	 */
 	private boolean isAlreadyHitRegion(
 			final double x,
 			final BarrierType barrierType,
@@ -530,18 +580,6 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 			return x >= barrier;
 		default:
 			throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
-		}
-	}
-
-	private static final class RowCoefficients {
-		private final double lower;
-		private final double diag;
-		private final double upper;
-
-		private RowCoefficients(final double lower, final double diag, final double upper) {
-			this.lower = lower;
-			this.diag = diag;
-			this.upper = upper;
 		}
 	}
 }
