@@ -1,18 +1,14 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
-import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
+import net.finmath.finitedifference.solvers.FDMSolverFactory;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
-import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
@@ -554,21 +550,14 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	 * @return The corresponding solver.
 	 */
 	private FDMSolver createSolver(final FiniteDifferenceEquityModel model) {
-		if(model instanceof FDMBlackScholesModel) {
-			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		try {
+			return FDMSolverFactory.createSolver(model, this, exercise);
 		}
-		else if(model instanceof FDMCevModel) {
-			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
-		}
-		else if(model instanceof FDMBachelierModel) {
-			return new FDMThetaMethod1D(model, this, model.getSpaceTimeDiscretization(), exercise);
-		}
-		else if(model instanceof FDMHestonModel) {
-			return new FDMHestonADI2D((FDMHestonModel) model, this, model.getSpaceTimeDiscretization(), exercise);
-		}
-		else {
+		catch(final IllegalArgumentException exception) {
 			throw new IllegalArgumentException(
-					"BarrierOption currently supports only 1D or 2D finite-difference models.");
+					"BarrierOption currently supports only 1D or 2D finite-difference models.",
+					exception
+			);
 		}
 	}
 

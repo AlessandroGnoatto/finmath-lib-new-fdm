@@ -1,19 +1,11 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.FDMSolver;
-import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
-import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
-import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
-import net.finmath.finitedifference.solvers.adi.FDMSabrADI2D;
+import net.finmath.finitedifference.solvers.FDMSolverFactory;
 import net.finmath.modelling.BermudanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
@@ -84,7 +76,7 @@ public class BermudanOption implements FiniteDifferenceProduct {
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final SpaceTimeDiscretization refinedDiscretization = getRefinedSpaceTimeDiscretization(model);
-		final FDMSolver solver = createSolver(model, refinedDiscretization);
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, refinedDiscretization, exercise);
 
 		if(callOrPutSign == CallOrPut.CALL) {
 			return solver.getValue(
@@ -105,38 +97,13 @@ public class BermudanOption implements FiniteDifferenceProduct {
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 		final SpaceTimeDiscretization refinedDiscretization = getRefinedSpaceTimeDiscretization(model);
-		final FDMSolver solver = createSolver(model, refinedDiscretization);
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, refinedDiscretization, exercise);
 
 		if(callOrPutSign == CallOrPut.CALL) {
 			return solver.getValues(maturity, assetValue -> Math.max(assetValue - strike, 0.0));
 		}
 		else {
 			return solver.getValues(maturity, assetValue -> Math.max(strike - assetValue, 0.0));
-		}
-	}
-
-	private FDMSolver createSolver(
-			final FiniteDifferenceEquityModel model,
-			final SpaceTimeDiscretization spaceTimeDiscretization) {
-
-		if(model instanceof FDMBlackScholesModel) {
-			return new FDMThetaMethod1D(model, this, spaceTimeDiscretization, exercise);
-		}
-		else if(model instanceof FDMCevModel) {
-			return new FDMThetaMethod1D(model, this, spaceTimeDiscretization, exercise);
-		}
-		else if(model instanceof FDMBachelierModel) {
-			return new FDMThetaMethod1D(model, this, spaceTimeDiscretization, exercise);
-		}
-		else if(model instanceof FDMHestonModel) {
-			return new FDMHestonADI2D((FDMHestonModel) model, this, model.getSpaceTimeDiscretization(), exercise);//FDMThetaMethod2D(model, this, spaceTimeDiscretization, exercise);
-		}
-		else if(model instanceof FDMSabrModel) {
-			return new FDMSabrADI2D((FDMSabrModel) model, this, model.getSpaceTimeDiscretization(), exercise);
-		}
-		else {
-			throw new IllegalArgumentException(
-					"Unsupported model type: " + model.getClass().getName());
 		}
 	}
 
