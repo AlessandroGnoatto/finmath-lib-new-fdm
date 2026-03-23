@@ -1,19 +1,70 @@
 package net.finmath.finitedifference.solvers;
 
 /**
- * Projected SOR specialized to tridiagonal linear complementarity problems.
- *
+ * Utility class providing a projected successive over-relaxation (PSOR)
+ * algorithm for tridiagonal linear complementarity problems.
+ * <p>
+ * The class is intended for problems of the form
+ * </p>
  * <pre>
  *     A x >= b
  *     x >= obstacle
  *     (A x - b)_i (x_i - obstacle_i) = 0
  * </pre>
+ * <p>
+ * where {@code A} is a tridiagonal matrix, {@code b} is the right-hand side,
+ * and {@code obstacle} is the lower obstacle or payoff constraint.
+ * </p>
+ *
+ * <p>
+ * The method combines a Gauss-Seidel iteration with over-relaxation and a
+ * pointwise projection onto the admissible set defined by the obstacle. It is
+ * particularly useful for finite difference discretizations of variational
+ * inequalities, for example in the pricing of American-style options.
+ * </p>
+ *
+ * <p>
+ * Two overloads of the solver are provided: one accepting a
+ * {@link TridiagonalMatrix} container and one accepting the three diagonals
+ * directly. Additional utility methods compute the infinity norm of the
+ * complementarity residual for a candidate solution.
+ * </p>
+ *
+ * <p>
+ * The caller must provide arrays of consistent length, a positive system
+ * dimension, and a tridiagonal system with non-zero diagonal entries.
+ * </p>
+ *
+ * @author Alessandro Gnoatto
  */
 public final class ProjectedTridiagonalSOR {
 
+	/**
+	 * Creates no instances of this utility class.
+	 */
 	private ProjectedTridiagonalSOR() {
 	}
 
+	/**
+	 * Solves a tridiagonal linear complementarity problem using projected SOR.
+	 * <p>
+	 * This is a convenience overload accepting the system matrix in
+	 * {@link TridiagonalMatrix} form.
+	 * </p>
+	 *
+	 * @param matrix The tridiagonal system matrix.
+	 * @param rhs The right-hand side vector {@code b}.
+	 * @param obstacle The obstacle vector defining the lower bound constraint
+	 * 		{@code x >= obstacle}.
+	 * @param initialGuess The initial iterate used to start the PSOR iteration.
+	 * @param omega The relaxation parameter. Values in the interval
+	 * 		{@code (0, 2)} are typically used in practice.
+	 * @param maxIterations The maximum number of PSOR iterations.
+	 * @param tolerance The stopping tolerance for the maximum absolute change
+	 * 		between two consecutive iterates. If {@code tolerance <= 0}, the
+	 * 		iteration runs for the full number of iterations.
+	 * @return An approximate solution of the tridiagonal linear complementarity problem.
+	 */
 	public static double[] solve(
 			final TridiagonalMatrix matrix,
 			final double[] rhs,
@@ -35,6 +86,39 @@ public final class ProjectedTridiagonalSOR {
 				tolerance);
 	}
 
+	/**
+	 * Solves a tridiagonal linear complementarity problem using projected SOR.
+	 * <p>
+	 * Starting from the provided initial guess, the method performs
+	 * Gauss-Seidel-style updates, applies over-relaxation, and then projects each
+	 * updated component onto the obstacle constraint. Before the iteration starts,
+	 * the initial guess is projected onto the admissible region
+	 * {@code x >= obstacle}.
+	 * </p>
+	 *
+	 * <p>
+	 * At each iteration, the method monitors the maximum absolute update size. If
+	 * this quantity falls below the specified tolerance, the iteration is stopped
+	 * early.
+	 * </p>
+	 *
+	 * @param lower The lower diagonal of the tridiagonal system matrix.
+	 * @param diag The main diagonal of the tridiagonal system matrix.
+	 * @param upper The upper diagonal of the tridiagonal system matrix.
+	 * @param rhs The right-hand side vector {@code b}.
+	 * @param obstacle The obstacle vector defining the lower bound constraint
+	 * 		{@code x >= obstacle}.
+	 * @param initialGuess The initial iterate used to start the PSOR iteration.
+	 * @param omega The relaxation parameter. Values in the interval
+	 * 		{@code (0, 2)} are typically used in practice.
+	 * @param maxIterations The maximum number of PSOR iterations.
+	 * @param tolerance The stopping tolerance for the maximum absolute change
+	 * 		between two consecutive iterates. If {@code tolerance <= 0}, the
+	 * 		iteration runs for the full number of iterations.
+	 * @return An approximate solution of the tridiagonal linear complementarity problem.
+	 * @throws ArithmeticException If a zero diagonal entry is encountered during
+	 * 		the iteration.
+	 */
 	public static double[] solve(
 			final double[] lower,
 			final double[] diag,
@@ -83,6 +167,20 @@ public final class ProjectedTridiagonalSOR {
 		return x;
 	}
 
+	/**
+	 * Computes the infinity norm of the complementarity residual for a candidate
+	 * solution.
+	 * <p>
+	 * This is a convenience overload accepting the system matrix in
+	 * {@link TridiagonalMatrix} form.
+	 * </p>
+	 *
+	 * @param matrix The tridiagonal system matrix.
+	 * @param rhs The right-hand side vector {@code b}.
+	 * @param obstacle The obstacle vector.
+	 * @param x The candidate solution vector.
+	 * @return The infinity norm of the complementarity residual.
+	 */
 	public static double complementarityResidualInfNorm(
 			final TridiagonalMatrix matrix,
 			final double[] rhs,
@@ -98,6 +196,32 @@ public final class ProjectedTridiagonalSOR {
 				x);
 	}
 
+	/**
+	 * Computes the infinity norm of the complementarity residual for a candidate
+	 * solution.
+	 * <p>
+	 * For each component, the residual combines:
+	 * </p>
+	 * <ul>
+	 *   <li>the primal feasibility violation {@code max(0, obstacle[i] - x[i])},</li>
+	 *   <li>the dual feasibility violation {@code max(0, rhs[i] - (A x)[i])},</li>
+	 *   <li>the complementarity defect
+	 *       {@code |(x[i] - obstacle[i]) * ((A x)[i] - rhs[i])|}.</li>
+	 * </ul>
+	 * <p>
+	 * The method returns the maximum of these quantities over all components.
+	 * A value close to zero indicates that the complementarity conditions are
+	 * nearly satisfied.
+	 * </p>
+	 *
+	 * @param lower The lower diagonal of the tridiagonal system matrix.
+	 * @param diag The main diagonal of the tridiagonal system matrix.
+	 * @param upper The upper diagonal of the tridiagonal system matrix.
+	 * @param rhs The right-hand side vector {@code b}.
+	 * @param obstacle The obstacle vector.
+	 * @param x The candidate solution vector.
+	 * @return The infinity norm of the complementarity residual.
+	 */
 	public static double complementarityResidualInfNorm(
 			final double[] lower,
 			final double[] diag,
@@ -128,6 +252,19 @@ public final class ProjectedTridiagonalSOR {
 		return maxResidual;
 	}
 
+	/**
+	 * Validates that all input arrays are non-null, have positive length, and
+	 * share the same dimension.
+	 *
+	 * @param lower The lower diagonal array.
+	 * @param diag The main diagonal array.
+	 * @param upper The upper diagonal array.
+	 * @param rhs The right-hand side vector.
+	 * @param obstacle The obstacle vector.
+	 * @param initialGuess The initial guess or candidate solution vector.
+	 * @throws IllegalArgumentException If an input array is {@code null}, if the
+	 * 		system dimension is zero, or if the array lengths are inconsistent.
+	 */
 	private static void validateInputs(
 			final double[] lower,
 			final double[] diag,
