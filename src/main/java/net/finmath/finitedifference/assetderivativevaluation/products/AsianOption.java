@@ -34,6 +34,8 @@ import net.finmath.modelling.products.CallOrPut;
  * <p>
  * Assumption: averaging times coincide with the PDE grid's time discretization.
  * </p>
+ * 
+ * @author Alessandro Gnoatto
  */
 public class AsianOption implements FiniteDifferenceProduct {
 
