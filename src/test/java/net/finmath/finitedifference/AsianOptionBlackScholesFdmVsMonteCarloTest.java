@@ -54,10 +54,10 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 
 		final TimeDiscretization timeDiscretization =
 				new TimeDiscretizationFromArray(0.0, numberOfTimeSteps, dt);
-
-		final int nS = 100; // grid points
+		
+		final int nS = 150; // grid points
 		final double sMin = 0.0 * spot;
-		final double sMax = 2.0 * spot;
+		final double sMax = 3 * spot;
 
 		final Grid sGrid = new UniformGrid(nS - 1, sMin, sMax);
 
@@ -94,7 +94,7 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		 */
 		final double[] sNodes = sGrid.getGrid();
 		final double iMax = maturity * sNodes[sNodes.length - 1];
-		final int nI = sNodes.length;
+		final int nI = sNodes.length * 2;
 		final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
 		final double[] iNodes = iGrid.getGrid();
 

@@ -125,7 +125,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 		 */
 		final double iMax = maturity * sMax;
 
-		final int nI = sNodes.length;
+		final int nI = sNodes.length * 2;
 		final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
 
 		final SpaceTimeDiscretization liftedDiscretization = new SpaceTimeDiscretization(
