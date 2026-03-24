@@ -47,7 +47,7 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		 * Product parameters
 		 */
 		final double maturity = 2.0;
-		final double strike = 100.0;
+		final double strike = 95.0;
 
 		final int numberOfTimeSteps = 100;
 		final double dt = maturity / numberOfTimeSteps;

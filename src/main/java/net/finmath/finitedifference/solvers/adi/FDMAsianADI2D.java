@@ -28,8 +28,8 @@ import net.finmath.modelling.Exercise;
  * - no diffusion in the I direction
  * - no mixed derivative
  *
- * The important point is that the I direction is pure transport. In tau-time,
- * the correct upwind direction is FORWARD in I.
+ * The I direction is pure transport. In tau-time, the correct upwind
+ * discretization is forward in I.
  */
 public class FDMAsianADI2D extends AbstractADI2D {
 
@@ -41,10 +41,6 @@ public class FDMAsianADI2D extends AbstractADI2D {
 		super(model, product, spaceTimeDiscretization, exercise);
 	}
 
-	/**
-	 * For the lifted Asian PDE, A0 contains only discounting.
-	 * No mixed derivative term is present.
-	 */
 	@Override
 	protected double[] applyA0Explicit(final double[] u, final double time) {
 		final double[] out = new double[n];
@@ -63,16 +59,14 @@ public class FDMAsianADI2D extends AbstractADI2D {
 	}
 
 	/**
-	 * Explicit application of A2 u = S * u_I.
-	 *
-	 * IMPORTANT:
-	 * In time-to-maturity tau, the transport is upwinded FORWARD in I.
-	 *
-	 * For interior nodes:
+	 * Explicit application of A2 u = S * u_I
+	 * using forward upwinding in I:
 	 *
 	 *   u_I(S_i, I_j) ~ (u_{i,j+1} - u_{i,j}) / (I_{j+1} - I_j)
 	 *
-	 * The top row j = n1 - 1 is handled via boundary overwrite later.
+	 * for j = 0,...,n1-2.
+	 *
+	 * The top row j = n1 - 1 is handled via the upper Dirichlet boundary.
 	 */
 	@Override
 	protected double[] applyA2Explicit(final double[] u, final double time) {
@@ -86,9 +80,6 @@ public class FDMAsianADI2D extends AbstractADI2D {
 				out[flatten(i, j)] = s * (u[flatten(i, j + 1)] - u[flatten(i, j)]) / dIUp;
 			}
 
-			/*
-			 * Top I boundary handled separately by Dirichlet overwrite.
-			 */
 			out[flatten(i, n1 - 1)] = 0.0;
 		}
 
@@ -96,7 +87,7 @@ public class FDMAsianADI2D extends AbstractADI2D {
 	}
 
 	/**
-	 * Implicit line solves in the I direction for
+	 * Implicit line solve in I for
 	 *
 	 *   (I - theta dt A2) v = rhs
 	 *
@@ -104,20 +95,21 @@ public class FDMAsianADI2D extends AbstractADI2D {
 	 *
 	 *   u_I(S_i, I_j) ~ (u_{i,j+1} - u_{i,j}) / (I_{j+1} - I_j)
 	 *
-	 * Hence for j = 0,...,n1-2:
+	 * For j = 0,...,n1-2:
 	 *
 	 *   v_j - theta dt S_i (v_{j+1} - v_j)/dIUp = rhs_j
 	 *
 	 * i.e.
 	 *
-	 *   (1 + lambda) v_j - lambda v_{j+1} = rhs_j,
-	 *   lambda = theta dt S_i / dIUp
+	 *   (1 + lambda_j) v_j - lambda_j v_{j+1} = rhs_j
 	 *
-	 * So the line matrix is upper bidiagonal in the interior.
+	 * with
 	 *
-	 * Boundary policy:
-	 * - I = 0      : natural / outflow side -> identity row
-	 * - I = I_max  : Dirichlet if prescribed by product/model
+	 *   lambda_j = theta dt S_i / dIUp
+	 *
+	 * This means:
+	 * - j = 0 is NOT a boundary identity row; it is a normal PDE row
+	 * - j = n1-1 is the inflow boundary and is overwritten if Dirichlet
 	 */
 	@Override
 	protected double[] solveSecondDirectionLines(
@@ -138,17 +130,7 @@ public class FDMAsianADI2D extends AbstractADI2D {
 			}
 
 			/*
-			 * Lower I boundary (j = 0): natural / no Dirichlet by default.
-			 * We use an identity row unless overwritten by the product/model.
-			 */
-			m.lower[0] = 0.0;
-			m.diag[0] = 1.0;
-			m.upper[0] = 0.0;
-
-			/*
-			 * Interior transport rows: j = 1,...,n1-2
-			 * We also set j = 0 in transport form below, but immediately replace it
-			 * by the identity row above, which is clearer and safer.
+			 * PDE rows for j = 0,...,n1-2
 			 */
 			for(int j = 0; j < n1 - 1; j++) {
 				final double dIUp = x1Grid[j + 1] - x1Grid[j];
@@ -160,27 +142,33 @@ public class FDMAsianADI2D extends AbstractADI2D {
 			}
 
 			/*
-			 * Restore lower boundary row explicitly.
+			 * Last row default: identity, then overwrite with upper boundary if needed.
 			 */
-			m.lower[0] = 0.0;
-			m.diag[0] = 1.0;
-			m.upper[0] = 0.0;
+			m.lower[n1 - 1] = 0.0;
+			m.diag[n1 - 1] = 1.0;
+			m.upper[n1 - 1] = 0.0;
 
 			/*
-			 * Upper I boundary: use product/model boundary if Dirichlet.
-			 * This is the inflow side for the transport in tau-time.
+			 * Upper I boundary is the inflow side. Impose Dirichlet if provided.
 			 */
+			final double upperBoundaryFallback = lineRhs[n1 - 1];
 			final double upperBoundaryValue =
-					getUpperBoundaryValueForSecondDirection(time, i, lineRhs[n1 - 1]);
+					getUpperBoundaryValueForSecondDirection(time, i, upperBoundaryFallback);
 			overwriteBoundaryRow(m, lineRhs, n1 - 1, upperBoundaryValue);
 
 			/*
-			 * If the lower I boundary is ever defined as Dirichlet by the product/model,
-			 * honor it as well.
+			 * Lower I boundary should NOT be overwritten unless it is explicitly Dirichlet.
+			 * For the Asian product it is StandardBoundaryCondition.none().
 			 */
-			final double lowerBoundaryValue =
-					getLowerBoundaryValueForSecondDirection(time, i, lineRhs[0]);
-			overwriteBoundaryRow(m, lineRhs, 0, lowerBoundaryValue);
+			final net.finmath.finitedifference.boundaries.BoundaryCondition[] lowerConditions =
+					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i], x1Grid[0]);
+
+			if(lowerConditions != null
+					&& lowerConditions.length > 1
+					&& lowerConditions[1] != null
+					&& lowerConditions[1].isDirichlet()) {
+				overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[1].getValue());
+			}
 
 			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
 

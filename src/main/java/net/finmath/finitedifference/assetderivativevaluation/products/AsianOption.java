@@ -11,7 +11,6 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
-import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
 import net.finmath.finitedifference.solvers.adi.FDMAsianADI2D;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.modelling.Exercise;
