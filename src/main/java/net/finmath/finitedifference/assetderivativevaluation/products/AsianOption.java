@@ -301,19 +301,35 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			final BoundaryCondition[] result = new BoundaryCondition[2];
 
-			// S -> infinity
+			final double delta = maturity - time;
+			final double averageSoFar = I / maturity;
+
+			final double expectedRemainingAverageContribution;
+			final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
+
+			if(Math.abs(r - q) > 1E-12) {
+				expectedRemainingAverageContribution =
+						(S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+			}
+			else {
+				expectedRemainingAverageContribution =
+						(S / maturity) * delta * Math.exp(-r * delta);
+			}
+
+			final double upperSCallValue =
+					discount * (averageSoFar - strike) + expectedRemainingAverageContribution;
+
 			result[0] = StandardBoundaryCondition.dirichlet(
-					(callOrPut == CallOrPut.CALL) ? (S - strike * discount) : 0.0
+					(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0
 			);
 
 			// I -> infinity
-			final double average = I / maturity;
-			final double intrinsic = (callOrPut == CallOrPut.CALL)
-					? Math.max(average - strike, 0.0)
-					: Math.max(strike - average, 0.0);
+			final double upperIValue =
+					discount * (averageSoFar - strike) + expectedRemainingAverageContribution;
 
-			result[1] = StandardBoundaryCondition.dirichlet(intrinsic * discount);
-
+			result[1] = StandardBoundaryCondition.dirichlet(
+					(callOrPut == CallOrPut.CALL) ? upperIValue : 0.0
+			);
 			return result;
 		}
 
