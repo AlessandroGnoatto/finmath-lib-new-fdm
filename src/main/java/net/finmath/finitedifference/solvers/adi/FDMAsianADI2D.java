@@ -86,31 +86,6 @@ public class FDMAsianADI2D extends AbstractADI2D {
 		return out;
 	}
 
-	/**
-	 * Implicit line solve in I for
-	 *
-	 *   (I - theta dt A2) v = rhs
-	 *
-	 * with A2 u = S u_I and forward upwinding:
-	 *
-	 *   u_I(S_i, I_j) ~ (u_{i,j+1} - u_{i,j}) / (I_{j+1} - I_j)
-	 *
-	 * For j = 0,...,n1-2:
-	 *
-	 *   v_j - theta dt S_i (v_{j+1} - v_j)/dIUp = rhs_j
-	 *
-	 * i.e.
-	 *
-	 *   (1 + lambda_j) v_j - lambda_j v_{j+1} = rhs_j
-	 *
-	 * with
-	 *
-	 *   lambda_j = theta dt S_i / dIUp
-	 *
-	 * This means:
-	 * - j = 0 is NOT a boundary identity row; it is a normal PDE row
-	 * - j = n1-1 is the inflow boundary and is overwritten if Dirichlet
-	 */
 	@Override
 	protected double[] solveSecondDirectionLines(
 			final double[] rhs,
@@ -130,7 +105,9 @@ public class FDMAsianADI2D extends AbstractADI2D {
 			}
 
 			/*
-			 * PDE rows for j = 0,...,n1-2
+			 * PDE rows for j = 0,...,n1-2:
+			 *
+			 * (1 + lambda_j) v_j - lambda_j v_{j+1} = rhs_j
 			 */
 			for(int j = 0; j < n1 - 1; j++) {
 				final double dIUp = x1Grid[j + 1] - x1Grid[j];
@@ -142,23 +119,28 @@ public class FDMAsianADI2D extends AbstractADI2D {
 			}
 
 			/*
-			 * Last row default: identity, then overwrite with upper boundary if needed.
+			 * Last row: default identity, then overwrite only if upper boundary is Dirichlet.
 			 */
 			m.lower[n1 - 1] = 0.0;
 			m.diag[n1 - 1] = 1.0;
 			m.upper[n1 - 1] = 0.0;
 
 			/*
-			 * Upper I boundary is the inflow side. Impose Dirichlet if provided.
+			 * Upper I boundary is the inflow side.
 			 */
-			final double upperBoundaryFallback = lineRhs[n1 - 1];
-			final double upperBoundaryValue =
-					getUpperBoundaryValueForSecondDirection(time, i, upperBoundaryFallback);
-			overwriteBoundaryRow(m, lineRhs, n1 - 1, upperBoundaryValue);
+			final net.finmath.finitedifference.boundaries.BoundaryCondition[] upperConditions =
+					model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[i], x1Grid[n1 - 1]);
+
+			if(upperConditions != null
+					&& upperConditions.length > 1
+					&& upperConditions[1] != null
+					&& upperConditions[1].isDirichlet()) {
+				overwriteBoundaryRow(m, lineRhs, n1 - 1, upperConditions[1].getValue());
+			}
 
 			/*
-			 * Lower I boundary should NOT be overwritten unless it is explicitly Dirichlet.
-			 * For the Asian product it is StandardBoundaryCondition.none().
+			 * Lower I boundary: overwrite ONLY if explicitly Dirichlet.
+			 * For AsianOption it is NONE, so row 0 remains a PDE row.
 			 */
 			final net.finmath.finitedifference.boundaries.BoundaryCondition[] lowerConditions =
 					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i], x1Grid[0]);
