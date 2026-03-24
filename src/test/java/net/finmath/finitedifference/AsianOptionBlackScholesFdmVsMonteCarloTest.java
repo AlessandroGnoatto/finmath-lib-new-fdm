@@ -47,15 +47,15 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		 * Product parameters
 		 */
 		final double maturity = 2.0;
-		final double strike = 105.0;
+		final double strike = 100.0;
 
-		final int numberOfTimeSteps = 10;
+		final int numberOfTimeSteps = 100;
 		final double dt = maturity / numberOfTimeSteps;
 
 		final TimeDiscretization timeDiscretization =
 				new TimeDiscretizationFromArray(0.0, numberOfTimeSteps, dt);
 
-		final int nS = 20; // grid points
+		final int nS = 100; // grid points
 		final double sMin = 0.0 * spot;
 		final double sMax = 2.0 * spot;
 
@@ -125,7 +125,7 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		/*
 		 * Monte Carlo benchmark (finmath-lib)
 		 */
-		final int numberOfPaths = 20000;
+		final int numberOfPaths = 10000;
 		final int seed = 31415;
 
 		final BlackScholesModel mcModel = new BlackScholesModel(spot, riskFreeRate, volatility);

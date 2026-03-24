@@ -12,6 +12,7 @@ import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMThetaMethod2D;
+import net.finmath.finitedifference.solvers.adi.FDMAsianADI2D;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.EuropeanExercise;
@@ -119,7 +120,11 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		final double[] sNodes = sGrid.getGrid();
 		final double sMax = sNodes[sNodes.length - 1];
-		final double iMax = sMax;
+
+		/*
+		 * Since I(t) = integral_0^t S(u) du, the natural scale of I is O(T * S).
+		 */
+		final double iMax = maturity * sMax;
 
 		final int nI = sNodes.length;
 		final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
@@ -134,8 +139,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 		final FiniteDifferenceEquityModel liftedModel =
 				new LiftedFDMBlackScholesModelDecorator(bsModel, liftedDiscretization);
 
-		final FDMThetaMethod2D solver =
-				new FDMThetaMethod2D(liftedModel, this, liftedDiscretization, exercise);
+		final FDMAsianADI2D solver =
+				new FDMAsianADI2D(liftedModel, this, liftedDiscretization, exercise);
 
 		final DoubleBinaryOperator payoffAtMaturity = (S, I) -> {
 			final double average = I / maturity;
@@ -253,13 +258,23 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			final BoundaryCondition[] result = new BoundaryCondition[2];
 
-			// S -> 0
-			result[0] = StandardBoundaryCondition.dirichlet(
-					(callOrPut == CallOrPut.CALL) ? 0.0 : strike * discount
-			);
+			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+			final double currentAverageContribution = I / maturity;
+
+			final double lowerSValue;
+			if(callOrPut == CallOrPut.CALL) {
+				lowerSValue = 0.0;
+			}
+			else {
+				lowerSValue = discount * Math.max(strike - currentAverageContribution, 0.0);
+			}
+
+			result[0] = StandardBoundaryCondition.dirichlet(lowerSValue);
 
 			// I -> 0 : leave PDE row intact
 			result[1] = StandardBoundaryCondition.none();
+			
+			
 
 			return result;
 		}
