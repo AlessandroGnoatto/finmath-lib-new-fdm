@@ -16,6 +16,7 @@ import net.finmath.finitedifference.solvers.adi.FDMAsianADI2D;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.EuropeanExercise;
+import net.finmath.modelling.products.AsianStrike;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
@@ -42,6 +43,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 	private final double maturity;
 	private final double strike;
 	private final CallOrPut callOrPutSign;
+	private final AsianStrike asianStrike;
 	private final Exercise exercise;
 
 	public AsianOption(final String underlyingName, final double maturity, final double strike,
@@ -57,7 +59,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 		} else {
 			throw new IllegalArgumentException("Unknown option type.");
 		}
-
+		this.asianStrike = AsianStrike.FIXED_STRIKE;
 		this.exercise = new EuropeanExercise(maturity);
 	}
 
@@ -67,6 +69,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 		this.maturity = maturity;
 		this.strike = strike;
 		this.callOrPutSign = callOrPutSign;
+		this.asianStrike = AsianStrike.FIXED_STRIKE;
 		this.exercise = new EuropeanExercise(maturity);
 	}
 
@@ -110,7 +113,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		final FiniteDifferenceEquityModel liftedModel = getLiftedModel(model);
 
-		final FDMAsianADI2D solver = (FDMAsianADI2D) getSolver(liftedModel);//new FDMAsianADI2D(liftedModel, this, liftedModel.getSpaceTimeDiscretization(), exercise);
+		final FDMSolver solver = getSolver(liftedModel);
 
 		final DoubleBinaryOperator payoffAtMaturity = (S, I) -> {
 			final double average = I / maturity;
@@ -124,16 +127,15 @@ public class AsianOption implements FiniteDifferenceProduct {
 		return solver.getValues(maturity, payoffAtMaturity);
 	}
 
-	public FDMSolver getSolver(FiniteDifferenceEquityModel model) {
-		if(model instanceof LiftedFDMBlackScholesModelDecorator) {
+
+	public FDMSolver getSolver(final FiniteDifferenceEquityModel model) {
+		if (model instanceof LiftedFDMBlackScholesModelDecorator) {
 			return new FDMAsianADI2D(model, this, model.getSpaceTimeDiscretization(), exercise);
-		}else {
-			throw new IllegalArgumentException("AsianOption currently supports only FDMBlackScholesModel.");
 		}
-		
+		throw new IllegalArgumentException("AsianOption currently supports only FDMBlackScholesModel.");
 	}
 
-	public FiniteDifferenceEquityModel getLiftedModel(FiniteDifferenceEquityModel model) {
+	public FiniteDifferenceEquityModel getLiftedModel(final FiniteDifferenceEquityModel model) {
 
 		final SpaceTimeDiscretization baseDiscretization = model.getSpaceTimeDiscretization();
 
