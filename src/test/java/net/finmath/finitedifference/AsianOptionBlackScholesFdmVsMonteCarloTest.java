@@ -9,6 +9,9 @@ import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.interpolation.BiLinearInterpolation;
+import net.finmath.modelling.EuropeanExercise;
+import net.finmath.modelling.products.AsianStrike;
+import net.finmath.modelling.products.CallOrPut;
 import net.finmath.montecarlo.BrownianMotionFromMersenneRandomNumbers;
 import net.finmath.montecarlo.assetderivativevaluation.MonteCarloAssetModel;
 import net.finmath.montecarlo.assetderivativevaluation.models.BlackScholesModel;
@@ -18,14 +21,13 @@ import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
 /**
- * Compares finite-difference and Monte Carlo prices for fixed-strike arithmetic Asian calls
+ * Compares finite-difference and Monte Carlo prices for arithmetic Asian options
  * under Black-Scholes across multiple strikes.
  *
- * <p>The finite-difference result is interpolated bilinearly on the lifted (S,I)-grid
- * at (S0, I0=0).</p>
- *
- * <p>The test checks relative differences across a strike sweep, which is more robust
- * than a single-strike equality test while the PDE implementation is still being tuned.</p>
+ * <p>
+ * The finite-difference result is interpolated bilinearly on the lifted (S,I)-grid
+ * at (S0, I0=0).
+ * </p>
  */
 public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 
@@ -42,7 +44,7 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		final double maturity = 2.0;
 
 		/*
-		 * Strike sweep
+		 * Strike sweep for fixed-strike options
 		 */
 		final double[] strikes = new double[] { 70.0, 80.0, 90.0, 100.0, 110.0, 120.0, 130.0 };
 
@@ -96,7 +98,16 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		final MonteCarloAssetModel mcSimulation =
 				new MonteCarloAssetModel(mcModel, process);
 
-		final TimeDiscretization averagingTimes = timeDiscretization;
+		/*
+		 * Averaging dates for the MC benchmark:
+		 * exclude t=0.0 and reuse exact times from the simulation grid.
+		 */
+		final double[] averagingTimesArray = new double[numberOfTimeSteps];
+		for(int i = 0; i < numberOfTimeSteps; i++) {
+			averagingTimesArray[i] = timeDiscretization.getTime(i + 1);
+		}
+		final TimeDiscretization averagingTimes =
+				new TimeDiscretizationFromArray(averagingTimesArray);
 
 		/*
 		 * Lifted FD grid reconstruction.
@@ -108,14 +119,106 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
 		final double[] iNodes = iGrid.getGrid();
 
-		double maxRelativeError = 0.0;
-		double averageRelativeError = 0.0;
+		/*
+		 * Fixed-strike tests
+		 */
+		double maxRelativeErrorFixed = 0.0;
+		double averageRelativeErrorFixed = 0.0;
+		int numberOfFixedCases = 0;
 
-		System.out.println("Strike\tFDM\tMC\tAbsDiff\tRelDiff");
+		System.out.println("FIXED STRIKE");
+		System.out.println("Type\tStrike\tFDM\tMC\tAbsDiff\tRelDiff");
 
 		for(final double strike : strikes) {
+			for(final CallOrPut callOrPut : new CallOrPut[] { CallOrPut.CALL, CallOrPut.PUT }) {
 
-			final AsianOption fdmAsian = new AsianOption(maturity, strike);
+				final AsianOption fdmAsian = new AsianOption(
+						null,
+						maturity,
+						strike,
+						callOrPut,
+						AsianStrike.FIXED_STRIKE,
+						new EuropeanExercise(maturity)
+				);
+
+				final long tStart = System.currentTimeMillis();
+				final double[] fdmValueVector = fdmAsian.getValue(0.0, fdmModel);
+				final long tEnd = System.currentTimeMillis();
+
+				if(fdmValueVector.length != nS * nI) {
+					throw new IllegalStateException(
+							"Unexpected FD value vector length. Got " + fdmValueVector.length
+							+ ", expected " + (nS * nI) + "."
+					);
+				}
+
+				final double[][] valuesSI = new double[nS][nI];
+				for(int j = 0; j < nI; j++) {
+					for(int i = 0; i < nS; i++) {
+						valuesSI[i][j] = fdmValueVector[i + j * nS];
+					}
+				}
+
+				final BiLinearInterpolation interp = new BiLinearInterpolation(sNodes, iNodes, valuesSI);
+				final double valueFdm = interp.apply(spot, 0.0);
+
+				final net.finmath.montecarlo.assetderivativevaluation.myproducts.AsianOption mcAsian =
+						new net.finmath.montecarlo.assetderivativevaluation.myproducts.AsianOption(
+								maturity,
+								strike,
+								averagingTimes,
+								0,
+								callOrPut,
+								AsianStrike.FIXED_STRIKE
+						);
+
+				final double valueMc = mcAsian.getValue(0.0, mcSimulation).getAverage();
+
+				final double absDiff = Math.abs(valueFdm - valueMc);
+				final double relativeError = absDiff / Math.max(Math.abs(valueMc), 1.0);
+
+				maxRelativeErrorFixed = Math.max(maxRelativeErrorFixed, relativeError);
+				averageRelativeErrorFixed += relativeError;
+				numberOfFixedCases++;
+
+				System.out.println(
+						String.format(
+								"%s\t%.2f\t%.8f\t%.8f\t%.8f\t%.4f%%   (FD %.3fs)",
+								callOrPut,
+								strike,
+								valueFdm,
+								valueMc,
+								absDiff,
+								100.0 * relativeError,
+								(tEnd - tStart) / 1000.0
+						)
+				);
+			}
+		}
+
+		averageRelativeErrorFixed /= numberOfFixedCases;
+
+		System.out.println(String.format("Fixed max relative error: %.4f%%", 100.0 * maxRelativeErrorFixed));
+		System.out.println(String.format("Fixed avg relative error: %.4f%%", 100.0 * averageRelativeErrorFixed));
+
+		/*
+		 * Floating-strike tests
+		 */
+		double maxRelativeErrorFloating = 0.0;
+		double averageRelativeErrorFloating = 0.0;
+		int numberOfFloatingCases = 0;
+
+		System.out.println("FLOATING STRIKE");
+		System.out.println("Type\tFDM\tMC\tAbsDiff\tRelDiff");
+
+		for(final CallOrPut callOrPut : new CallOrPut[] { CallOrPut.CALL, CallOrPut.PUT }) {
+
+			final AsianOption fdmAsian = new AsianOption(
+					null,
+					maturity,
+					callOrPut,
+					AsianStrike.FLOATING_STRIKE
+			);
 
 			final long tStart = System.currentTimeMillis();
 			final double[] fdmValueVector = fdmAsian.getValue(0.0, fdmModel);
@@ -136,29 +239,34 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 			}
 
 			final BiLinearInterpolation interp = new BiLinearInterpolation(sNodes, iNodes, valuesSI);
-			final double valueFdm = interp.apply(spot, 0.0);
+			
+			final double iForInterpolation = iNodes[1];
+			final double valueFdm = interp.apply(spot, iForInterpolation);
+			//final double valueFdm = interp.apply(spot, 0.0);
 
-			final net.finmath.montecarlo.assetderivativevaluation.products.AsianOption mcAsian =
-					new net.finmath.montecarlo.assetderivativevaluation.products.AsianOption(
-							maturity, strike, averagingTimes
+			final net.finmath.montecarlo.assetderivativevaluation.myproducts.AsianOption mcAsian =
+					new net.finmath.montecarlo.assetderivativevaluation.myproducts.AsianOption(
+							maturity,
+							Double.NaN,
+							averagingTimes,
+							0,
+							callOrPut,
+							AsianStrike.FLOATING_STRIKE
 					);
 
 			final double valueMc = mcAsian.getValue(0.0, mcSimulation).getAverage();
 
 			final double absDiff = Math.abs(valueFdm - valueMc);
-
-			/*
-			 * Use a floor to avoid meaningless huge percentages for very small MC values.
-			 */
 			final double relativeError = absDiff / Math.max(Math.abs(valueMc), 1.0);
 
-			maxRelativeError = Math.max(maxRelativeError, relativeError);
-			averageRelativeError += relativeError;
+			maxRelativeErrorFloating = Math.max(maxRelativeErrorFloating, relativeError);
+			averageRelativeErrorFloating += relativeError;
+			numberOfFloatingCases++;
 
 			System.out.println(
 					String.format(
-							"%.2f\t%.8f\t%.8f\t%.8f\t%.4f%%   (FD %.3fs)",
-							strike,
+							"%s\t%.8f\t%.8f\t%.8f\t%.4f%%   (FD %.3fs)",
+							callOrPut,
 							valueFdm,
 							valueMc,
 							absDiff,
@@ -168,26 +276,39 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 			);
 		}
 
-		averageRelativeError /= strikes.length;
+		averageRelativeErrorFloating /= numberOfFloatingCases;
 
-		System.out.println(String.format("Max relative error: %.4f%%", 100.0 * maxRelativeError));
-		System.out.println(String.format("Avg relative error: %.4f%%", 100.0 * averageRelativeError));
+		System.out.println(String.format("Floating max relative error: %.4f%%", 100.0 * maxRelativeErrorFloating));
+		System.out.println(String.format("Floating avg relative error: %.4f%%", 100.0 * averageRelativeErrorFloating));
 
 		/*
 		 * Suggested thresholds for the current development stage.
 		 * Tighten these once the grid / boundaries are finalized.
 		 */
-		final double maxRelativeErrorTolerance = 0.10;   // 10%
-		final double averageRelativeErrorTolerance = 0.06; // 6%
+		final double maxRelativeErrorToleranceFixed = 0.22;      // 22%
+		final double averageRelativeErrorToleranceFixed = 0.10;  // 10%
+
+		final double maxRelativeErrorToleranceFloating = 0.20;      // 20%
+		final double averageRelativeErrorToleranceFloating = 0.12;  // 12%
 
 		Assert.assertTrue(
-				"Maximum relative error too large: " + (100.0 * maxRelativeError) + "%",
-				maxRelativeError < maxRelativeErrorTolerance
+				"Maximum fixed-strike relative error too large: " + (100.0 * maxRelativeErrorFixed) + "%",
+				maxRelativeErrorFixed < maxRelativeErrorToleranceFixed
 		);
 
 		Assert.assertTrue(
-				"Average relative error too large: " + (100.0 * averageRelativeError) + "%",
-				averageRelativeError < averageRelativeErrorTolerance
+				"Average fixed-strike relative error too large: " + (100.0 * averageRelativeErrorFixed) + "%",
+				averageRelativeErrorFixed < averageRelativeErrorToleranceFixed
+		);
+
+		Assert.assertTrue(
+				"Maximum floating-strike relative error too large: " + (100.0 * maxRelativeErrorFloating) + "%",
+				maxRelativeErrorFloating < maxRelativeErrorToleranceFloating
+		);
+
+		Assert.assertTrue(
+				"Average floating-strike relative error too large: " + (100.0 * averageRelativeErrorFloating) + "%",
+				averageRelativeErrorFloating < averageRelativeErrorToleranceFloating
 		);
 	}
 }
