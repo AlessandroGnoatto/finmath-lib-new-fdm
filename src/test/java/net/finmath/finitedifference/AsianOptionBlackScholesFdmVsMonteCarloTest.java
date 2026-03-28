@@ -60,9 +60,9 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		/*
 		 * PDE setup
 		 */
-		final int nS = 200;
+		final int nS = 250;
 		final double sMin = 0.0;
-		final double sMax = 3.0 * spot;
+		final double sMax = 4.0 * spot;
 
 		final Grid sGrid = new UniformGrid(nS - 1, sMin, sMax);
 
@@ -104,7 +104,7 @@ public class AsianOptionBlackScholesFdmVsMonteCarloTest {
 		 */
 		final double[] averagingTimesArray = new double[numberOfTimeSteps];
 		for(int i = 0; i < numberOfTimeSteps; i++) {
-			averagingTimesArray[i] = timeDiscretization.getTime(i + 1);
+			averagingTimesArray[i] = timeDiscretization.getTime(i+1);
 		}
 		final TimeDiscretization averagingTimes =
 				new TimeDiscretizationFromArray(averagingTimesArray);

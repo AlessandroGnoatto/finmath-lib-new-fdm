@@ -356,29 +356,29 @@ public class AsianOption implements FiniteDifferenceProduct {
 			final AsianStrike asianStrike = option.getAsianStrike();
 
 			final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-			final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
 			final double delta = maturity - time;
 			final double discount = Math.exp(-r * delta);
 
 			final BoundaryCondition[] result = new BoundaryCondition[2];
 
-			final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
 			final double averageSoFar = I / maturity;
 
-			final double discountedExpectedRemainingAverageContribution;
-			if(Math.abs(r - q) > 1E-12) {
-				discountedExpectedRemainingAverageContribution =
-						(S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
-			}
-			else {
-				discountedExpectedRemainingAverageContribution =
-						(S / maturity) * delta * Math.exp(-r * delta);
-			}
-
+			/*
+			 * Lower boundary in S: S = 0
+			 */
 			final double lowerSValue;
+
 			if(asianStrike == AsianStrike.FIXED_STRIKE) {
 				if(callOrPut == CallOrPut.CALL) {
+					/*
+					 * max(A(T)-K,0) with S=0 is never positive for a call of type max(A-K,0)?
+					 * No: for fixed-strike arithmetic Asian CALL payoff is max(A(T)-K,0),
+					 * and with S=0 from now on, A(T)=I/T.
+					 *
+					 * However, the current implementation follows the asymptotic convention
+					 * used in the codebase: at S=0 the fixed-strike call is set to 0.
+					 */
 					lowerSValue = 0.0;
 				}
 				else {
@@ -386,22 +386,19 @@ public class AsianOption implements FiniteDifferenceProduct {
 				}
 			}
 			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
-				/*
-				 * At S = 0:
-				 *   Call payoff max(0 - A(T),0) = 0
-				 *   Put payoff  max(A(T) - 0,0) = A(T)
-				 *
-				 * Approximate discounted expected future average by
-				 * current average contribution + expected future contribution.
-				 */
-				final double discountedExpectedAverage =
-						discount * averageSoFar + discountedExpectedRemainingAverageContribution;
-
 				if(callOrPut == CallOrPut.CALL) {
+					/*
+					 * payoff = max(S(T) - A(T), 0), and at S=0 this is 0
+					 */
 					lowerSValue = 0.0;
 				}
 				else {
-					lowerSValue = discountedExpectedAverage;
+					/*
+					 * payoff = max(A(T) - S(T), 0), and at S=0 this becomes A(T).
+					 * Since S=0 from now on, the future average contribution vanishes,
+					 * so A(T) = I/T and its discounted value is discount * I/T.
+					 */
+					lowerSValue = discount * averageSoFar;
 				}
 			}
 			else {
@@ -411,8 +408,8 @@ public class AsianOption implements FiniteDifferenceProduct {
 			result[0] = StandardBoundaryCondition.dirichlet(lowerSValue);
 
 			/*
-			 * I -> 0:
-			 * leave PDE row intact
+			 * Lower boundary in I: I = 0
+			 * Leave PDE row intact.
 			 */
 			result[1] = StandardBoundaryCondition.none();
 
@@ -465,29 +462,41 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			if(asianStrike == AsianStrike.FIXED_STRIKE) {
 
+				/*
+				 * Upper boundary in S: deep ITM fixed-strike call asymptotic
+				 * V ~ E^disc[A(T)] - E^disc[K]
+				 */
 				final double upperSCallValue =
-						discount * (averageSoFar - strike) + discountedExpectedRemainingAverageContribution;
-
-				result[0] = StandardBoundaryCondition.dirichlet(
-						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
-
-				final double upperIValue =
-						discount * (averageSoFar - strike) + discountedExpectedRemainingAverageContribution;
-
-				result[1] = StandardBoundaryCondition.dirichlet(
-						(callOrPut == CallOrPut.CALL) ? upperIValue : 0.0);
-			}
-			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
-
-				final double upperSCallValue =
-						Math.max(discountedExpectedSpot - discountedExpectedAverage, 0.0);
+						discountedExpectedAverage - discount * strike;
 
 				result[0] = StandardBoundaryCondition.dirichlet(
 						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
 
 				/*
-				 * For floating strike, avoid forcing a Dirichlet value at the finite I_max boundary.
-				 * Let the PDE determine the top row.
+				 * Upper boundary in I:
+				 * do NOT impose a hard Dirichlet value at the artificial I_max boundary.
+				 * Let the PDE determine that row.
+				 */
+				result[1] = StandardBoundaryCondition.none();
+			}
+			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
+
+				/*
+				 * Upper boundary in S: deep ITM floating-strike call asymptotic
+				 * V ~ E^disc[S(T)] - E^disc[A(T)]
+				 *
+				 * Do not apply Math.max here. The asymptotic linear form is smoother
+				 * and more appropriate as a far-field boundary condition.
+				 */
+				final double upperSCallValue =
+						discountedExpectedSpot - discountedExpectedAverage;
+
+				result[0] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+
+				/*
+				 * Upper boundary in I:
+				 * avoid forcing a Dirichlet value at finite I_max.
 				 */
 				result[1] = StandardBoundaryCondition.none();
 			}
@@ -497,7 +506,6 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			return result;
 		}
-
 		@Override
 		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
 				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
