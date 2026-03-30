@@ -237,7 +237,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 			 */
 			final double iMax = maturity * sMax;
 
-			final int nI = sNodes.length * 2;
+			final int nI = sNodes.length * 4;
 			final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
 
 			final SpaceTimeDiscretization liftedDiscretization = new SpaceTimeDiscretization(
@@ -372,14 +372,12 @@ public class AsianOption implements FiniteDifferenceProduct {
 			if(asianStrike == AsianStrike.FIXED_STRIKE) {
 				if(callOrPut == CallOrPut.CALL) {
 					/*
-					 * max(A(T)-K,0) with S=0 is never positive for a call of type max(A-K,0)?
-					 * No: for fixed-strike arithmetic Asian CALL payoff is max(A(T)-K,0),
-					 * and with S=0 from now on, A(T)=I/T.
-					 *
-					 * However, the current implementation follows the asymptotic convention
-					 * used in the codebase: at S=0 the fixed-strike call is set to 0.
+					 * At S = 0 and assuming the process remains there,
+					 * the final average is A(T) = I/T.
+					 * Hence the fixed-strike call value is the discounted payoff
+					 * max(A(T) - K, 0).
 					 */
-					lowerSValue = 0.0;
+					lowerSValue = discount * Math.max(averageSoFar - strike, 0.0);
 				}
 				else {
 					lowerSValue = discount * Math.max(strike - averageSoFar, 0.0);
