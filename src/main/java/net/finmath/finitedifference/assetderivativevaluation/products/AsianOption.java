@@ -5,6 +5,8 @@ import java.util.function.DoubleBinaryOperator;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
@@ -215,10 +217,13 @@ public class AsianOption implements FiniteDifferenceProduct {
 	}
 
 	public FDMSolver getSolver(final FiniteDifferenceEquityModel model) {
-		if (model instanceof LiftedFDMBlackScholesModelDecorator) {
+		if (model instanceof LiftedFDMBlackScholesModelDecorator
+				|| model instanceof LiftedFDMCevModelDecorator
+				|| model instanceof LiftedFDMBachelierModelDecorator) {
 			return new FDMAsianADI2D(model, this, model.getSpaceTimeDiscretization(), exercise);
 		}
-		throw new IllegalArgumentException("AsianOption currently supports only FDMBlackScholesModel.");
+		throw new IllegalArgumentException(
+				"AsianOption currently supports only FDMBlackScholesModel, FDMCevModel and FDMBachelierModel.");
 	}
 
 	public FiniteDifferenceEquityModel getLiftedModel(final FiniteDifferenceEquityModel model) {
@@ -232,11 +237,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 			final double[] sNodes = sGrid.getGrid();
 			final double sMax = sNodes[sNodes.length - 1];
 
-			/*
-			 * Since I(t) = integral_0^t S(u) du, the natural scale of I is O(T * S).
-			 */
 			final double iMax = maturity * sMax;
-
 			final int nI = sNodes.length * 4;
 			final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
 
@@ -247,8 +248,53 @@ public class AsianOption implements FiniteDifferenceProduct {
 					new double[] { bsModel.getInitialValue()[0], 0.0 });
 
 			return new LiftedFDMBlackScholesModelDecorator(bsModel, liftedDiscretization);
-		} else {
-			throw new IllegalArgumentException("AsianOption currently supports only FDMBlackScholesModel.");
+		}
+		else if (model instanceof FDMCevModel) {
+			final FDMCevModel cevModel = (FDMCevModel) model;
+
+			final Grid sGrid = baseDiscretization.getSpaceGrid(0);
+			final double[] sNodes = sGrid.getGrid();
+			final double sMax = sNodes[sNodes.length - 1];
+
+			final double iMax = maturity * sMax;
+			final int nI = sNodes.length * 4;
+			final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
+
+			final SpaceTimeDiscretization liftedDiscretization = new SpaceTimeDiscretization(
+					new Grid[] { sGrid, iGrid },
+					baseDiscretization.getTimeDiscretization(),
+					baseDiscretization.getTheta(),
+					new double[] { cevModel.getInitialValue()[0], 0.0 });
+
+			return new LiftedFDMCevModelDecorator(cevModel, liftedDiscretization);
+		}
+		else if (model instanceof FDMBachelierModel) {
+			final FDMBachelierModel bachelierModel = (FDMBachelierModel) model;
+
+			final Grid sGrid = baseDiscretization.getSpaceGrid(0);
+			final double[] sNodes = sGrid.getGrid();
+			final double sMax = sNodes[sNodes.length - 1];
+
+			/*
+			 * Keep the current lifted scale policy for now.
+			 * Note: for Bachelier, if negative S values are allowed on the base grid,
+			 * a more robust iMax policy might be max |S| * T instead of T * sMax.
+			 */
+			final double iMax = maturity * sMax;
+			final int nI = sNodes.length * 4;
+			final Grid iGrid = new UniformGrid(nI - 1, 0.0, iMax);
+
+			final SpaceTimeDiscretization liftedDiscretization = new SpaceTimeDiscretization(
+					new Grid[] { sGrid, iGrid },
+					baseDiscretization.getTimeDiscretization(),
+					baseDiscretization.getTheta(),
+					new double[] { bachelierModel.getInitialValue()[0], 0.0 });
+
+			return new LiftedFDMBachelierModelDecorator(bachelierModel, liftedDiscretization);
+		}
+		else {
+			throw new IllegalArgumentException(
+					"AsianOption currently supports only FDMBlackScholesModel, FDMCevModel and FDMBachelierModel.");
 		}
 	}
 
@@ -509,6 +555,392 @@ public class AsianOption implements FiniteDifferenceProduct {
 				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
 
 			return new LiftedFDMBlackScholesModelDecorator(delegate, newSpaceTimeDiscretization);
+		}
+	}
+
+	/**
+	 * Decorator that lifts a 1D CEV model to a 2D model with state (S, I),
+	 * where I(t) = integral_0^t S(u) du.
+	 */
+	private static final class LiftedFDMCevModelDecorator
+			implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
+
+		private final FDMCevModel delegate;
+		private final SpaceTimeDiscretization liftedDiscretization;
+
+		private LiftedFDMCevModelDecorator(
+				final FDMCevModel delegate,
+				final SpaceTimeDiscretization liftedDiscretization) {
+			this.delegate = delegate;
+			this.liftedDiscretization = liftedDiscretization;
+		}
+
+		@Override
+		public DiscountCurve getRiskFreeCurve() {
+			return delegate.getRiskFreeCurve();
+		}
+
+		@Override
+		public DiscountCurve getDividendYieldCurve() {
+			return delegate.getDividendYieldCurve();
+		}
+
+		@Override
+		public SpaceTimeDiscretization getSpaceTimeDiscretization() {
+			return liftedDiscretization;
+		}
+
+		@Override
+		public double[] getDrift(double time, final double... stateVariables) {
+			if (time == 0.0) {
+				time = 1e-6;
+			}
+
+			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+
+			final double muS = delegate.getDrift(time, S)[0];
+			final double muI = S;
+
+			return new double[] { muS, muI };
+		}
+
+		@Override
+		public double[][] getFactorLoading(final double time, final double... stateVariables) {
+			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+
+			final double sigma = delegate.getFactorLoading(time, S)[0][0];
+
+			return new double[][] { { sigma, 0.0 }, { 0.0, 0.0 } };
+		}
+
+		@Override
+		public double[] getInitialValue() {
+			final double[] oldArray = delegate.getInitialValue();
+			final double[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
+			newArray[newArray.length - 1] = 0.0;
+			return newArray;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+				final FiniteDifferenceProduct product,
+				double time,
+				final double... stateVariables) {
+
+			if(time == 0.0) {
+				time = 1e-6;
+			}
+
+			final AsianOption option = (AsianOption) product;
+			final double maturity = option.getMaturity();
+			final double strike = option.getStrike();
+			final CallOrPut callOrPut = option.getCallOrPut();
+			final AsianStrike asianStrike = option.getAsianStrike();
+
+			final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
+			final double delta = maturity - time;
+			final double discount = Math.exp(-r * delta);
+
+			final BoundaryCondition[] result = new BoundaryCondition[2];
+
+			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+			final double averageSoFar = I / maturity;
+
+			final double lowerSValue;
+
+			if(asianStrike == AsianStrike.FIXED_STRIKE) {
+				if(callOrPut == CallOrPut.CALL) {
+					lowerSValue = discount * Math.max(averageSoFar - strike, 0.0);
+				}
+				else {
+					lowerSValue = discount * Math.max(strike - averageSoFar, 0.0);
+				}
+			}
+			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
+				if(callOrPut == CallOrPut.CALL) {
+					lowerSValue = 0.0;
+				}
+				else {
+					lowerSValue = discount * averageSoFar;
+				}
+			}
+			else {
+				throw new IllegalArgumentException("Unrecognized strike type.");
+			}
+
+			result[0] = StandardBoundaryCondition.dirichlet(lowerSValue);
+			result[1] = StandardBoundaryCondition.none();
+
+			return result;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+				final FiniteDifferenceProduct product,
+				double time,
+				final double... stateVariables) {
+
+			if(time == 0.0) {
+				time = 1e-6;
+			}
+
+			final AsianOption option = (AsianOption) product;
+			final double maturity = option.getMaturity();
+			final double strike = option.getStrike();
+			final CallOrPut callOrPut = option.getCallOrPut();
+			final AsianStrike asianStrike = option.getAsianStrike();
+
+			final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
+			final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
+			final double delta = maturity - time;
+			final double discount = Math.exp(-r * delta);
+
+			final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+
+			final BoundaryCondition[] result = new BoundaryCondition[2];
+
+			final double averageSoFar = I / maturity;
+
+			final double discountedExpectedRemainingAverageContribution;
+			if(Math.abs(r - q) > 1E-12) {
+				discountedExpectedRemainingAverageContribution =
+						(S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+			}
+			else {
+				discountedExpectedRemainingAverageContribution =
+						(S / maturity) * delta * Math.exp(-r * delta);
+			}
+
+			final double discountedExpectedAverage =
+					discount * averageSoFar + discountedExpectedRemainingAverageContribution;
+
+			final double discountedExpectedSpot =
+					S * Math.exp(-q * delta);
+
+			if(asianStrike == AsianStrike.FIXED_STRIKE) {
+				final double upperSCallValue =
+						discountedExpectedAverage - discount * strike;
+
+				result[0] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+
+				result[1] = StandardBoundaryCondition.none();
+			}
+			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
+				final double upperSCallValue =
+						discountedExpectedSpot - discountedExpectedAverage;
+
+				result[0] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+
+				result[1] = StandardBoundaryCondition.none();
+			}
+			else {
+				throw new IllegalArgumentException("Unrecognized strike type.");
+			}
+
+			return result;
+		}
+
+		@Override
+		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+
+			return new LiftedFDMCevModelDecorator(delegate, newSpaceTimeDiscretization);
+		}
+	}
+
+	/**
+	 * Decorator that lifts a 1D Bachelier model to a 2D model with state (S, I),
+	 * where I(t) = integral_0^t S(u) du.
+	 */
+	private static final class LiftedFDMBachelierModelDecorator
+			implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
+
+		private final FDMBachelierModel delegate;
+		private final SpaceTimeDiscretization liftedDiscretization;
+
+		private LiftedFDMBachelierModelDecorator(
+				final FDMBachelierModel delegate,
+				final SpaceTimeDiscretization liftedDiscretization) {
+			this.delegate = delegate;
+			this.liftedDiscretization = liftedDiscretization;
+		}
+
+		@Override
+		public DiscountCurve getRiskFreeCurve() {
+			return delegate.getRiskFreeCurve();
+		}
+
+		@Override
+		public DiscountCurve getDividendYieldCurve() {
+			return delegate.getDividendYieldCurve();
+		}
+
+		@Override
+		public SpaceTimeDiscretization getSpaceTimeDiscretization() {
+			return liftedDiscretization;
+		}
+
+		@Override
+		public double[] getDrift(double time, final double... stateVariables) {
+			if (time == 0.0) {
+				time = 1e-6;
+			}
+
+			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+
+			final double muS = delegate.getDrift(time, S)[0];
+			final double muI = S;
+
+			return new double[] { muS, muI };
+		}
+
+		@Override
+		public double[][] getFactorLoading(final double time, final double... stateVariables) {
+			final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+
+			final double sigma = delegate.getFactorLoading(time, S)[0][0];
+
+			return new double[][] { { sigma, 0.0 }, { 0.0, 0.0 } };
+		}
+
+		@Override
+		public double[] getInitialValue() {
+			final double[] oldArray = delegate.getInitialValue();
+			final double[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
+			newArray[newArray.length - 1] = 0.0;
+			return newArray;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+				final FiniteDifferenceProduct product,
+				double time,
+				final double... stateVariables) {
+
+			if(time == 0.0) {
+				time = 1e-6;
+			}
+
+			final AsianOption option = (AsianOption) product;
+			final double maturity = option.getMaturity();
+			final double strike = option.getStrike();
+			final CallOrPut callOrPut = option.getCallOrPut();
+			final AsianStrike asianStrike = option.getAsianStrike();
+
+			final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
+			final double delta = maturity - time;
+			final double discount = Math.exp(-r * delta);
+
+			final BoundaryCondition[] result = new BoundaryCondition[2];
+
+			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+			final double averageSoFar = I / maturity;
+
+			final double lowerSValue;
+
+			if(asianStrike == AsianStrike.FIXED_STRIKE) {
+				if(callOrPut == CallOrPut.CALL) {
+					lowerSValue = discount * Math.max(averageSoFar - strike, 0.0);
+				}
+				else {
+					lowerSValue = discount * Math.max(strike - averageSoFar, 0.0);
+				}
+			}
+			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
+				if(callOrPut == CallOrPut.CALL) {
+					lowerSValue = 0.0;
+				}
+				else {
+					lowerSValue = discount * averageSoFar;
+				}
+			}
+			else {
+				throw new IllegalArgumentException("Unrecognized strike type.");
+			}
+
+			result[0] = StandardBoundaryCondition.dirichlet(lowerSValue);
+			result[1] = StandardBoundaryCondition.none();
+
+			return result;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+				final FiniteDifferenceProduct product,
+				double time,
+				final double... stateVariables) {
+
+			if(time == 0.0) {
+				time = 1e-6;
+			}
+
+			final AsianOption option = (AsianOption) product;
+			final double maturity = option.getMaturity();
+			final double strike = option.getStrike();
+			final CallOrPut callOrPut = option.getCallOrPut();
+			final AsianStrike asianStrike = option.getAsianStrike();
+
+			final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
+			final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
+			final double delta = maturity - time;
+			final double discount = Math.exp(-r * delta);
+
+			final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+
+			final BoundaryCondition[] result = new BoundaryCondition[2];
+
+			final double averageSoFar = I / maturity;
+
+			final double discountedExpectedRemainingAverageContribution;
+			if(Math.abs(r - q) > 1E-12) {
+				discountedExpectedRemainingAverageContribution =
+						(S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+			}
+			else {
+				discountedExpectedRemainingAverageContribution =
+						(S / maturity) * delta * Math.exp(-r * delta);
+			}
+
+			final double discountedExpectedAverage =
+					discount * averageSoFar + discountedExpectedRemainingAverageContribution;
+
+			final double discountedExpectedSpot =
+					S * Math.exp(-q * delta);
+
+			if(asianStrike == AsianStrike.FIXED_STRIKE) {
+				final double upperSCallValue =
+						discountedExpectedAverage - discount * strike;
+
+				result[0] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+
+				result[1] = StandardBoundaryCondition.none();
+			}
+			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
+				final double upperSCallValue =
+						discountedExpectedSpot - discountedExpectedAverage;
+
+				result[0] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+
+				result[1] = StandardBoundaryCondition.none();
+			}
+			else {
+				throw new IllegalArgumentException("Unrecognized strike type.");
+			}
+
+			return result;
+		}
+
+		@Override
+		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+
+			return new LiftedFDMBachelierModelDecorator(delegate, newSpaceTimeDiscretization);
 		}
 	}
 }
