@@ -45,6 +45,17 @@ import net.finmath.modelling.Exercise;
  */
 public abstract class AbstractADI2D implements FDMSolver {
 
+	/**
+	 * This interface is needed for payoff depending explicitly
+	 * on the time dimension. An Example is given by the Asian option
+	 * where at early exercise we pre-multiply the integral of the stock
+	 * not with the maturity T, but only with current time t.
+	 */
+	@FunctionalInterface
+	public interface DoubleTernaryOperator {
+		double applyAsDouble(double x0, double x1, double x2);
+	}
+
 	protected final FiniteDifferenceEquityModel model;
 	protected final FiniteDifferenceProduct product;
 	protected final SpaceTimeDiscretization spaceTimeDiscretization;
@@ -91,10 +102,23 @@ public abstract class AbstractADI2D implements FDMSolver {
 
 	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
-		return getValues(time, (x0, x1) -> valueAtMaturity.applyAsDouble(x0));
+		return getValues(
+				time,
+				(x0, x1) -> valueAtMaturity.applyAsDouble(x0),
+				(runningTime, x0, x1) -> valueAtMaturity.applyAsDouble(x0));
 	}
 
 	public double[][] getValues(final double time, final DoubleBinaryOperator valueAtMaturity) {
+		return getValues(
+				time,
+				valueAtMaturity,
+				(runningTime, x0, x1) -> valueAtMaturity.applyAsDouble(x0, x1));
+	}
+
+	public double[][] getValues(
+			final double time,
+			final DoubleBinaryOperator valueAtMaturity,
+			final DoubleTernaryOperator exerciseValue) {
 
 		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
@@ -125,7 +149,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 			applyInternalConstraints(runningTimeNext, u);
 			applyOuterBoundaries(runningTimeNext, u);
 
-			applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, valueAtMaturity);
+			applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, exerciseValue);
 
 			applyInternalConstraints(runningTimeNext, u);
 			applyOuterBoundaries(runningTimeNext, u);
@@ -156,6 +180,18 @@ public abstract class AbstractADI2D implements FDMSolver {
 			final DoubleBinaryOperator valueAtMaturity) {
 
 		final RealMatrix values = new Array2DRowRealMatrix(getValues(time, valueAtMaturity));
+		final double tau = time - evaluationTime;
+		final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
+		return values.getColumn(timeIndex);
+	}
+
+	public double[] getValue(
+			final double evaluationTime,
+			final double time,
+			final DoubleBinaryOperator valueAtMaturity,
+			final DoubleTernaryOperator exerciseValue) {
+
+		final RealMatrix values = new Array2DRowRealMatrix(getValues(time, valueAtMaturity, exerciseValue));
 		final double tau = time - evaluationTime;
 		final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
 		return values.getColumn(timeIndex);
@@ -433,7 +469,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 			final double runningTime,
 			final double tau,
 			final double[] u,
-			final DoubleBinaryOperator valueAtMaturity) {
+			final DoubleTernaryOperator exerciseValue) {
 
 		final boolean isExerciseAllowed =
 				FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau, exercise);
@@ -449,7 +485,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 				}
 
 				final int k = flatten(i, j);
-				final double payoff = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
+				final double payoff = exerciseValue.applyAsDouble(runningTime, x0Grid[i], x1Grid[j]);
 				u[k] = Math.max(u[k], payoff);
 			}
 		}

@@ -5,8 +5,8 @@ import java.util.function.DoubleBinaryOperator;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
@@ -14,10 +14,11 @@ import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
+import net.finmath.finitedifference.solvers.adi.AbstractADI2D;
 import net.finmath.finitedifference.solvers.adi.FDMAsianADI2D;
 import net.finmath.marketdata.model.curves.DiscountCurve;
-import net.finmath.modelling.Exercise;
 import net.finmath.modelling.EuropeanExercise;
+import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.AsianStrike;
 import net.finmath.modelling.products.CallOrPut;
 
@@ -42,12 +43,19 @@ import net.finmath.modelling.products.CallOrPut;
  * </p>
  *
  * <p>
+ * For early exercise, the immediate exercise payoff is evaluated using
+ * the average accrued up to exercise time t, i.e. I(t) / t.
+ * </p>
+ *
+ * <p>
  * Assumption: averaging times coincide with the PDE grid's time discretization.
  * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class AsianOption implements FiniteDifferenceProduct {
+
+	private static final double TIME_EPSILON_FOR_EXERCISE = 1E-12;
 
 	private final String underlyingName;
 	private final double maturity;
@@ -64,16 +72,16 @@ public class AsianOption implements FiniteDifferenceProduct {
 			final AsianStrike asianStrike,
 			final Exercise exercise) {
 
-		if (callOrPutSign == null) {
+		if(callOrPutSign == null) {
 			throw new IllegalArgumentException("Option type must not be null.");
 		}
-		if (asianStrike == null) {
+		if(asianStrike == null) {
 			throw new IllegalArgumentException("Asian strike type must not be null.");
 		}
-		if (exercise == null) {
+		if(exercise == null) {
 			throw new IllegalArgumentException("Exercise must not be null.");
 		}
-		if (asianStrike == AsianStrike.FIXED_STRIKE && Double.isNaN(strike)) {
+		if(asianStrike == AsianStrike.FIXED_STRIKE && Double.isNaN(strike)) {
 			throw new IllegalArgumentException("Strike must be specified for fixed-strike Asian options.");
 		}
 
@@ -156,31 +164,43 @@ public class AsianOption implements FiniteDifferenceProduct {
 	}
 
 	private static CallOrPut callOrPutFromDouble(final double callOrPutSign) {
-		if (callOrPutSign == 1.0) {
+		if(callOrPutSign == 1.0) {
 			return CallOrPut.CALL;
-		} else if (callOrPutSign == -1.0) {
+		}
+		else if(callOrPutSign == -1.0) {
 			return CallOrPut.PUT;
-		} else {
+		}
+		else {
 			throw new IllegalArgumentException("Unknown option type.");
 		}
 	}
 
 	private double payoff(final double average, final double spot) {
-		if (asianStrike == AsianStrike.FIXED_STRIKE) {
-			if (callOrPutSign == CallOrPut.CALL) {
+		if(asianStrike == AsianStrike.FIXED_STRIKE) {
+			if(callOrPutSign == CallOrPut.CALL) {
 				return Math.max(average - strike, 0.0);
-			} else {
+			}
+			else {
 				return Math.max(strike - average, 0.0);
 			}
-		} else if (asianStrike == AsianStrike.FLOATING_STRIKE) {
-			if (callOrPutSign == CallOrPut.CALL) {
+		}
+		else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
+			if(callOrPutSign == CallOrPut.CALL) {
 				return Math.max(spot - average, 0.0);
-			} else {
+			}
+			else {
 				return Math.max(average - spot, 0.0);
 			}
-		} else {
+		}
+		else {
 			throw new IllegalArgumentException("Unrecognized strike type.");
 		}
+	}
+
+	private double getExercisePayoff(final double runningTime, final double spot, final double integral) {
+		final double tSafe = Math.max(runningTime, TIME_EPSILON_FOR_EXERCISE);
+		final double averageSoFar = integral / tSafe;
+		return payoff(averageSoFar, spot);
 	}
 
 	@Override
@@ -192,7 +212,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 				.getTimeIndexNearestLessOrEqual(tau);
 
 		final double[] column = new double[values.length];
-		for (int i = 0; i < values.length; i++) {
+		for(int i = 0; i < values.length; i++) {
 			column[i] = values[i][timeIndex];
 		}
 		return column;
@@ -201,23 +221,26 @@ public class AsianOption implements FiniteDifferenceProduct {
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 
-		if (!exercise.isEuropean()) {
-			throw new IllegalArgumentException("AsianOption currently supports only European exercise.");
-		}
-
 		final FiniteDifferenceEquityModel liftedModel = getLiftedModel(model);
 		final FDMSolver solver = getSolver(liftedModel);
 
 		final DoubleBinaryOperator payoffAtMaturity = (S, I) -> {
-			final double average = I / maturity;
-			return payoff(average, S);
+			final double averageAtMaturity = I / maturity;
+			return payoff(averageAtMaturity, S);
 		};
+
+		final AbstractADI2D.DoubleTernaryOperator exercisePayoff = (runningTime, S, I) ->
+				getExercisePayoff(runningTime, S, I);
+
+		if(solver instanceof AbstractADI2D) {
+			return ((AbstractADI2D) solver).getValues(maturity, payoffAtMaturity, exercisePayoff);
+		}
 
 		return solver.getValues(maturity, payoffAtMaturity);
 	}
 
 	public FDMSolver getSolver(final FiniteDifferenceEquityModel model) {
-		if (model instanceof LiftedFDMBlackScholesModelDecorator
+		if(model instanceof LiftedFDMBlackScholesModelDecorator
 				|| model instanceof LiftedFDMCevModelDecorator
 				|| model instanceof LiftedFDMBachelierModelDecorator) {
 			return new FDMAsianADI2D(model, this, model.getSpaceTimeDiscretization(), exercise);
@@ -230,7 +253,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		final SpaceTimeDiscretization baseDiscretization = model.getSpaceTimeDiscretization();
 
-		if (model instanceof FDMBlackScholesModel) {
+		if(model instanceof FDMBlackScholesModel) {
 			final FDMBlackScholesModel bsModel = (FDMBlackScholesModel) model;
 
 			final Grid sGrid = baseDiscretization.getSpaceGrid(0);
@@ -249,7 +272,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			return new LiftedFDMBlackScholesModelDecorator(bsModel, liftedDiscretization);
 		}
-		else if (model instanceof FDMCevModel) {
+		else if(model instanceof FDMCevModel) {
 			final FDMCevModel cevModel = (FDMCevModel) model;
 
 			final Grid sGrid = baseDiscretization.getSpaceGrid(0);
@@ -268,7 +291,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			return new LiftedFDMCevModelDecorator(cevModel, liftedDiscretization);
 		}
-		else if (model instanceof FDMBachelierModel) {
+		else if(model instanceof FDMBachelierModel) {
 			final FDMBachelierModel bachelierModel = (FDMBachelierModel) model;
 
 			final Grid sGrid = baseDiscretization.getSpaceGrid(0);
@@ -356,7 +379,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public double[] getDrift(double time, final double... stateVariables) {
-			if (time == 0.0) {
+			if(time == 0.0) {
 				time = 1e-6;
 			}
 
@@ -410,19 +433,10 @@ public class AsianOption implements FiniteDifferenceProduct {
 			final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
 			final double averageSoFar = I / maturity;
 
-			/*
-			 * Lower boundary in S: S = 0
-			 */
 			final double lowerSValue;
 
 			if(asianStrike == AsianStrike.FIXED_STRIKE) {
 				if(callOrPut == CallOrPut.CALL) {
-					/*
-					 * At S = 0 and assuming the process remains there,
-					 * the final average is A(T) = I/T.
-					 * Hence the fixed-strike call value is the discounted payoff
-					 * max(A(T) - K, 0).
-					 */
 					lowerSValue = discount * Math.max(averageSoFar - strike, 0.0);
 				}
 				else {
@@ -431,17 +445,9 @@ public class AsianOption implements FiniteDifferenceProduct {
 			}
 			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
 				if(callOrPut == CallOrPut.CALL) {
-					/*
-					 * payoff = max(S(T) - A(T), 0), and at S=0 this is 0
-					 */
 					lowerSValue = 0.0;
 				}
 				else {
-					/*
-					 * payoff = max(A(T) - S(T), 0), and at S=0 this becomes A(T).
-					 * Since S=0 from now on, the future average contribution vanishes,
-					 * so A(T) = I/T and its discounted value is discount * I/T.
-					 */
 					lowerSValue = discount * averageSoFar;
 				}
 			}
@@ -450,11 +456,6 @@ public class AsianOption implements FiniteDifferenceProduct {
 			}
 
 			result[0] = StandardBoundaryCondition.dirichlet(lowerSValue);
-
-			/*
-			 * Lower boundary in I: I = 0
-			 * Leave PDE row intact.
-			 */
 			result[1] = StandardBoundaryCondition.none();
 
 			return result;
@@ -505,43 +506,19 @@ public class AsianOption implements FiniteDifferenceProduct {
 					S * Math.exp(-q * delta);
 
 			if(asianStrike == AsianStrike.FIXED_STRIKE) {
-
-				/*
-				 * Upper boundary in S: deep ITM fixed-strike call asymptotic
-				 * V ~ E^disc[A(T)] - E^disc[K]
-				 */
 				final double upperSCallValue =
 						discountedExpectedAverage - discount * strike;
 
 				result[0] = StandardBoundaryCondition.dirichlet(
 						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
-
-				/*
-				 * Upper boundary in I:
-				 * do NOT impose a hard Dirichlet value at the artificial I_max boundary.
-				 * Let the PDE determine that row.
-				 */
 				result[1] = StandardBoundaryCondition.none();
 			}
 			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
-
-				/*
-				 * Upper boundary in S: deep ITM floating-strike call asymptotic
-				 * V ~ E^disc[S(T)] - E^disc[A(T)]
-				 *
-				 * Do not apply Math.max here. The asymptotic linear form is smoother
-				 * and more appropriate as a far-field boundary condition.
-				 */
 				final double upperSCallValue =
 						discountedExpectedSpot - discountedExpectedAverage;
 
 				result[0] = StandardBoundaryCondition.dirichlet(
 						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
-
-				/*
-				 * Upper boundary in I:
-				 * avoid forcing a Dirichlet value at finite I_max.
-				 */
 				result[1] = StandardBoundaryCondition.none();
 			}
 			else {
@@ -550,6 +527,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 			return result;
 		}
+
 		@Override
 		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
 				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
@@ -592,7 +570,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public double[] getDrift(double time, final double... stateVariables) {
-			if (time == 0.0) {
+			if(time == 0.0) {
 				time = 1e-6;
 			}
 
@@ -785,7 +763,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public double[] getDrift(double time, final double... stateVariables) {
-			if (time == 0.0) {
+			if(time == 0.0) {
 				time = 1e-6;
 			}
 
