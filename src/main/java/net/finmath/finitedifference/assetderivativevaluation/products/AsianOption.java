@@ -1164,25 +1164,41 @@ public class AsianOption implements FiniteDifferenceProduct {
 					S * Math.exp(-q * delta);
 
 			if(asianStrike == AsianStrike.FIXED_STRIKE) {
-				final double upperSCallValue =
+				final double callAsymptoticValue =
 						discountedExpectedAverage - discount * strike;
 
 				result[0] = StandardBoundaryCondition.dirichlet(
-						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+						(callOrPut == CallOrPut.CALL) ? callAsymptoticValue : 0.0);
+
+				/*
+				 * Upper I is the inflow boundary for the transport solve.
+				 * For large I the fixed-strike call is deep ITM and the put is asymptotically 0.
+				 */
+				result[2] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? callAsymptoticValue : 0.0);
 			}
 			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
-				final double upperSCallValue =
-						discountedExpectedSpot - discountedExpectedAverage;
+				final double putAsymptoticValue =
+						discountedExpectedAverage - discountedExpectedSpot;
 
+				/*
+				 * Upper S boundary.
+				 */
 				result[0] = StandardBoundaryCondition.dirichlet(
-						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+						(callOrPut == CallOrPut.CALL) ? 0.0 : putAsymptoticValue);
+
+				/*
+				 * Upper I is the inflow boundary.
+				 * For large I the floating-strike put is deep ITM and the call is asymptotically 0.
+				 */
+				result[2] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? 0.0 : putAsymptoticValue);
 			}
 			else {
 				throw new IllegalArgumentException("Unrecognized strike type.");
 			}
 
 			result[1] = StandardBoundaryCondition.none();
-			result[2] = StandardBoundaryCondition.none();
 
 			return result;
 		}
@@ -1380,35 +1396,54 @@ public class AsianOption implements FiniteDifferenceProduct {
 					s * Math.exp(-q * delta);
 
 			if(asianStrike == AsianStrike.FIXED_STRIKE) {
-				final double upperSCallValue =
+				final double callAsymptoticValue =
 						discountedExpectedAverage - discount * strike;
 
+				/*
+				 * Upper S boundary.
+				 */
 				result[0] = StandardBoundaryCondition.dirichlet(
-						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+						(callOrPut == CallOrPut.CALL) ? callAsymptoticValue : 0.0);
+
+				/*
+				 * Upper alpha boundary:
+				 * keep PDE row intact for now.
+				 */
+				result[1] = StandardBoundaryCondition.none();
+
+				/*
+				 * Upper I boundary is the inflow boundary for the transport solve.
+				 * For large I the fixed-strike call is deep ITM and the put is asymptotically 0.
+				 */
+				result[2] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? callAsymptoticValue : 0.0);
 			}
 			else if(asianStrike == AsianStrike.FLOATING_STRIKE) {
-				final double upperSCallValue =
-						discountedExpectedSpot - discountedExpectedAverage;
+				final double putAsymptoticValue =
+						discountedExpectedAverage - discountedExpectedSpot;
 
+				/*
+				 * Upper S boundary.
+				 */
 				result[0] = StandardBoundaryCondition.dirichlet(
-						(callOrPut == CallOrPut.CALL) ? upperSCallValue : 0.0);
+						(callOrPut == CallOrPut.CALL) ? 0.0 : putAsymptoticValue);
+
+				/*
+				 * Upper alpha boundary:
+				 * keep PDE row intact for now.
+				 */
+				result[1] = StandardBoundaryCondition.none();
+
+				/*
+				 * Upper I boundary is the inflow boundary.
+				 * For large I the floating-strike put is deep ITM and the call is asymptotically 0.
+				 */
+				result[2] = StandardBoundaryCondition.dirichlet(
+						(callOrPut == CallOrPut.CALL) ? 0.0 : putAsymptoticValue);
 			}
 			else {
 				throw new IllegalArgumentException("Unrecognized strike type.");
 			}
-
-			/*
-			 * alpha -> upper boundary:
-			 * keep PDE row intact, consistent with current SABR boundary policy.
-			 */
-			result[1] = StandardBoundaryCondition.none();
-
-			/*
-			 * I -> upper boundary:
-			 * keep PDE row intact for now.
-			 * The dedicated transport treatment should be handled in FDMAsianSabrADI3D.
-			 */
-			result[2] = StandardBoundaryCondition.none();
 
 			return result;
 		}
