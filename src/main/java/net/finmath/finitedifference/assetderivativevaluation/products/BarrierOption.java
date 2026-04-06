@@ -2,6 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -9,6 +10,8 @@ import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
+import net.finmath.finitedifference.solvers.adi.FDMBarrierHestonADI2D;
+import net.finmath.finitedifference.solvers.adi.FDMBarrierSabrADI2D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
@@ -35,14 +38,15 @@ import net.finmath.time.TimeDiscretization;
  *   <li>1D knock-in options are priced directly through a coupled two-state PDE
  *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
  *   <li>2D Heston knock-in options currently fall back to in-out parity,</li>
- *   <li>Direct 2D knock-in support remains a roadmap item in principle, but for Heston knock-ins 
- *   the current implementation is not robust enough when the barrier is close to the spot. 
- *   Therefore Heston knock-ins are presently priced by parity, which is the preferred 
- *   production path until the direct method can be stabilized.</li>
+ *   <li>Direct 2D knock-in support remains a roadmap item in principle, but for Heston knock-ins
+ *       the current implementation is not robust enough when the barrier is close to the spot.
+ *       Therefore Heston knock-ins are presently priced by parity, which is the preferred
+ *       production path until the direct method can be stabilized.</li>
  *   <li>other 2D knock-in options currently fall back to parity,</li>
  *   <li>when parity is used, the knock-in value is obtained from
  *       {@code vanilla - knockOut} on a common grid, with interpolation if required,</li>
- *   <li>exercise is currently European only.</li>
+ *   <li>non-European exercise is currently supported only for direct knock-out pricing
+ *       in 1D and under {@link FDMHestonModel} and {@link FDMSabrModel}.</li>
  * </ul>
  *
  * <p>
@@ -55,23 +59,10 @@ import net.finmath.time.TimeDiscretization;
  */
 public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint {
 
-	/**
-	 * Internal pricing policy.
-	 *
-	 * <p>
-	 * {@code DIRECT_OUT} is used for knock-out products priced directly on the supplied grid.
-	 * {@code ACTIVATION_POLICY_IN} is used for knock-in products, which are either priced
-	 * directly through a 1D two-state PDE or indirectly by parity, depending on model dimension.
-	 * </p>
-	 */
 	private enum PricingMode {
 		DIRECT_OUT, ACTIVATION_POLICY_IN
 	}
 
-	/*
-	 * 1D direct knock-in settings.
-	 * These were the settings that produced the good Black-Scholes interior-barrier results.
-	 */
 	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
 	private static final int DOWN_IN_PUT_EXTRA_STEPS_1D = 160;
 	private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
@@ -85,36 +76,55 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	private final BarrierType barrierType;
 	private final Exercise exercise;
 
-	/**
-	 * Creates a barrier option using a numeric call/put sign.
-	 *
-	 * @param underlyingName The underlying name, or {@code null}.
-	 * @param maturity The maturity.
-	 * @param strike The strike.
-	 * @param barrierValue The barrier level.
-	 * @param rebate The rebate paid on knock-out.
-	 * @param callOrPutSign {@code 1.0} for call, {@code -1.0} for put.
-	 * @param barrierType The barrier type.
-	 */
-	public BarrierOption(final String underlyingName, final double maturity, final double strike,
-			final double barrierValue, final double rebate, final double callOrPutSign, final BarrierType barrierType) {
-		this(underlyingName, maturity, strike, barrierValue, rebate, mapCallOrPut(callOrPutSign), barrierType);
+	public BarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double rebate,
+			final double callOrPutSign,
+			final BarrierType barrierType) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				mapCallOrPut(callOrPutSign),
+				barrierType,
+				new EuropeanExercise(maturity)
+		);
 	}
 
-	/**
-	 * Creates a barrier option.
-	 *
-	 * @param underlyingName The underlying name, or {@code null}.
-	 * @param maturity The maturity.
-	 * @param strike The strike.
-	 * @param barrierValue The barrier level.
-	 * @param rebate The rebate paid on knock-out.
-	 * @param callOrPutSign The option type.
-	 * @param barrierType The barrier type.
-	 */
-	public BarrierOption(final String underlyingName, final double maturity, final double strike,
-			final double barrierValue, final double rebate, final CallOrPut callOrPutSign,
+	public BarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double rebate,
+			final CallOrPut callOrPutSign,
 			final BarrierType barrierType) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				callOrPutSign,
+				barrierType,
+				new EuropeanExercise(maturity)
+		);
+	}
+
+	public BarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double rebate,
+			final CallOrPut callOrPutSign,
+			final BarrierType barrierType,
+			final Exercise exercise) {
 		super();
 		this.underlyingName = underlyingName;
 		this.maturity = maturity;
@@ -123,75 +133,91 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		this.rebate = rebate;
 		this.callOrPutSign = callOrPutSign;
 		this.barrierType = barrierType;
-		this.exercise = new EuropeanExercise(maturity);
+		this.exercise = exercise;
 	}
 
-	/**
-	 * Creates a barrier option without an underlying name.
-	 *
-	 * @param maturity The maturity.
-	 * @param strike The strike.
-	 * @param barrierValue The barrier level.
-	 * @param rebate The rebate paid on knock-out.
-	 * @param callOrPutSign {@code 1.0} for call, {@code -1.0} for put.
-	 * @param barrierType The barrier type.
-	 */
-	public BarrierOption(final double maturity, final double strike, final double barrierValue, final double rebate,
-			final double callOrPutSign, final BarrierType barrierType) {
+	public BarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double rebate,
+			final double callOrPutSign,
+			final BarrierType barrierType,
+			final Exercise exercise) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				mapCallOrPut(callOrPutSign),
+				barrierType,
+				exercise
+		);
+	}
+
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double rebate,
+			final double callOrPutSign,
+			final BarrierType barrierType) {
 		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
 	}
 
-	/**
-	 * Creates a barrier option without an underlying name.
-	 *
-	 * @param maturity The maturity.
-	 * @param strike The strike.
-	 * @param barrierValue The barrier level.
-	 * @param rebate The rebate paid on knock-out.
-	 * @param callOrPutSign The option type.
-	 * @param barrierType The barrier type.
-	 */
-	public BarrierOption(final double maturity, final double strike, final double barrierValue, final double rebate,
-			final CallOrPut callOrPutSign, final BarrierType barrierType) {
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double rebate,
+			final CallOrPut callOrPutSign,
+			final BarrierType barrierType) {
 		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
 	}
 
-	/**
-	 * Creates a zero-rebate barrier option.
-	 *
-	 * @param underlyingName The underlying name, or {@code null}.
-	 * @param maturity The maturity.
-	 * @param strike The strike.
-	 * @param barrierValue The barrier level.
-	 * @param callOrPutSign The option type.
-	 * @param barrierType The barrier type.
-	 */
-	public BarrierOption(final String underlyingName, final double maturity, final double strike,
-			final double barrierValue, final CallOrPut callOrPutSign, final BarrierType barrierType) {
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double rebate,
+			final CallOrPut callOrPutSign,
+			final BarrierType barrierType,
+			final Exercise exercise) {
+		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType, exercise);
+	}
+
+	public BarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final CallOrPut callOrPutSign,
+			final BarrierType barrierType) {
 		this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
 	}
 
-	/**
-	 * Creates a zero-rebate barrier option without an underlying name.
-	 *
-	 * @param maturity The maturity.
-	 * @param strike The strike.
-	 * @param barrierValue The barrier level.
-	 * @param callOrPutSign {@code 1.0} for call, {@code -1.0} for put.
-	 * @param barrierType The barrier type.
-	 */
-	public BarrierOption(final double maturity, final double strike, final double barrierValue,
-			final double callOrPutSign, final BarrierType barrierType) {
+	public BarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final CallOrPut callOrPutSign,
+			final BarrierType barrierType,
+			final Exercise exercise) {
+		this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType, exercise);
+	}
+
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrierValue,
+			final double callOrPutSign,
+			final BarrierType barrierType) {
 		this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
 	}
 
-	/**
-	 * Returns the value surface column corresponding to the requested evaluation time.
-	 *
-	 * @param evaluationTime The evaluation time.
-	 * @param model The finite-difference model.
-	 * @return The vector of option values on the model space grid at {@code evaluationTime}.
-	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
@@ -206,18 +232,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return column;
 	}
 
-	/**
-	 * Returns the full value surface of the barrier option on the model grid.
-	 *
-	 * <p>
-	 * The method first validates the configuration, then handles degenerate cases,
-	 * and finally dispatches to either direct knock-out pricing or knock-in pricing
-	 * via direct activation policy or parity.
-	 * </p>
-	 *
-	 * @param model The finite-difference model.
-	 * @return The full value surface.
-	 */
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 
@@ -241,40 +255,34 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Determines whether this product should be priced as a direct knock-out
-	 * or via the knock-in activation policy.
-	 *
-	 * @return The internal pricing mode.
-	 */
 	private PricingMode getPricingMode() {
 		return isOutOption() ? PricingMode.DIRECT_OUT : PricingMode.ACTIVATION_POLICY_IN;
 	}
 
-	/**
-	 * Validates that the current product configuration is supported for the supplied model.
-	 *
-	 * <p>
-	 * The current implementation requires European exercise and requires the barrier
-	 * to lie inside the first state-variable grid domain.
-	 * </p>
-	 *
-	 * @param model The finite-difference model.
-	 */
 	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
-		if(!exercise.isEuropean()) {
-			throw new IllegalArgumentException("BarrierOption currently supports only European exercise.");
-		}
 
 		validateBarrierInsideGrid(model);
+
+		if(!exercise.isEuropean()) {
+
+			if(isOutOption()) {
+				final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+				if(numberOfSpaceDimensions == 1) {
+					return;
+				}
+
+				if(numberOfSpaceDimensions == 2
+						&& (model instanceof FDMHestonModel || model instanceof FDMSabrModel)) {
+					return;
+				}
+			}
+
+			throw new IllegalArgumentException(
+					"BarrierOption currently supports non-European exercise only for direct knock-out pricing in 1D and under FDMHestonModel or FDMSabrModel.");
+		}
 	}
 
-	/**
-	 * Builds a zero value surface for degenerate cases where the option is identically worthless.
-	 *
-	 * @param model The finite-difference model.
-	 * @return A zero-filled value surface.
-	 */
 	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
 		final int numberOfSpacePoints = getTotalNumberOfSpacePoints(model.getSpaceTimeDiscretization());
 		final int numberOfTimePoints = model.getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps() + 1;
@@ -288,33 +296,16 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return zeroValues;
 	}
 
-	/**
-	 * Prices a knock-out option directly on the supplied model grid.
-	 *
-	 * @param model The finite-difference model.
-	 * @return The knock-out value surface.
-	 */
 	private double[][] priceOutOptionDirectly(final FiniteDifferenceEquityModel model) {
 		return createSolver(model).getValues(maturity, this::getTerminalPayoffForDirectOutPricing);
 	}
 
-	/**
-	 * Prices a knock-in option according to the current implementation policy.
-	 *
-	 * <p>
-	 * Current behavior:
-	 * </p>
-	 * <ul>
-	 *   <li>1D knock-ins are priced directly through {@link FDMThetaMethod1DTwoState}
-	 *       on an auxiliary interior-barrier grid,</li>
-	 *   <li>2D Heston knock-ins fall back to parity,</li>
-	 *   <li>other higher-dimensional knock-ins also fall back to parity.</li>
-	 * </ul>
-	 *
-	 * @param model The finite-difference model.
-	 * @return The knock-in value surface.
-	 */
 	private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
+
+		if(!exercise.isEuropean()) {
+			throw new IllegalArgumentException(
+					"Non-European knock-in barrier pricing is currently not supported directly, and parity is not valid for Bermudan/American barriers.");
+		}
 
 		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
@@ -353,32 +344,13 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			);
 		}
 		else if(numberOfSpaceDimensions == 2 && model instanceof FDMHestonModel) {
-		    return priceInOptionByParity(model);
+			return priceInOptionByParity(model);
 		}
 		else {
 			return priceInOptionByParity(model);
 		}
 	}
 
-	/**
-	 * Prices a knock-in option by in-out parity.
-	 *
-	 * <p>
-	 * The knock-in value is reconstructed from:
-	 * </p>
-	 *
-	 * <p>
-	 * {@code knockIn = vanilla - knockOut}
-	 * </p>
-	 *
-	 * <p>
-	 * on a common grid, with interpolation when the vanilla and barrier grids differ.
-	 * The barrier rebate is already embedded in the knock-out price.
-	 * </p>
-	 *
-	 * @param barrierModel The model used for the barrier leg.
-	 * @return The knock-in value surface.
-	 */
 	private double[][] priceInOptionByParity(final FiniteDifferenceEquityModel barrierModel) {
 
 		final EuropeanOption vanillaOption = createVanillaOption();
@@ -442,14 +414,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Interpolates a value surface from an auxiliary 1D grid back to the original grid.
-	 *
-	 * @param valuesOnAuxiliaryGrid The values on the auxiliary grid.
-	 * @param auxiliaryGrid The auxiliary space grid.
-	 * @param originalGrid The target grid.
-	 * @return The interpolated surface on the original grid.
-	 */
 	private double[][] interpolateSurfaceToOriginalGrid1D(
 			final double[][] valuesOnAuxiliaryGrid,
 			final double[] auxiliaryGrid,
@@ -474,19 +438,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return interpolatedValues;
 	}
 
-	/**
-	 * Interpolates a 2D surface along the first state variable only.
-	 *
-	 * <p>
-	 * This method assumes that the second state-variable grid is unchanged between
-	 * the auxiliary and original discretizations.
-	 * </p>
-	 *
-	 * @param valuesOnAuxiliaryGrid The values on the auxiliary grid.
-	 * @param auxiliaryDiscretization The auxiliary discretization.
-	 * @param originalDiscretization The target discretization.
-	 * @return The interpolated surface on the original discretization.
-	 */
 	private double[][] interpolateSurfaceToOriginalGrid2DAlongFirstState(
 			final double[][] valuesOnAuxiliaryGrid,
 			final SpaceTimeDiscretization auxiliaryDiscretization,
@@ -543,13 +494,15 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return interpolatedValues;
 	}
 
-	/**
-	 * Creates the direct solver used for knock-out pricing and vanilla auxiliary pricing.
-	 *
-	 * @param model The finite-difference model.
-	 * @return The corresponding solver.
-	 */
 	private FDMSolver createSolver(final FiniteDifferenceEquityModel model) {
+
+		if(model instanceof FDMHestonModel) {
+			return new FDMBarrierHestonADI2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
+		if(model instanceof FDMSabrModel) {
+			return new FDMBarrierSabrADI2D(model, this, model.getSpaceTimeDiscretization(), exercise);
+		}
+
 		try {
 			return FDMSolverFactory.createSolver(model, this, exercise);
 		}
@@ -561,30 +514,23 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Creates the corresponding vanilla option.
-	 *
-	 * @return The vanilla European option with matching maturity, strike, and call/put type.
-	 */
 	private EuropeanOption createVanillaOption() {
 		return new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
 	}
 
-	/**
-	 * Creates the corresponding knock-out option used in the parity relation.
-	 *
-	 * @return The matching knock-out barrier option.
-	 */
 	private BarrierOption createCorrespondingOutOption() {
-		return new BarrierOption(underlyingName, maturity, strike, barrierValue, rebate, callOrPutSign,
-				getCorrespondingOutBarrierType());
+		return new BarrierOption(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				callOrPutSign,
+				getCorrespondingOutBarrierType(),
+				new EuropeanExercise(maturity)
+		);
 	}
 
-	/**
-	 * Returns the knock-out barrier type corresponding to the current knock-in type.
-	 *
-	 * @return The corresponding knock-out barrier type.
-	 */
 	private BarrierType getCorrespondingOutBarrierType() {
 		if(barrierType == BarrierType.DOWN_IN) {
 			return BarrierType.DOWN_OUT;
@@ -595,13 +541,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		throw new IllegalArgumentException("No corresponding out barrier type for " + barrierType);
 	}
 
-	/**
-	 * Creates an auxiliary vanilla model on a wider first-state grid so that vanilla
-	 * and barrier values can be compared on a sufficiently rich domain.
-	 *
-	 * @param barrierModel The original barrier model.
-	 * @return An auxiliary model for vanilla pricing.
-	 */
 	private FiniteDifferenceEquityModel createAuxiliaryVanillaModel(final FiniteDifferenceEquityModel barrierModel) {
 
 		final SpaceTimeDiscretization barrierDiscretization = barrierModel.getSpaceTimeDiscretization();
@@ -660,17 +599,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Creates the auxiliary 1D model used for direct knock-in pricing.
-	 *
-	 * <p>
-	 * The barrier is shifted to an interior grid node, with extra steps added beyond
-	 * the barrier so that the activated region remains part of the computational domain.
-	 * </p>
-	 *
-	 * @param originalModel The original model.
-	 * @return The auxiliary knock-in model.
-	 */
 	private FiniteDifferenceEquityModel createAuxiliaryKnockInModel1D(final FiniteDifferenceEquityModel originalModel) {
 
 		final SpaceTimeDiscretization originalDiscretization = originalModel.getSpaceTimeDiscretization();
@@ -716,12 +644,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return originalModel.getCloneWithModifiedSpaceTimeDiscretization(knockInDiscretization);
 	}
 
-	/**
-	 * Returns the number of extra grid steps to add beyond the barrier in the
-	 * auxiliary 1D direct knock-in grid.
-	 *
-	 * @return The number of extra grid steps.
-	 */
 	private int getKnockInExtraStepsBeyondBarrier1D() {
 		if(barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT) {
 			return DOWN_IN_PUT_EXTRA_STEPS_1D;
@@ -732,15 +654,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D;
 	}
 
-	/**
-	 * Validates that the auxiliary direct knock-in grid places the barrier on a
-	 * strict interior grid node.
-	 *
-	 * @param sMin Lower grid boundary.
-	 * @param sMax Upper grid boundary.
-	 * @param deltaS Grid spacing.
-	 * @param numberOfSteps Number of grid intervals.
-	 */
 	private void validateBarrierIsInteriorGridNode(
 			final double sMin,
 			final double sMax,
@@ -764,13 +677,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Extracts one time column from a surface.
-	 *
-	 * @param matrix The surface.
-	 * @param columnIndex The time index.
-	 * @return The requested column.
-	 */
 	private static double[] getColumn(final double[][] matrix, final int columnIndex) {
 		final double[] column = new double[matrix.length];
 		for(int i = 0; i < matrix.length; i++) {
@@ -779,24 +685,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return column;
 	}
 
-	/**
-	 * Flattens a two-dimensional grid index using row-major ordering in the first state variable.
-	 *
-	 * @param i0 First state-variable index.
-	 * @param i1 Second state-variable index.
-	 * @param n0 Number of points in the first state-variable grid.
-	 * @return The flattened index.
-	 */
 	private static int flatten(final int i0, final int i1, final int n0) {
 		return i0 + i1 * n0;
 	}
 
-	/**
-	 * Returns the total number of space points in a 1D or 2D discretization.
-	 *
-	 * @param discretization The discretization.
-	 * @return The total number of space points.
-	 */
 	private int getTotalNumberOfSpacePoints(final SpaceTimeDiscretization discretization) {
 		final int dims = discretization.getNumberOfSpaceGrids();
 		if(dims == 1) {
@@ -810,20 +702,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Returns whether the current product is a knock-out barrier option.
-	 *
-	 * @return {@code true} for knock-out types, {@code false} otherwise.
-	 */
 	private boolean isOutOption() {
 		return barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT;
 	}
 
-	/**
-	 * Returns whether the option is a degenerate case with identically zero value.
-	 *
-	 * @return {@code true} if the value surface is identically zero.
-	 */
 	private boolean isDegenerateZeroCase() {
 		return (barrierType == BarrierType.UP_OUT && callOrPutSign == CallOrPut.CALL && barrierValue <= strike)
 				|| (barrierType == BarrierType.DOWN_OUT && callOrPutSign == CallOrPut.PUT && barrierValue >= strike)
@@ -831,22 +713,11 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 				|| (barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.PUT && barrierValue <= strike);
 	}
 
-	/**
-	 * Returns whether the option is a degenerate case equivalent to a vanilla option.
-	 *
-	 * @return {@code true} if the barrier option equals the vanilla payoff structure.
-	 */
 	private boolean isDegenerateVanillaCase() {
 		return (barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL && barrierValue <= strike)
 				|| (barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT && barrierValue >= strike);
 	}
 
-	/**
-	 * Returns the terminal payoff used for direct knock-out pricing.
-	 *
-	 * @param assetValue The underlying level.
-	 * @return The terminal payoff value.
-	 */
 	private double getTerminalPayoffForDirectOutPricing(final double assetValue) {
 
 		if(callOrPutSign == CallOrPut.CALL) {
@@ -881,11 +752,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		throw new IllegalArgumentException("Direct terminal payoff requested for non out-option type.");
 	}
 
-	/**
-	 * Validates that the barrier lies inside the first state-variable grid.
-	 *
-	 * @param model The finite-difference model.
-	 */
 	private void validateBarrierInsideGrid(final FiniteDifferenceEquityModel model) {
 		final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		final double lowerBoundary = grid[0];
@@ -897,18 +763,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Returns whether the internal hard constraint is active at the given state.
-	 *
-	 * <p>
-	 * For knock-out options, this identifies the knocked-out region.
-	 * For knock-in options, no internal hard constraint is applied here.
-	 * </p>
-	 *
-	 * @param time The running time.
-	 * @param stateVariables The model state variables.
-	 * @return {@code true} if the hard constraint is active.
-	 */
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
 		if(!isOutOption()) {
@@ -927,17 +781,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 	}
 
-	/**
-	 * Returns the constrained value on the hard-constraint region.
-	 *
-	 * <p>
-	 * For knock-out options this is the rebate.
-	 * </p>
-	 *
-	 * @param time The running time.
-	 * @param stateVariables The model state variables.
-	 * @return The constrained value.
-	 */
 	@Override
 	public double getConstrainedValue(final double time, final double... stateVariables) {
 		if(!isOutOption()) {
@@ -947,12 +790,6 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		return rebate;
 	}
 
-	/**
-	 * Maps a numeric call/put sign to the enum representation.
-	 *
-	 * @param callOrPutSign {@code 1.0} for call, {@code -1.0} for put.
-	 * @return The mapped option type.
-	 */
 	private static CallOrPut mapCallOrPut(final double callOrPutSign) {
 		if(callOrPutSign == 1.0) {
 			return CallOrPut.CALL;
@@ -963,74 +800,34 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		throw new IllegalArgumentException("Unknown option type.");
 	}
 
-	/**
-	 * Returns the underlying name.
-	 *
-	 * @return The underlying name, possibly {@code null}.
-	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
-	/**
-	 * Returns the maturity.
-	 *
-	 * @return The maturity.
-	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
-	/**
-	 * Returns the strike.
-	 *
-	 * @return The strike.
-	 */
 	public double getStrike() {
 		return strike;
 	}
 
-	/**
-	 * Returns the barrier level.
-	 *
-	 * @return The barrier level.
-	 */
 	public double getBarrierValue() {
 		return barrierValue;
 	}
 
-	/**
-	 * Returns the rebate.
-	 *
-	 * @return The rebate.
-	 */
 	public double getRebate() {
 		return rebate;
 	}
 
-	/**
-	 * Returns the call/put type.
-	 *
-	 * @return The option type.
-	 */
 	public CallOrPut getCallOrPut() {
 		return callOrPutSign;
 	}
 
-	/**
-	 * Returns the barrier type.
-	 *
-	 * @return The barrier type.
-	 */
 	public BarrierType getBarrierType() {
 		return barrierType;
 	}
 
-	/**
-	 * Returns the exercise specification.
-	 *
-	 * @return The exercise specification.
-	 */
 	public Exercise getExercise() {
 		return exercise;
 	}

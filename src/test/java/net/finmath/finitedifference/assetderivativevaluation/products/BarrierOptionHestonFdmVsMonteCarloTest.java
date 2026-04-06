@@ -10,6 +10,7 @@ import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 import org.junit.Test;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
+import net.finmath.finitedifference.grids.BarrierAlignedSpotGridFactory;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
@@ -55,6 +56,12 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 	private static final int NUMBER_OF_SPACE_STEPS_V = 100;
 
 	private static final int STEPS_BETWEEN_BARRIER_AND_SPOT = 40;
+
+	/*
+	 * Clustering exponent for the barrier-aligned spot grid.
+	 * 1.0 means piecewise uniform, > 1.0 clusters more points near the barrier.
+	 */
+	private static final double BARRIER_CLUSTERING_EXPONENT = 2.0;
 
 	@Test
 	public void testDownAndOutEuropeanCallHestonFiniteDifferenceVsMonteCarlo() throws Exception {
@@ -124,17 +131,16 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 				new double[] { S0, VOLATILITY_SQUARED }
 		);
 
-		
 		final FDMHestonModel fdmModel = new FDMHestonModel(
-		        S0,
-		        VOLATILITY_SQUARED,
-		        riskFreeCurve,
-		        dividendCurve,
-		        KAPPA,
-		        THETA_H,
-		        XI,
-		        RHO,
-		        spaceTime
+				S0,
+				VOLATILITY_SQUARED,
+				riskFreeCurve,
+				dividendCurve,
+				KAPPA,
+				THETA_H,
+				XI,
+				RHO,
+				spaceTime
 		);
 
 		final double callOrPutSign = callOrPut == CallOrPut.CALL ? 1.0 : -1.0;
@@ -153,6 +159,7 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 		final double[] vNodes = spaceTime.getSpaceGrid(1).getGrid();
 
 		assertTrue("S0 must lie inside the spot grid domain.", S0 >= sNodes[0] - 1E-12 && S0 <= sNodes[sNodes.length - 1] + 1E-12);
+		assertTrue("Barrier must be an exact spot-grid node.", getGridIndex(sNodes, barrier) >= 0);
 
 		final int v0Index = getNearestGridIndex(vNodes, VOLATILITY_SQUARED);
 
@@ -187,17 +194,17 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 				new BrownianMotionFromMersenneRandomNumbers(mcTimes, 2, numberOfPaths, seed);
 
 		final net.finmath.montecarlo.assetderivativevaluation.models.HestonModel mcModel =
-		        new net.finmath.montecarlo.assetderivativevaluation.models.HestonModel(
-		                S0,
-		                R - Q,
-		                Math.sqrt(VOLATILITY_SQUARED),
-		                R,
-		                THETA_H,
-		                KAPPA,
-		                XI,
-		                RHO,
-		                Scheme.FULL_TRUNCATION
-		        );
+				new net.finmath.montecarlo.assetderivativevaluation.models.HestonModel(
+						S0,
+						R - Q,
+						Math.sqrt(VOLATILITY_SQUARED),
+						R,
+						THETA_H,
+						KAPPA,
+						XI,
+						RHO,
+						Scheme.FULL_TRUNCATION
+				);
 
 		final EulerSchemeFromProcessModel process =
 				new EulerSchemeFromProcessModel(mcModel, brownianMotion);
@@ -219,6 +226,7 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 		System.out.println("Type           = " + barrierType + " " + callOrPut);
 		System.out.println("Grid min       = " + sNodes[0]);
 		System.out.println("Grid max       = " + sNodes[sNodes.length - 1]);
+		System.out.println("Barrier on grid= " + (getGridIndex(sNodes, barrier) >= 0));
 		System.out.println("S0 on grid     = " + (s0Index >= 0));
 		System.out.println("FD price       = " + fdPrice);
 		System.out.println("MC price       = " + mcPrice);
@@ -243,37 +251,66 @@ public class BarrierOptionHestonFdmVsMonteCarloTest {
 
 		final double deltaS = Math.abs(barrier - S0) / STEPS_BETWEEN_BARRIER_AND_SPOT;
 
-		if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) {
-			final double sMin = barrier;
+		final boolean isKnockIn =
+				barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.UP_IN;
 
-			/*
-			 * Need a sufficiently wide continuation region above S0 for calls and for stable PDE behaviour.
-			 */
-			final double desiredSMax = Math.max(3.0 * S0, S0 + 12.0 * deltaS);
+		if(barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) {
+
+			final double sMin = Math.max(1E-8, barrier - 8.0 * deltaS);
+			final double sMax = Math.max(3.0 * S0, S0 + 12.0 * deltaS);
+
 			final int numberOfSteps = Math.max(
 					NUMBER_OF_SPACE_STEPS_S,
-					(int)Math.round((desiredSMax - sMin) / deltaS)
+					(int)Math.round((sMax - sMin) / deltaS)
 			);
-			final double sMax = sMin + numberOfSteps * deltaS;
 
-			return new UniformGrid(numberOfSteps, sMin, sMax);
+			if(isKnockIn) {
+				return BarrierAlignedSpotGridFactory.createBarrierAlignedClusteredGrid(
+						numberOfSteps,
+						sMin,
+						sMax,
+						barrier,
+						BARRIER_CLUSTERING_EXPONENT
+				);
+			}
+			else {
+				return BarrierAlignedSpotGridFactory.createBarrierAlignedUniformGrid(
+						numberOfSteps,
+						sMin,
+						sMax,
+						barrier
+				);
+			}
 		}
 		else {
-			final double sMax = barrier;
+			final double sMin = 0.0;
+			final double sMax = barrier + 8.0 * deltaS;
 
-			/*
-			 * For a spot PDE the lower boundary must not be negative.
-			 */
-			final double desiredSMin = 0.0;
 			final int numberOfSteps = Math.max(
 					NUMBER_OF_SPACE_STEPS_S,
-					(int)Math.round((sMax - desiredSMin) / deltaS)
+					(int)Math.round((sMax - sMin) / deltaS)
 			);
-			final double sMin = Math.max(0.0, sMax - numberOfSteps * deltaS);
 
-			return new UniformGrid(numberOfSteps, sMin, sMax);
+			if(isKnockIn) {
+				return BarrierAlignedSpotGridFactory.createBarrierAlignedClusteredGrid(
+						numberOfSteps,
+						sMin,
+						sMax,
+						barrier,
+						BARRIER_CLUSTERING_EXPONENT
+				);
+			}
+			else {
+				return BarrierAlignedSpotGridFactory.createBarrierAlignedUniformGrid(
+						numberOfSteps,
+						sMin,
+						sMax,
+						barrier
+				);
+			}
 		}
 	}
+
 	private static int getGridIndex(final double[] grid, final double value) {
 		final double tolerance = 1E-12;
 		for(int i = 0; i < grid.length; i++) {
