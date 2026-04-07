@@ -1,12 +1,14 @@
 package net.finmath.finitedifference.solvers.adi;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.BarrierOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.ThomasSolver;
 import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
+import net.finmath.modelling.products.CallOrPut;
 
 /**
  * Specialized 2D ADI solver for barrier options under a Heston state (S, v).
@@ -26,13 +28,15 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * On the degenerate Heston boundary {@code v = 0}, the S-direction diffusion
- * vanishes. To avoid odd-even oscillations from a centered first-derivative
- * stencil in that first-order regime, the first spatial line solve uses a
- * drift-only upwind discretization when {@code i1 == 0}.
+ * Two stabilizations are applied for the Heston pre-hit problem:
  * </p>
- *
- * @author Alessandro Gnoatto
+ * <ul>
+ *   <li>on the degenerate variance boundary {@code v = 0}, the first spatial
+ *       line uses a drift-only upwind discretization,</li>
+ *   <li>in {@code IN_PRE_HIT} mode, the barrier node is always pinned to the
+ *       activated trace; the first interior node adjacent to the barrier is
+ *       additionally enforced only for put knock-ins.</li>
+ * </ul>
  */
 public class FDMBarrierHestonADI2D extends AbstractADI2D {
 
@@ -79,7 +83,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 
 		for(int i1 = 0; i1 < n1; i1++) {
 
@@ -133,7 +137,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			}
 		}
 
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 		return out;
 	}
 
@@ -144,7 +148,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 
 		for(int i0 = 0; i0 < n0; i0++) {
 			final TridiagonalMatrix m = stencilBuilder.buildSecondDirectionLineMatrix(time, dt, theta, i0);
@@ -181,7 +185,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			}
 		}
 
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 		return out;
 	}
 
@@ -190,7 +194,6 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final TridiagonalMatrix m = new TridiagonalMatrix(n0);
-
 		final double tSafe = Math.max(time, SMALL_TIME);
 
 		for(int i0 = 1; i0 < n0 - 1; i0++) {
@@ -202,28 +205,12 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dxUp = x0Grid[i0 + 1] - x0Grid[i0];
 
 			if(muS >= 0.0) {
-				/*
-				 * Backward difference upwind:
-				 * dV/dS ~ (V_i - V_{i-1}) / dxDown
-				 *
-				 * Implicit row:
-				 * (1 + theta dt mu/dxDown) V_i - theta dt mu/dxDown V_{i-1} = rhs
-				 */
 				final double lambda = theta * dt * muS / dxDown;
 				m.lower[i0] = -lambda;
 				m.diag[i0] = 1.0 + lambda;
 				m.upper[i0] = 0.0;
 			}
 			else {
-				/*
-				 * Forward difference upwind:
-				 * dV/dS ~ (V_{i+1} - V_i) / dxUp
-				 *
-				 * Implicit row:
-				 * (1 - theta dt mu/dxUp) V_i + theta dt mu/dxUp V_{i+1} = rhs
-				 *
-				 * Since mu < 0, the upper coefficient is negative.
-				 */
 				final double lambda = theta * dt * muS / dxUp;
 				m.lower[i0] = 0.0;
 				m.diag[i0] = 1.0 - lambda;
@@ -231,10 +218,6 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			}
 		}
 
-		/*
-		 * Boundary rows are overwritten later if needed.
-		 * Put identity defaults here.
-		 */
 		m.lower[0] = 0.0;
 		m.diag[0] = 1.0;
 		m.upper[0] = 0.0;
@@ -250,6 +233,13 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		return mode == BarrierPDEMode.IN_PRE_HIT && preHitSpecification != null;
 	}
 
+	private boolean shouldEnforceFirstInteriorBarrierLayer() {
+		if(!(product instanceof BarrierOption)) {
+			return true;
+		}
+		return ((BarrierOption)product).getCallOrPut() == CallOrPut.PUT;
+	}
+
 	private double getActivatedTraceValue(final int secondStateIndex, final double time) {
 		final ActivatedBarrierTrace2D trace = preHitSpecification.getActivatedBarrierTrace();
 
@@ -261,6 +251,77 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		final int boundedTimeIndex = Math.max(0, Math.min(timeIndex, trace.getNumberOfTimePoints() - 1));
 
 		return trace.getValue(secondStateIndex, boundedTimeIndex);
+	}
+
+	private void enforceBarrierLayerIfNeeded(final double[] values, final double time) {
+		if(!usesActivatedBarrierTrace()) {
+			return;
+		}
+
+		if(n0 < 3) {
+			enforceBarrierTraceIfNeeded(values, time);
+			return;
+		}
+
+		final boolean enforceFirstInterior = shouldEnforceFirstInteriorBarrierLayer();
+
+		if(preHitSpecification.isDownIn()) {
+			final int barrierIndex = 0;
+			valuesAtBarrier(values, time, barrierIndex);
+
+			if(enforceFirstInterior) {
+				final int firstInteriorIndex = 1;
+				final int nextInteriorIndex = 2;
+
+				final double sBarrier = x0Grid[barrierIndex];
+				final double sFirstInterior = x0Grid[firstInteriorIndex];
+				final double sNextInterior = x0Grid[nextInteriorIndex];
+				final double denom = sNextInterior - sBarrier;
+
+				for(int i1 = 0; i1 < n1; i1++) {
+					final double barrierValue = getActivatedTraceValue(i1, time);
+					final double nextInteriorValue = values[flatten(nextInteriorIndex, i1)];
+					final double weightNext = denom > 0.0 ? (sFirstInterior - sBarrier) / denom : 0.5;
+					final double weightBarrier = 1.0 - weightNext;
+
+					values[flatten(firstInteriorIndex, i1)] =
+							weightBarrier * barrierValue + weightNext * nextInteriorValue;
+				}
+			}
+		}
+		else if(preHitSpecification.isUpIn()) {
+			final int barrierIndex = n0 - 1;
+			valuesAtBarrier(values, time, barrierIndex);
+
+			if(enforceFirstInterior) {
+				final int firstInteriorIndex = n0 - 2;
+				final int nextInteriorIndex = n0 - 3;
+
+				final double sBarrier = x0Grid[barrierIndex];
+				final double sFirstInterior = x0Grid[firstInteriorIndex];
+				final double sNextInterior = x0Grid[nextInteriorIndex];
+				final double denom = sBarrier - sNextInterior;
+
+				for(int i1 = 0; i1 < n1; i1++) {
+					final double barrierValue = getActivatedTraceValue(i1, time);
+					final double nextInteriorValue = values[flatten(nextInteriorIndex, i1)];
+					final double weightNext = denom > 0.0 ? (sBarrier - sFirstInterior) / denom : 0.5;
+					final double weightBarrier = 1.0 - weightNext;
+
+					values[flatten(firstInteriorIndex, i1)] =
+							weightBarrier * barrierValue + weightNext * nextInteriorValue;
+				}
+			}
+		}
+		else {
+			throw new IllegalStateException("Unsupported pre-hit barrier type.");
+		}
+	}
+
+	private void valuesAtBarrier(final double[] values, final double time, final int barrierIndex) {
+		for(int i1 = 0; i1 < n1; i1++) {
+			values[flatten(barrierIndex, i1)] = getActivatedTraceValue(i1, time);
+		}
 	}
 
 	private void enforceBarrierTraceIfNeeded(final double[] values, final double time) {
@@ -279,8 +340,6 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			throw new IllegalStateException("Unsupported pre-hit barrier type.");
 		}
 
-		for(int i1 = 0; i1 < n1; i1++) {
-			values[flatten(barrierIndex, i1)] = getActivatedTraceValue(i1, time);
-		}
+		valuesAtBarrier(values, time, barrierIndex);
 	}
 }
