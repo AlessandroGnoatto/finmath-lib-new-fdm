@@ -237,7 +237,15 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		if(!(product instanceof BarrierOption)) {
 			return true;
 		}
-		return ((BarrierOption)product).getCallOrPut() == CallOrPut.PUT;
+
+		final BarrierOption barrierProduct = (BarrierOption)product;
+
+		if(barrierProduct.getCallOrPut() == CallOrPut.CALL) {
+			return barrierProduct.getBarrierValue() > barrierProduct.getStrike();
+		}
+		else {
+			return barrierProduct.getBarrierValue() < barrierProduct.getStrike();
+		}
 	}
 
 	private double getActivatedTraceValue(final int secondStateIndex, final double time) {
