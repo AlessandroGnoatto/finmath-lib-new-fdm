@@ -31,6 +31,13 @@ import net.finmath.modelling.Exercise;
  * in the first spatial direction.
  * </p>
  *
+ * <p>
+ * For SABR, the pre-hit stabilization is intentionally minimal:
+ * the barrier node is pinned to the activated trace in {@code IN_PRE_HIT} mode,
+ * but no additional first-interior overwrite is applied unless future debug
+ * evidence shows a model-specific need.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public class FDMBarrierSabrADI2D extends AbstractADI2D {
@@ -74,13 +81,14 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
+		enforceBarrierTraceIfNeeded(out, time);
 
 		for(int j = 0; j < n1; j++) {
 			final TridiagonalMatrix m = stencilBuilder.buildFirstDirectionLineMatrix(time, dt, theta, j);
 
 			final double[] lineRhs = new double[n0];
 			for(int i = 0; i < n0; i++) {
-				lineRhs[i] = rhs[flatten(i, j)];
+				lineRhs[i] = out[flatten(i, j)];
 			}
 
 			if(usesActivatedBarrierTrace()) {
@@ -130,6 +138,7 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 			}
 		}
 
+		enforceBarrierTraceIfNeeded(out, time);
 		return out;
 	}
 
@@ -140,13 +149,14 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
+		enforceBarrierTraceIfNeeded(out, time);
 
 		for(int i = 0; i < n0; i++) {
 			final TridiagonalMatrix m = stencilBuilder.buildSecondDirectionLineMatrix(time, dt, theta, i);
 
 			final double[] lineRhs = new double[n1];
 			for(int j = 0; j < n1; j++) {
-				lineRhs[j] = rhs[flatten(i, j)];
+				lineRhs[j] = out[flatten(i, j)];
 			}
 
 			final BoundaryCondition[] lowerConditions =
@@ -176,6 +186,7 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 			}
 		}
 
+		enforceBarrierTraceIfNeeded(out, time);
 		return out;
 	}
 
@@ -194,5 +205,26 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 		final int boundedTimeIndex = Math.max(0, Math.min(timeIndex, trace.getNumberOfTimePoints() - 1));
 
 		return trace.getValue(secondStateIndex, boundedTimeIndex);
+	}
+
+	private void enforceBarrierTraceIfNeeded(final double[] values, final double time) {
+		if(!usesActivatedBarrierTrace()) {
+			return;
+		}
+
+		final int barrierIndex;
+		if(preHitSpecification.isDownIn()) {
+			barrierIndex = 0;
+		}
+		else if(preHitSpecification.isUpIn()) {
+			barrierIndex = n0 - 1;
+		}
+		else {
+			throw new IllegalStateException("Unsupported pre-hit barrier type.");
+		}
+
+		for(int j = 0; j < n1; j++) {
+			values[flatten(barrierIndex, j)] = getActivatedTraceValue(j, time);
+		}
 	}
 }

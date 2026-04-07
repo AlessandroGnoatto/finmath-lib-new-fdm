@@ -439,7 +439,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 		return values;
 	}
-
+	
 	private ActivatedBarrierTrace2D buildActivatedVanillaBarrierTrace(
 			final FiniteDifferenceEquityModel vanillaModel,
 			final double[][] vanillaValues,
