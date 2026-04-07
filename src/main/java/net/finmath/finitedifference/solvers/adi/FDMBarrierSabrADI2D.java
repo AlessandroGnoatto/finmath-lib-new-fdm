@@ -12,36 +12,59 @@ import net.finmath.modelling.Exercise;
  * Specialized 2D ADI solver for barrier options under a SABR state (S, alpha).
  *
  * <p>
- * This solver preserves the generic Douglas-type ADI splitting from {@link AbstractADI2D},
- * but respects {@link net.finmath.finitedifference.boundaries.StandardBoundaryCondition#none()}
- * in both spatial directions.
- * </p>
- *
- * <p>
- * This is required for direct pricing of SABR barriers, because the boundary implementation
- * may intentionally leave continuation-side spot boundaries and volatility boundaries free
- * via {@code none()}. The generic {@link AbstractADI2D} line solves overwrite boundary
- * rows unconditionally, which destroys that semantics.
- * </p>
- *
- * <p>
- * In particular:
+ * The solver supports two modes:
  * </p>
  * <ul>
- *   <li>if a boundary is Dirichlet, we overwrite the row,</li>
- *   <li>if a boundary is {@code none()}, we keep the PDE row intact.</li>
+ *   <li>OUT: direct knock-out pricing on the alive region,</li>
+ *   <li>IN_PRE_HIT: direct pre-hit knock-in pricing on the not-yet-hit region.</li>
  * </ul>
+ *
+ * <p>
+ * In both cases, boundary rows are overwritten only when the model boundary
+ * condition is explicitly Dirichlet. If the boundary is {@code none()}, the PDE
+ * row is left intact.
+ * </p>
+ *
+ * <p>
+ * In {@code IN_PRE_HIT} mode, an optional {@link BarrierPreHitSpecification}
+ * may be supplied. If present, it defines the barrier-side Dirichlet trace
+ * in the first spatial direction.
+ * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class FDMBarrierSabrADI2D extends AbstractADI2D {
 
+	private final BarrierPDEMode mode;
+	private final BarrierPreHitSpecification preHitSpecification;
+
 	public FDMBarrierSabrADI2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise) {
+			final Exercise exercise,
+			final BarrierPDEMode mode) {
+		this(model, product, spaceTimeDiscretization, exercise, mode, null);
+	}
+
+	public FDMBarrierSabrADI2D(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise,
+			final BarrierPDEMode mode,
+			final BarrierPreHitSpecification preHitSpecification) {
 		super(model, product, spaceTimeDiscretization, exercise);
+		this.mode = mode;
+		this.preHitSpecification = preHitSpecification;
+	}
+
+	public BarrierPDEMode getMode() {
+		return mode;
+	}
+
+	public BarrierPreHitSpecification getPreHitSpecification() {
+		return preHitSpecification;
 	}
 
 	@Override
@@ -60,32 +83,44 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 				lineRhs[i] = rhs[flatten(i, j)];
 			}
 
-			/*
-			 * S-direction lower boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
-			final BoundaryCondition[] lowerConditions =
-					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[0], x1Grid[j]);
-
-			if(lowerConditions != null
-					&& lowerConditions.length > 0
-					&& lowerConditions[0] != null
-					&& lowerConditions[0].isDirichlet()) {
-				overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[0].getValue());
+			if(usesActivatedBarrierTrace()) {
+				if(preHitSpecification.isDownIn()) {
+					overwriteBoundaryRow(
+							m,
+							lineRhs,
+							0,
+							getActivatedTraceValue(j, time)
+					);
+				}
+				else if(preHitSpecification.isUpIn()) {
+					overwriteBoundaryRow(
+							m,
+							lineRhs,
+							n0 - 1,
+							getActivatedTraceValue(j, time)
+					);
+				}
 			}
+			else {
+				final BoundaryCondition[] lowerConditions =
+						model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[0], x1Grid[j]);
 
-			/*
-			 * S-direction upper boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
-			final BoundaryCondition[] upperConditions =
-					model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[n0 - 1], x1Grid[j]);
+				if(lowerConditions != null
+						&& lowerConditions.length > 0
+						&& lowerConditions[0] != null
+						&& lowerConditions[0].isDirichlet()) {
+					overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[0].getValue());
+				}
 
-			if(upperConditions != null
-					&& upperConditions.length > 0
-					&& upperConditions[0] != null
-					&& upperConditions[0].isDirichlet()) {
-				overwriteBoundaryRow(m, lineRhs, n0 - 1, upperConditions[0].getValue());
+				final BoundaryCondition[] upperConditions =
+						model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[n0 - 1], x1Grid[j]);
+
+				if(upperConditions != null
+						&& upperConditions.length > 0
+						&& upperConditions[0] != null
+						&& upperConditions[0].isDirichlet()) {
+					overwriteBoundaryRow(m, lineRhs, n0 - 1, upperConditions[0].getValue());
+				}
 			}
 
 			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
@@ -114,10 +149,6 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 				lineRhs[j] = rhs[flatten(i, j)];
 			}
 
-			/*
-			 * alpha-direction lower boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
 			final BoundaryCondition[] lowerConditions =
 					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i], x1Grid[0]);
 
@@ -128,10 +159,6 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 				overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[1].getValue());
 			}
 
-			/*
-			 * alpha-direction upper boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
 			final BoundaryCondition[] upperConditions =
 					model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[i], x1Grid[n1 - 1]);
 
@@ -150,5 +177,22 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
 		}
 
 		return out;
+	}
+
+	private boolean usesActivatedBarrierTrace() {
+		return mode == BarrierPDEMode.IN_PRE_HIT && preHitSpecification != null;
+	}
+
+	private double getActivatedTraceValue(final int secondStateIndex, final double time) {
+		final ActivatedBarrierTrace2D trace = preHitSpecification.getActivatedBarrierTrace();
+
+		if(secondStateIndex < 0 || secondStateIndex >= trace.getNumberOfSecondStatePoints()) {
+			throw new IllegalArgumentException("secondStateIndex out of range.");
+		}
+
+		final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(time);
+		final int boundedTimeIndex = Math.max(0, Math.min(timeIndex, trace.getNumberOfTimePoints() - 1));
+
+		return trace.getValue(secondStateIndex, boundedTimeIndex);
 	}
 }

@@ -12,37 +12,64 @@ import net.finmath.modelling.Exercise;
  * Specialized 2D ADI solver for barrier options under a Heston state (S, v).
  *
  * <p>
- * This solver keeps the generic Douglas-type ADI splitting from {@link AbstractADI2D},
- * but respects {@link net.finmath.finitedifference.boundaries.StandardBoundaryCondition#none()}
- * in both spatial directions.
- * </p>
- *
- * <p>
- * This is required for direct pricing of Heston barriers, because the current
- * Heston barrier boundary implementation intentionally leaves some continuation-side
- * spot boundaries and all variance boundaries free via {@code none()}.
- * The generic {@link AbstractADI2D} line solves overwrite boundary rows unconditionally,
- * which destroys that semantics.
- * </p>
- *
- * <p>
- * In other words:
+ * The solver supports two modes:
  * </p>
  * <ul>
- *   <li>if a boundary is Dirichlet, we overwrite the row,</li>
- *   <li>if a boundary is {@code none()}, we keep the PDE row intact.</li>
+ *   <li>OUT: direct knock-out pricing on the alive region,</li>
+ *   <li>IN_PRE_HIT: direct pre-hit knock-in pricing on the not-yet-hit region.</li>
  * </ul>
+ *
+ * <p>
+ * In {@code IN_PRE_HIT} mode, an optional {@link BarrierPreHitSpecification}
+ * may be supplied. If present, it defines the barrier-side Dirichlet trace
+ * in the first spatial direction.
+ * </p>
+ *
+ * <p>
+ * On the degenerate Heston boundary {@code v = 0}, the S-direction diffusion
+ * vanishes. To avoid odd-even oscillations from a centered first-derivative
+ * stencil in that first-order regime, the first spatial line solve uses a
+ * drift-only upwind discretization when {@code i1 == 0}.
+ * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class FDMBarrierHestonADI2D extends AbstractADI2D {
 
+	private final ADI2DStencilBuilder stencilBuilder;
+	private final BarrierPDEMode mode;
+	private final BarrierPreHitSpecification preHitSpecification;
+
+	private static final double SMALL_TIME = 1E-12;
+
 	public FDMBarrierHestonADI2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise) {
+			final Exercise exercise,
+			final BarrierPDEMode mode) {
+		this(model, product, spaceTimeDiscretization, exercise, mode, null);
+	}
+
+	public FDMBarrierHestonADI2D(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise,
+			final BarrierPDEMode mode,
+			final BarrierPreHitSpecification preHitSpecification) {
 		super(model, product, spaceTimeDiscretization, exercise);
+		this.stencilBuilder = new ADI2DStencilBuilder(model, x0Grid, x1Grid);
+		this.mode = mode;
+		this.preHitSpecification = preHitSpecification;
+	}
+
+	public BarrierPDEMode getMode() {
+		return mode;
+	}
+
+	public BarrierPreHitSpecification getPreHitSpecification() {
+		return preHitSpecification;
 	}
 
 	@Override
@@ -52,50 +79,61 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
+		enforceBarrierTraceIfNeeded(out, time);
 
-		for(int j = 0; j < n1; j++) {
-			final TridiagonalMatrix m = stencilBuilder.buildFirstDirectionLineMatrix(time, dt, theta, j);
+		for(int i1 = 0; i1 < n1; i1++) {
+
+			final TridiagonalMatrix m;
+			if(i1 == 0) {
+				m = buildDegenerateVarianceFirstDirectionLineMatrix(time, dt);
+			}
+			else {
+				m = stencilBuilder.buildFirstDirectionLineMatrix(time, dt, theta, i1);
+			}
 
 			final double[] lineRhs = new double[n0];
-			for(int i = 0; i < n0; i++) {
-				lineRhs[i] = rhs[flatten(i, j)];
+			for(int i0 = 0; i0 < n0; i0++) {
+				lineRhs[i0] = out[flatten(i0, i1)];
 			}
 
-			/*
-			 * S-direction lower boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
-			final BoundaryCondition[] lowerConditions =
-					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[0], x1Grid[j]);
-
-			if(lowerConditions != null
-					&& lowerConditions.length > 0
-					&& lowerConditions[0] != null
-					&& lowerConditions[0].isDirichlet()) {
-				overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[0].getValue());
+			if(usesActivatedBarrierTrace()) {
+				if(preHitSpecification.isDownIn()) {
+					overwriteBoundaryRow(m, lineRhs, 0, getActivatedTraceValue(i1, time));
+				}
+				else if(preHitSpecification.isUpIn()) {
+					overwriteBoundaryRow(m, lineRhs, n0 - 1, getActivatedTraceValue(i1, time));
+				}
 			}
+			else {
+				final BoundaryCondition[] lowerConditions =
+						model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[0], x1Grid[i1]);
 
-			/*
-			 * S-direction upper boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
-			final BoundaryCondition[] upperConditions =
-					model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[n0 - 1], x1Grid[j]);
+				if(lowerConditions != null
+						&& lowerConditions.length > 0
+						&& lowerConditions[0] != null
+						&& lowerConditions[0].isDirichlet()) {
+					overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[0].getValue());
+				}
 
-			if(upperConditions != null
-					&& upperConditions.length > 0
-					&& upperConditions[0] != null
-					&& upperConditions[0].isDirichlet()) {
-				overwriteBoundaryRow(m, lineRhs, n0 - 1, upperConditions[0].getValue());
+				final BoundaryCondition[] upperConditions =
+						model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[n0 - 1], x1Grid[i1]);
+
+				if(upperConditions != null
+						&& upperConditions.length > 0
+						&& upperConditions[0] != null
+						&& upperConditions[0].isDirichlet()) {
+					overwriteBoundaryRow(m, lineRhs, n0 - 1, upperConditions[0].getValue());
+				}
 			}
 
 			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
 
-			for(int i = 0; i < n0; i++) {
-				out[flatten(i, j)] = solved[i];
+			for(int i0 = 0; i0 < n0; i0++) {
+				out[flatten(i0, i1)] = solved[i0];
 			}
 		}
 
+		enforceBarrierTraceIfNeeded(out, time);
 		return out;
 	}
 
@@ -106,21 +144,18 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
+		enforceBarrierTraceIfNeeded(out, time);
 
-		for(int i = 0; i < n0; i++) {
-			final TridiagonalMatrix m = stencilBuilder.buildSecondDirectionLineMatrix(time, dt, theta, i);
+		for(int i0 = 0; i0 < n0; i0++) {
+			final TridiagonalMatrix m = stencilBuilder.buildSecondDirectionLineMatrix(time, dt, theta, i0);
 
 			final double[] lineRhs = new double[n1];
-			for(int j = 0; j < n1; j++) {
-				lineRhs[j] = rhs[flatten(i, j)];
+			for(int i1 = 0; i1 < n1; i1++) {
+				lineRhs[i1] = out[flatten(i0, i1)];
 			}
 
-			/*
-			 * v-direction lower boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
 			final BoundaryCondition[] lowerConditions =
-					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i], x1Grid[0]);
+					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i0], x1Grid[0]);
 
 			if(lowerConditions != null
 					&& lowerConditions.length > 1
@@ -129,12 +164,8 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 				overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[1].getValue());
 			}
 
-			/*
-			 * v-direction upper boundary:
-			 * overwrite only if explicitly Dirichlet.
-			 */
 			final BoundaryCondition[] upperConditions =
-					model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[i], x1Grid[n1 - 1]);
+					model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[i0], x1Grid[n1 - 1]);
 
 			if(upperConditions != null
 					&& upperConditions.length > 1
@@ -145,11 +176,111 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 
 			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
 
-			for(int j = 0; j < n1; j++) {
-				out[flatten(i, j)] = solved[j];
+			for(int i1 = 0; i1 < n1; i1++) {
+				out[flatten(i0, i1)] = solved[i1];
 			}
 		}
 
+		enforceBarrierTraceIfNeeded(out, time);
 		return out;
+	}
+
+	private TridiagonalMatrix buildDegenerateVarianceFirstDirectionLineMatrix(
+			final double time,
+			final double dt) {
+
+		final TridiagonalMatrix m = new TridiagonalMatrix(n0);
+
+		final double tSafe = Math.max(time, SMALL_TIME);
+
+		for(int i0 = 1; i0 < n0 - 1; i0++) {
+			final double s = x0Grid[i0];
+			final double[] drift = model.getDrift(tSafe, s, x1Grid[0]);
+			final double muS = drift[0];
+
+			final double dxDown = x0Grid[i0] - x0Grid[i0 - 1];
+			final double dxUp = x0Grid[i0 + 1] - x0Grid[i0];
+
+			if(muS >= 0.0) {
+				/*
+				 * Backward difference upwind:
+				 * dV/dS ~ (V_i - V_{i-1}) / dxDown
+				 *
+				 * Implicit row:
+				 * (1 + theta dt mu/dxDown) V_i - theta dt mu/dxDown V_{i-1} = rhs
+				 */
+				final double lambda = theta * dt * muS / dxDown;
+				m.lower[i0] = -lambda;
+				m.diag[i0] = 1.0 + lambda;
+				m.upper[i0] = 0.0;
+			}
+			else {
+				/*
+				 * Forward difference upwind:
+				 * dV/dS ~ (V_{i+1} - V_i) / dxUp
+				 *
+				 * Implicit row:
+				 * (1 - theta dt mu/dxUp) V_i + theta dt mu/dxUp V_{i+1} = rhs
+				 *
+				 * Since mu < 0, the upper coefficient is negative.
+				 */
+				final double lambda = theta * dt * muS / dxUp;
+				m.lower[i0] = 0.0;
+				m.diag[i0] = 1.0 - lambda;
+				m.upper[i0] = lambda;
+			}
+		}
+
+		/*
+		 * Boundary rows are overwritten later if needed.
+		 * Put identity defaults here.
+		 */
+		m.lower[0] = 0.0;
+		m.diag[0] = 1.0;
+		m.upper[0] = 0.0;
+
+		m.lower[n0 - 1] = 0.0;
+		m.diag[n0 - 1] = 1.0;
+		m.upper[n0 - 1] = 0.0;
+
+		return m;
+	}
+
+	private boolean usesActivatedBarrierTrace() {
+		return mode == BarrierPDEMode.IN_PRE_HIT && preHitSpecification != null;
+	}
+
+	private double getActivatedTraceValue(final int secondStateIndex, final double time) {
+		final ActivatedBarrierTrace2D trace = preHitSpecification.getActivatedBarrierTrace();
+
+		if(secondStateIndex < 0 || secondStateIndex >= trace.getNumberOfSecondStatePoints()) {
+			throw new IllegalArgumentException("secondStateIndex out of range.");
+		}
+
+		final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(time);
+		final int boundedTimeIndex = Math.max(0, Math.min(timeIndex, trace.getNumberOfTimePoints() - 1));
+
+		return trace.getValue(secondStateIndex, boundedTimeIndex);
+	}
+
+	private void enforceBarrierTraceIfNeeded(final double[] values, final double time) {
+		if(!usesActivatedBarrierTrace()) {
+			return;
+		}
+
+		final int barrierIndex;
+		if(preHitSpecification.isDownIn()) {
+			barrierIndex = 0;
+		}
+		else if(preHitSpecification.isUpIn()) {
+			barrierIndex = n0 - 1;
+		}
+		else {
+			throw new IllegalStateException("Unsupported pre-hit barrier type.");
+		}
+
+		for(int i1 = 0; i1 < n1; i1++) {
+			values[flatten(barrierIndex, i1)] = getActivatedTraceValue(i1, time);
+		}
 	}
 }
