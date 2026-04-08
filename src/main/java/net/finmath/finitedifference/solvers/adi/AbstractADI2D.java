@@ -22,23 +22,38 @@ import net.finmath.modelling.Exercise;
  * Generic two-dimensional alternating direction implicit finite difference solver.
  *
  * <p>
- * The semidiscrete operator split is delegated to {@link HestonADI2DOperatorSplit}.
- * This class handles time stepping, line solves, boundary overwrite and
- * exercise / constraint enforcement.
+ * The solver works on two state variables and applies a stabilized Douglas-type
+ * ADI splitting. The operator is split into:
  * </p>
- * 
+ * <ul>
+ *   <li>{@code A0}: mixed derivative term plus discount term, treated explicitly,</li>
+ *   <li>{@code A1}: first-direction drift and diffusion terms, treated implicitly,</li>
+ *   <li>{@code A2}: second-direction drift and diffusion terms, treated implicitly.</li>
+ * </ul>
+ *
+ * <p>
+ * The flattening convention is
+ * </p>
+ * <pre>
+ * k = i0 + i1 * n0
+ * </pre>
+ * <p>
+ * where {@code i0} is the index in the first spatial direction.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public abstract class AbstractADI2D implements FDMSolver {
 
+	/**
+	 * This interface is needed for payoff depending explicitly
+	 * on the time dimension. An Example is given by the Asian option
+	 * where at early exercise we pre-multiply the integral of the stock
+	 * not with the maturity T, but only with current time t.
+	 */
 	@FunctionalInterface
 	public interface DoubleTernaryOperator {
 		double applyAsDouble(double x0, double x1, double x2);
-	}
-
-	public enum ADIScheme {
-		DOUGLAS,
-		MCS
 	}
 
 	protected final FiniteDifferenceEquityModel model;
@@ -55,29 +70,18 @@ public abstract class AbstractADI2D implements FDMSolver {
 	protected final int n1;
 	protected final int n;
 
-	protected final HestonADI2DOperatorSplit operatorSplit;
-	protected final ADIScheme adiScheme;
+	protected final ADI2DStencilBuilder stencilBuilder;
 
 	protected AbstractADI2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
-		this(model, product, spaceTimeDiscretization, exercise, ADIScheme.DOUGLAS);
-	}
-
-	protected AbstractADI2D(
-			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
-			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise,
-			final ADIScheme adiScheme) {
 
 		this.model = model;
 		this.product = product;
 		this.spaceTimeDiscretization = spaceTimeDiscretization;
 		this.exercise = exercise;
-		this.adiScheme = adiScheme;
 
 		final Grid x0GridObj = spaceTimeDiscretization.getSpaceGrid(0);
 		final Grid x1GridObj = spaceTimeDiscretization.getSpaceGrid(1);
@@ -92,10 +96,8 @@ public abstract class AbstractADI2D implements FDMSolver {
 		this.n1 = x1Grid.length;
 		this.n = n0 * n1;
 
-		final double thetaFromGrid = spaceTimeDiscretization.getTheta();
-		this.theta = thetaFromGrid > 0.0 ? thetaFromGrid : 0.5;
-
-		this.operatorSplit = new HestonADI2DOperatorSplit(model, x0Grid, x1Grid);
+		this.theta = Math.max(0.5, spaceTimeDiscretization.getTheta());
+		this.stencilBuilder = new ADI2DStencilBuilder(model, x0Grid, x1Grid);
 	}
 
 	@Override
@@ -142,7 +144,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 			final double runningTimeNext =
 					spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tauNext;
 
-			u = performStep(u, runningTimeNext, dt);
+			u = performStableDouglasStep(u, runningTimeNext, dt);
 
 			applyInternalConstraints(runningTimeNext, u);
 			applyOuterBoundaries(runningTimeNext, u);
@@ -153,6 +155,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 			applyOuterBoundaries(runningTimeNext, u);
 
 			u = sanitize(u);
+
 			solutionSurface.setColumn(m + 1, u.clone());
 		}
 
@@ -194,20 +197,6 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
-	protected double[] performStep(
-			final double[] u,
-			final double currentTime,
-			final double dt) {
-
-		switch(adiScheme) {
-		case MCS:
-			return performMCSStep(u, currentTime, dt);
-		case DOUGLAS:
-		default:
-			return performStableDouglasStep(u, currentTime, dt);
-		}
-	}
-
 	protected double[] performStableDouglasStep(
 			final double[] u,
 			final double currentTime,
@@ -229,19 +218,19 @@ public abstract class AbstractADI2D implements FDMSolver {
 			final double currentTime,
 			final double dt) {
 
-		final double[] explicit = operatorSplit.applyA(u, currentTime);
+		final double[] explicit = applyFullExplicitOperator(u, currentTime);
 		final double[] y0 = add(u, scale(explicit, dt));
 
 		applyOuterBoundaries(currentTime, y0);
 
-		final double[] a1u = operatorSplit.applyA1(u, currentTime);
+		final double[] a1u = applyA1Explicit(u, currentTime);
 		final double[] rhs1 = subtract(y0, scale(a1u, theta * dt));
 		double[] y1 = solveFirstDirectionLines(rhs1, currentTime, dt);
 		y1 = sanitize(y1);
 
 		applyOuterBoundaries(currentTime, y1);
 
-		final double[] a2u = operatorSplit.applyA2(u, currentTime);
+		final double[] a2u = applyA2Explicit(u, currentTime);
 		final double[] rhs2 = subtract(y1, scale(a2u, theta * dt));
 		double[] y2 = solveSecondDirectionLines(rhs2, currentTime, dt);
 		y2 = sanitize(y2);
@@ -252,65 +241,135 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return y2;
 	}
 
-	/**
-	 * Modified Craig-Sneyd step using the semidiscrete split
-	 * A = A0 + A1 + A2 from {@link HestonADI2DOperatorSplit}.
-	 */
-	protected double[] performMCSStep(
-			final double[] u,
-			final double currentTime,
-			final double dt) {
+	protected double[] applyFullExplicitOperator(final double[] u, final double time) {
+		return add(add(applyA0Explicit(u, time), applyA1Explicit(u, time)), applyA2Explicit(u, time));
+	}
 
-		final double oldTime = currentTime + dt;
-		final double newTime = currentTime;
+	protected double[] applyA0Explicit(final double[] u, final double time) {
 
-		final double[] auOld = operatorSplit.applyA(u, oldTime);
+		final double[] out = new double[n];
 
-		double[] y0 = add(u, scale(auOld, dt));
-		applyOuterBoundaries(newTime, y0);
-		applyInternalConstraints(newTime, y0);
-		y0 = sanitize(y0);
+		final double tSafe = Math.max(time, 1E-10);
+		final double discountFactor = model.getRiskFreeCurve().getDiscountFactor(tSafe);
+		final double r = -Math.log(discountFactor) / tSafe;
 
-		final double[] a1uOld = operatorSplit.applyA1(u, oldTime);
-		final double[] rhs1 = subtract(y0, scale(a1uOld, theta * dt));
-		double[] y1 = solveFirstDirectionLines(rhs1, newTime, dt);
-		applyOuterBoundaries(newTime, y1);
-		applyInternalConstraints(newTime, y1);
-		y1 = sanitize(y1);
+		for(int j = 1; j < n1 - 1; j++) {
+			for(int i = 1; i < n0 - 1; i++) {
+				final int k = flatten(i, j);
 
-		final double[] a2uOld = operatorSplit.applyA2(u, oldTime);
-		final double[] rhs2 = subtract(y1, scale(a2uOld, theta * dt));
-		double[] y2 = solveSecondDirectionLines(rhs2, newTime, dt);
-		applyOuterBoundaries(newTime, y2);
-		applyInternalConstraints(newTime, y2);
-		y2 = sanitize(y2);
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
 
-		final double[] a0uOld = operatorSplit.applyA0(u, oldTime);
-		final double[] a0y2New = operatorSplit.applyA0(y2, newTime);
-		double[] yHat0 = add(y0, scale(subtract(a0y2New, a0uOld), theta * dt));
-		applyOuterBoundaries(newTime, yHat0);
-		applyInternalConstraints(newTime, yHat0);
-		yHat0 = sanitize(yHat0);
+				final double[][] b = model.getFactorLoading(time, x0, x1);
 
-		final double[] ay2New = operatorSplit.applyA(y2, newTime);
-		double[] yTilde0 = add(yHat0, scale(subtract(ay2New, auOld), (0.5 - theta) * dt));
-		applyOuterBoundaries(newTime, yTilde0);
-		applyInternalConstraints(newTime, yTilde0);
-		yTilde0 = sanitize(yTilde0);
+				double a01 = 0.0;
+				for(int f = 0; f < b[0].length; f++) {
+					a01 += b[0][f] * b[1][f];
+				}
 
-		final double[] rhs1Corr = subtract(yTilde0, scale(a1uOld, theta * dt));
-		double[] yTilde1 = solveFirstDirectionLines(rhs1Corr, newTime, dt);
-		applyOuterBoundaries(newTime, yTilde1);
-		applyInternalConstraints(newTime, yTilde1);
-		yTilde1 = sanitize(yTilde1);
+				final double dx0Down = x0Grid[i] - x0Grid[i - 1];
+				final double dx0Up = x0Grid[i + 1] - x0Grid[i];
+				final double dx1Down = x1Grid[j] - x1Grid[j - 1];
+				final double dx1Up = x1Grid[j + 1] - x1Grid[j];
 
-		final double[] rhs2Corr = subtract(yTilde1, scale(a2uOld, theta * dt));
-		double[] yTilde2 = solveSecondDirectionLines(rhs2Corr, newTime, dt);
-		applyOuterBoundaries(newTime, yTilde2);
-		applyInternalConstraints(newTime, yTilde2);
-		yTilde2 = sanitize(yTilde2);
+				final double d0d1 =
+						(
+								u[flatten(i + 1, j + 1)]
+								- u[flatten(i + 1, j - 1)]
+								- u[flatten(i - 1, j + 1)]
+								+ u[flatten(i - 1, j - 1)]
+						)
+						/ ((dx0Down + dx0Up) * (dx1Down + dx1Up));
 
-		return yTilde2;
+				out[k] = a01 * d0d1 - r * u[k];
+			}
+		}
+
+		return out;
+	}
+
+	protected double[] applyA1Explicit(final double[] u, final double time) {
+
+		final double[] out = new double[n];
+
+		for(int j = 0; j < n1; j++) {
+			for(int i = 1; i < n0 - 1; i++) {
+				final int k = flatten(i, j);
+
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final double[] drift = model.getDrift(time, x0, x1);
+				final double[][] b = model.getFactorLoading(time, x0, x1);
+
+				final double mu0 = drift[0];
+
+				double a00 = 0.0;
+				for(int f = 0; f < b[0].length; f++) {
+					a00 += b[0][f] * b[0][f];
+				}
+
+				final double dxDown = x0Grid[i] - x0Grid[i - 1];
+				final double dxUp = x0Grid[i + 1] - x0Grid[i];
+
+				final double d1 =
+						(u[flatten(i + 1, j)] - u[flatten(i - 1, j)])
+						/ (dxDown + dxUp);
+
+				final double d2 =
+						2.0 * (
+								(u[flatten(i + 1, j)] - u[k]) / dxUp
+								- (u[k] - u[flatten(i - 1, j)]) / dxDown
+						)
+						/ (dxDown + dxUp);
+
+				out[k] = mu0 * d1 + 0.5 * a00 * d2;
+			}
+		}
+
+		return out;
+	}
+
+	protected double[] applyA2Explicit(final double[] u, final double time) {
+
+		final double[] out = new double[n];
+
+		for(int j = 1; j < n1 - 1; j++) {
+			for(int i = 0; i < n0; i++) {
+				final int k = flatten(i, j);
+
+				final double x0 = x0Grid[i];
+				final double x1 = x1Grid[j];
+
+				final double[] drift = model.getDrift(time, x0, x1);
+				final double[][] b = model.getFactorLoading(time, x0, x1);
+
+				final double mu1 = drift[1];
+
+				double a11 = 0.0;
+				for(int f = 0; f < b[1].length; f++) {
+					a11 += b[1][f] * b[1][f];
+				}
+
+				final double dxDown = x1Grid[j] - x1Grid[j - 1];
+				final double dxUp = x1Grid[j + 1] - x1Grid[j];
+
+				final double d1 =
+						(u[flatten(i, j + 1)] - u[flatten(i, j - 1)])
+						/ (dxDown + dxUp);
+
+				final double d2 =
+						2.0 * (
+								(u[flatten(i, j + 1)] - u[k]) / dxUp
+								- (u[k] - u[flatten(i, j - 1)]) / dxDown
+						)
+						/ (dxDown + dxUp);
+
+				out[k] = mu1 * d1 + 0.5 * a11 * d2;
+			}
+		}
+
+		return out;
 	}
 
 	protected double[] solveFirstDirectionLines(
@@ -321,7 +380,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 		final double[] out = rhs.clone();
 
 		for(int j = 0; j < n1; j++) {
-			final TridiagonalMatrix m = operatorSplit.buildFirstDirectionLineMatrix(time, dt, theta, j);
+			final TridiagonalMatrix m = stencilBuilder.buildFirstDirectionLineMatrix(time, dt, theta, j);
 
 			final double[] lineRhs = new double[n0];
 			for(int i = 0; i < n0; i++) {
@@ -352,7 +411,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 		final double[] out = rhs.clone();
 
 		for(int i = 0; i < n0; i++) {
-			final TridiagonalMatrix m = operatorSplit.buildSecondDirectionLineMatrix(time, dt, theta, i);
+			final TridiagonalMatrix m = stencilBuilder.buildSecondDirectionLineMatrix(time, dt, theta, i);
 
 			final double[] lineRhs = new double[n1];
 			for(int j = 0; j < n1; j++) {

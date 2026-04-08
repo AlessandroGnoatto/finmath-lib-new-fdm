@@ -14,7 +14,6 @@ import net.finmath.finitedifference.grids.BarrierAlignedSpotGridFactory;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
-import net.finmath.finitedifference.solvers.adi.AbstractADI2D;
 import net.finmath.marketdata.model.curves.CurveInterpolation.ExtrapolationMethod;
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationEntity;
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationMethod;
@@ -76,52 +75,30 @@ public class BarrierOptionHestonParityTest {
 	private static final double PARITY_RELATIVE_TOLERANCE = 0.05;
 
 	@Test
-	public void testDouglasDownBarrierCallParity() throws Exception {
-		runParityTest(CallOrPut.CALL, 80.0, BarrierType.DOWN_IN, BarrierType.DOWN_OUT, AbstractADI2D.ADIScheme.DOUGLAS, 0.5);
+	public void testDownBarrierCallParity() throws Exception {
+		runParityTest(CallOrPut.CALL, 80.0, BarrierType.DOWN_IN, BarrierType.DOWN_OUT);
 	}
 
 	@Test
-	public void testDouglasDownBarrierPutParity() throws Exception {
-		runParityTest(CallOrPut.PUT, 80.0, BarrierType.DOWN_IN, BarrierType.DOWN_OUT, AbstractADI2D.ADIScheme.DOUGLAS, 0.5);
+	public void testDownBarrierPutParity() throws Exception {
+		runParityTest(CallOrPut.PUT, 80.0, BarrierType.DOWN_IN, BarrierType.DOWN_OUT);
 	}
 
 	@Test
-	public void testDouglasUpBarrierCallParity() throws Exception {
-		runParityTest(CallOrPut.CALL, 120.0, BarrierType.UP_IN, BarrierType.UP_OUT, AbstractADI2D.ADIScheme.DOUGLAS, 0.5);
+	public void testUpBarrierCallParity() throws Exception {
+		runParityTest(CallOrPut.CALL, 120.0, BarrierType.UP_IN, BarrierType.UP_OUT);
 	}
 
 	@Test
-	public void testDouglasUpBarrierPutParity() throws Exception {
-		runParityTest(CallOrPut.PUT, 120.0, BarrierType.UP_IN, BarrierType.UP_OUT, AbstractADI2D.ADIScheme.DOUGLAS, 0.5);
-	}
-
-	@Test
-	public void testMcsDownBarrierCallParity() throws Exception {
-		runParityTest(CallOrPut.CALL, 80.0, BarrierType.DOWN_IN, BarrierType.DOWN_OUT, AbstractADI2D.ADIScheme.MCS, 1.0 / 3.0);
-	}
-
-	@Test
-	public void testMcsDownBarrierPutParity() throws Exception {
-		runParityTest(CallOrPut.PUT, 80.0, BarrierType.DOWN_IN, BarrierType.DOWN_OUT, AbstractADI2D.ADIScheme.MCS, 1.0 / 3.0);
-	}
-
-	@Test
-	public void testMcsUpBarrierCallParity() throws Exception {
-		runParityTest(CallOrPut.CALL, 120.0, BarrierType.UP_IN, BarrierType.UP_OUT, AbstractADI2D.ADIScheme.MCS, 1.0 / 3.0);
-	}
-
-	@Test
-	public void testMcsUpBarrierPutParity() throws Exception {
-		runParityTest(CallOrPut.PUT, 120.0, BarrierType.UP_IN, BarrierType.UP_OUT, AbstractADI2D.ADIScheme.MCS, 1.0 / 3.0);
+	public void testUpBarrierPutParity() throws Exception {
+		runParityTest(CallOrPut.PUT, 120.0, BarrierType.UP_IN, BarrierType.UP_OUT);
 	}
 
 	private void runParityTest(
 			final CallOrPut callOrPut,
 			final double barrier,
 			final BarrierType knockInType,
-			final BarrierType knockOutType,
-			final AbstractADI2D.ADIScheme adiScheme,
-			final double theta) throws Exception {
+			final BarrierType knockOutType) throws Exception {
 
 		final DiscountCurve riskFreeCurve = createFlatDiscountCurve("r", R);
 		final DiscountCurve dividendCurve = createFlatDiscountCurve("q", Q);
@@ -141,7 +118,7 @@ public class BarrierOptionHestonParityTest {
 		final SpaceTimeDiscretization spaceTime = new SpaceTimeDiscretization(
 				new Grid[] { sGrid, vGrid },
 				timeDiscretization,
-				theta,
+				THETA,
 				new double[] { S0, VOLATILITY_SQUARED }
 		);
 

@@ -28,14 +28,14 @@ import net.finmath.modelling.products.CallOrPut;
  * </p>
  *
  * <p>
- * Heston-specific treatment:
+ * Two stabilizations are applied for the Heston pre-hit problem:
  * </p>
  * <ul>
  *   <li>on the degenerate variance boundary {@code v = 0}, the first spatial
  *       line uses a drift-only upwind discretization,</li>
- *   <li>in {@code IN_PRE_HIT} mode, the barrier node is pinned to the
- *       activated trace after each directional substep, with no additional
- *       overwrite of the first interior node.</li>
+ *   <li>in {@code IN_PRE_HIT} mode, the barrier node is always pinned to the
+ *       activated trace; the first interior node adjacent to the barrier is
+ *       additionally enforced only for put knock-ins.</li>
  * </ul>
  */
 public class FDMBarrierHestonADI2D extends AbstractADI2D {
@@ -68,30 +68,6 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		this.preHitSpecification = preHitSpecification;
 	}
 
-	public FDMBarrierHestonADI2D(
-			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
-			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise,
-			final BarrierPDEMode mode,
-			final AbstractADI2D.ADIScheme adiScheme) {
-		this(model, product, spaceTimeDiscretization, exercise, mode, null, adiScheme);
-	}
-
-	public FDMBarrierHestonADI2D(
-			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
-			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise,
-			final BarrierPDEMode mode,
-			final BarrierPreHitSpecification preHitSpecification,
-			final AbstractADI2D.ADIScheme adiScheme) {
-		super(model, product, spaceTimeDiscretization, exercise, adiScheme);
-		this.stencilBuilder = new ADI2DStencilBuilder(model, x0Grid, x1Grid);
-		this.mode = mode;
-		this.preHitSpecification = preHitSpecification;
-	}
-
 	public BarrierPDEMode getMode() {
 		return mode;
 	}
@@ -107,7 +83,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 
 		for(int i1 = 0; i1 < n1; i1++) {
 
@@ -130,9 +106,6 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 				}
 				else if(preHitSpecification.isUpIn()) {
 					overwriteBoundaryRow(m, lineRhs, n0 - 1, getActivatedTraceValue(i1, time));
-				}
-				else {
-					throw new IllegalStateException("Unsupported pre-hit barrier type.");
 				}
 			}
 			else {
@@ -164,7 +137,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			}
 		}
 
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 		return out;
 	}
 
@@ -175,7 +148,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final double dt) {
 
 		final double[] out = rhs.clone();
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 
 		for(int i0 = 0; i0 < n0; i0++) {
 			final TridiagonalMatrix m = stencilBuilder.buildSecondDirectionLineMatrix(time, dt, theta, i0);
@@ -212,7 +185,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			}
 		}
 
-		enforceBarrierTraceIfNeeded(out, time);
+		enforceBarrierLayerIfNeeded(out, time);
 		return out;
 	}
 
@@ -260,6 +233,13 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		return mode == BarrierPDEMode.IN_PRE_HIT && preHitSpecification != null;
 	}
 
+	private boolean shouldEnforceFirstInteriorBarrierLayer() {
+		if(!(product instanceof BarrierOption)) {
+			return true;
+		}
+		return ((BarrierOption)product).getCallOrPut() == CallOrPut.PUT;
+	}
+
 	private double getActivatedTraceValue(final int secondStateIndex, final double time) {
 		final ActivatedBarrierTrace2D trace = preHitSpecification.getActivatedBarrierTrace();
 
@@ -271,6 +251,71 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		final int boundedTimeIndex = Math.max(0, Math.min(timeIndex, trace.getNumberOfTimePoints() - 1));
 
 		return trace.getValue(secondStateIndex, boundedTimeIndex);
+	}
+
+	private void enforceBarrierLayerIfNeeded(final double[] values, final double time) {
+		if(!usesActivatedBarrierTrace()) {
+			return;
+		}
+
+		if(n0 < 3) {
+			enforceBarrierTraceIfNeeded(values, time);
+			return;
+		}
+
+		final boolean enforceFirstInterior = shouldEnforceFirstInteriorBarrierLayer();
+
+		if(preHitSpecification.isDownIn()) {
+			final int barrierIndex = 0;
+			valuesAtBarrier(values, time, barrierIndex);
+
+			if(enforceFirstInterior) {
+				final int firstInteriorIndex = 1;
+				final int nextInteriorIndex = 2;
+
+				final double sBarrier = x0Grid[barrierIndex];
+				final double sFirstInterior = x0Grid[firstInteriorIndex];
+				final double sNextInterior = x0Grid[nextInteriorIndex];
+				final double denom = sNextInterior - sBarrier;
+
+				for(int i1 = 0; i1 < n1; i1++) {
+					final double barrierValue = getActivatedTraceValue(i1, time);
+					final double nextInteriorValue = values[flatten(nextInteriorIndex, i1)];
+					final double weightNext = denom > 0.0 ? (sFirstInterior - sBarrier) / denom : 0.5;
+					final double weightBarrier = 1.0 - weightNext;
+
+					values[flatten(firstInteriorIndex, i1)] =
+							weightBarrier * barrierValue + weightNext * nextInteriorValue;
+				}
+			}
+		}
+		else if(preHitSpecification.isUpIn()) {
+			final int barrierIndex = n0 - 1;
+			valuesAtBarrier(values, time, barrierIndex);
+
+			if(enforceFirstInterior) {
+				final int firstInteriorIndex = n0 - 2;
+				final int nextInteriorIndex = n0 - 3;
+
+				final double sBarrier = x0Grid[barrierIndex];
+				final double sFirstInterior = x0Grid[firstInteriorIndex];
+				final double sNextInterior = x0Grid[nextInteriorIndex];
+				final double denom = sBarrier - sNextInterior;
+
+				for(int i1 = 0; i1 < n1; i1++) {
+					final double barrierValue = getActivatedTraceValue(i1, time);
+					final double nextInteriorValue = values[flatten(nextInteriorIndex, i1)];
+					final double weightNext = denom > 0.0 ? (sBarrier - sFirstInterior) / denom : 0.5;
+					final double weightBarrier = 1.0 - weightNext;
+
+					values[flatten(firstInteriorIndex, i1)] =
+							weightBarrier * barrierValue + weightNext * nextInteriorValue;
+				}
+			}
+		}
+		else {
+			throw new IllegalStateException("Unsupported pre-hit barrier type.");
+		}
 	}
 
 	private void valuesAtBarrier(final double[] values, final double time, final int barrierIndex) {
