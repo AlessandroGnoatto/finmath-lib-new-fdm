@@ -4,8 +4,9 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDiffer
 import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 
 /**
- * Builds tridiagonal line matrices for alternating direction implicit (ADI)
- * solves for two-dimensional finite difference models.
+ * Builds tridiagonal line matrices and exact directional operator actions
+ * for alternating direction implicit (ADI) solves for two-dimensional
+ * finite difference models.
  *
  * <p>
  * The state variables are interpreted generically as
@@ -19,32 +20,21 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
  * The PDE operator is split into the directional parts
  * </p>
  * <ul>
- *   <li>{@code A1}: drift and diffusion terms in the first spatial direction,</li>
+ *   <li>{@code A1}: drift and diffusion terms in the first spatial direction.</li>
  *   <li>{@code A2}: drift and diffusion terms in the second spatial direction.</li>
  * </ul>
  *
  * <p>
- * This builder returns the tridiagonal matrix corresponding to
+ * This builder returns tridiagonal matrices corresponding to
  * </p>
  * <pre>
  * (I - theta * dt * A1)
- * </pre>
- * <p>
- * on one fixed slice of the second state variable, or
- * </p>
- * <pre>
  * (I - theta * dt * A2)
  * </pre>
  * <p>
- * on one fixed slice of the first state variable.
+ * and also provides exact applications of {@code A1} and {@code A2} to a
+ * flattened 2D state vector using the same coefficients.
  * </p>
- *
- * <p>
- * The coefficients are obtained from the model drift and factor loading and
- * are discretized by central finite differences on possibly non-uniform grids.
- * </p>
- *
- * @author Alessandro Gnoatto
  */
 public class ADI2DStencilBuilder {
 
@@ -52,13 +42,9 @@ public class ADI2DStencilBuilder {
 	private final double[] x0Grid;
 	private final double[] x1Grid;
 
-	/**
-	 * Creates a stencil builder for two-dimensional ADI line solves.
-	 *
-	 * @param model The finite difference model providing drift and factor loadings.
-	 * @param x0Grid The grid for the first state variable.
-	 * @param x1Grid The grid for the second state variable.
-	 */
+	private final int n0;
+	private final int n1;
+
 	public ADI2DStencilBuilder(
 			final FiniteDifferenceEquityModel model,
 			final double[] x0Grid,
@@ -66,137 +52,211 @@ public class ADI2DStencilBuilder {
 		this.model = model;
 		this.x0Grid = x0Grid;
 		this.x1Grid = x1Grid;
+		this.n0 = x0Grid.length;
+		this.n1 = x1Grid.length;
 	}
 
 	/**
-	 * Builds the tridiagonal matrix for the implicit solve in the first spatial
-	 * direction on a fixed slice of the second state variable.
+	 * Coefficients of the 1D three-point stencil
 	 *
-	 * <p>
-	 * The returned matrix represents
-	 * </p>
 	 * <pre>
-	 * (I - theta * dt * A1)
+	 * lower * u[i-1] + diag * u[i] + upper * u[i+1]
 	 * </pre>
-	 * <p>
-	 * where {@code A1} contains only first-direction drift and diffusion terms.
-	 * </p>
-	 *
-	 * @param time The running time at which coefficients are evaluated.
-	 * @param dt The time step size.
-	 * @param theta The ADI weight.
-	 * @param x1Index The fixed index in the second state-variable grid.
-	 * @return The tridiagonal matrix for the first-direction implicit line solve.
 	 */
+	public static final class DirectionalCoefficients {
+		private final double lower;
+		private final double diag;
+		private final double upper;
+
+		public DirectionalCoefficients(
+				final double lower,
+				final double diag,
+				final double upper) {
+			this.lower = lower;
+			this.diag = diag;
+			this.upper = upper;
+		}
+
+		public double getLower() {
+			return lower;
+		}
+
+		public double getDiag() {
+			return diag;
+		}
+
+		public double getUpper() {
+			return upper;
+		}
+	}
+
 	public TridiagonalMatrix buildFirstDirectionLineMatrix(
 			final double time,
 			final double dt,
 			final double theta,
 			final int x1Index) {
 
-		final int n0 = x0Grid.length;
-		final double x1 = x1Grid[x1Index];
 		final TridiagonalMatrix m = new TridiagonalMatrix(n0);
 
-		/*
-		 * Boundary rows are overwritten by the caller.
-		 */
 		m.diag[0] = 1.0;
 		m.diag[n0 - 1] = 1.0;
 
 		for(int i = 1; i < n0 - 1; i++) {
-			final double x0 = x0Grid[i];
+			final DirectionalCoefficients c = getFirstDirectionCoefficients(time, i, x1Index);
 
-			final double[] drift = model.getDrift(time, x0, x1);
-			final double[][] factorLoading = model.getFactorLoading(time, x0, x1);
-
-			final double mu0 = drift[0];
-
-			double a00 = 0.0;
-			for(int f = 0; f < factorLoading[0].length; f++) {
-				a00 += factorLoading[0][f] * factorLoading[0][f];
-			}
-
-			final double dxDown = x0Grid[i] - x0Grid[i - 1];
-			final double dxUp = x0Grid[i + 1] - x0Grid[i];
-			final double dxSum = dxDown + dxUp;
-			final double dxProd = dxDown * dxUp;
-
-			final double lowerA1 = -mu0 / dxSum + a00 / (dxSum * dxDown);
-			final double diagA1  = -a00 / dxProd;
-			final double upperA1 =  mu0 / dxSum + a00 / (dxSum * dxUp);
-
-			m.lower[i] = -theta * dt * lowerA1;
-			m.diag[i]  = 1.0 - theta * dt * diagA1;
-			m.upper[i] = -theta * dt * upperA1;
+			m.lower[i] = -theta * dt * c.getLower();
+			m.diag[i]  = 1.0 - theta * dt * c.getDiag();
+			m.upper[i] = -theta * dt * c.getUpper();
 		}
 
 		return m;
 	}
 
-	/**
-	 * Builds the tridiagonal matrix for the implicit solve in the second spatial
-	 * direction on a fixed slice of the first state variable.
-	 *
-	 * <p>
-	 * The returned matrix represents
-	 * </p>
-	 * <pre>
-	 * (I - theta * dt * A2)
-	 * </pre>
-	 * <p>
-	 * where {@code A2} contains only second-direction drift and diffusion terms.
-	 * </p>
-	 *
-	 * @param time The running time at which coefficients are evaluated.
-	 * @param dt The time step size.
-	 * @param theta The ADI weight.
-	 * @param x0Index The fixed index in the first state-variable grid.
-	 * @return The tridiagonal matrix for the second-direction implicit line solve.
-	 */
 	public TridiagonalMatrix buildSecondDirectionLineMatrix(
 			final double time,
 			final double dt,
 			final double theta,
 			final int x0Index) {
 
-		final int n1 = x1Grid.length;
-		final double x0 = x0Grid[x0Index];
 		final TridiagonalMatrix m = new TridiagonalMatrix(n1);
 
-		/*
-		 * Boundary rows are overwritten by the caller.
-		 */
 		m.diag[0] = 1.0;
 		m.diag[n1 - 1] = 1.0;
 
 		for(int j = 1; j < n1 - 1; j++) {
-			final double x1 = x1Grid[j];
+			final DirectionalCoefficients c = getSecondDirectionCoefficients(time, x0Index, j);
 
-			final double[] drift = model.getDrift(time, x0, x1);
-			final double[][] factorLoading = model.getFactorLoading(time, x0, x1);
-
-			final double mu1 = drift[1];
-
-			double a11 = 0.0;
-			for(int f = 0; f < factorLoading[1].length; f++) {
-				a11 += factorLoading[1][f] * factorLoading[1][f];
-			}
-
-			final double dxDown = x1Grid[j] - x1Grid[j - 1];
-			final double dxUp = x1Grid[j + 1] - x1Grid[j];
-			final double dxSum = dxDown + dxUp;
-			final double dxProd = dxDown * dxUp;
-
-			final double lowerA2 = -mu1 / dxSum + a11 / (dxSum * dxDown);
-			final double diagA2  = -a11 / dxProd;
-			final double upperA2 =  mu1 / dxSum + a11 / (dxSum * dxUp);
-
-			m.lower[j] = -theta * dt * lowerA2;
-			m.diag[j]  = 1.0 - theta * dt * diagA2;
-			m.upper[j] = -theta * dt * upperA2;
+			m.lower[j] = -theta * dt * c.getLower();
+			m.diag[j]  = 1.0 - theta * dt * c.getDiag();
+			m.upper[j] = -theta * dt * c.getUpper();
 		}
 
 		return m;
+	}
+
+	public double[] applyFirstDirectionOperator(final double[] u, final double time) {
+		if(u.length != n0 * n1) {
+			throw new IllegalArgumentException("State vector has wrong length.");
+		}
+
+		final double[] out = new double[u.length];
+
+		for(int j = 0; j < n1; j++) {
+			applyFirstDirectionOperatorOnSlice(u, out, time, j);
+		}
+
+		return out;
+	}
+
+	public double[] applySecondDirectionOperator(final double[] u, final double time) {
+		if(u.length != n0 * n1) {
+			throw new IllegalArgumentException("State vector has wrong length.");
+		}
+
+		final double[] out = new double[u.length];
+
+		for(int i = 0; i < n0; i++) {
+			applySecondDirectionOperatorOnSlice(u, out, time, i);
+		}
+
+		return out;
+	}
+
+	public void applyFirstDirectionOperatorOnSlice(
+			final double[] u,
+			final double[] out,
+			final double time,
+			final int x1Index) {
+
+		for(int i = 1; i < n0 - 1; i++) {
+			final DirectionalCoefficients c = getFirstDirectionCoefficients(time, i, x1Index);
+
+			final int k = flatten(i, x1Index);
+			out[k] =
+					c.getLower() * u[flatten(i - 1, x1Index)]
+					+ c.getDiag() * u[k]
+					+ c.getUpper() * u[flatten(i + 1, x1Index)];
+		}
+	}
+
+	public void applySecondDirectionOperatorOnSlice(
+			final double[] u,
+			final double[] out,
+			final double time,
+			final int x0Index) {
+
+		for(int j = 1; j < n1 - 1; j++) {
+			final DirectionalCoefficients c = getSecondDirectionCoefficients(time, x0Index, j);
+
+			final int k = flatten(x0Index, j);
+			out[k] =
+					c.getLower() * u[flatten(x0Index, j - 1)]
+					+ c.getDiag() * u[k]
+					+ c.getUpper() * u[flatten(x0Index, j + 1)];
+		}
+	}
+
+	public DirectionalCoefficients getFirstDirectionCoefficients(
+			final double time,
+			final int x0Index,
+			final int x1Index) {
+
+		final double x0 = x0Grid[x0Index];
+		final double x1 = x1Grid[x1Index];
+
+		final double[] drift = model.getDrift(time, x0, x1);
+		final double[][] factorLoading = model.getFactorLoading(time, x0, x1);
+
+		final double mu0 = drift[0];
+
+		double a00 = 0.0;
+		for(int f = 0; f < factorLoading[0].length; f++) {
+			a00 += factorLoading[0][f] * factorLoading[0][f];
+		}
+
+		final double dxDown = x0Grid[x0Index] - x0Grid[x0Index - 1];
+		final double dxUp = x0Grid[x0Index + 1] - x0Grid[x0Index];
+		final double dxSum = dxDown + dxUp;
+		final double dxProd = dxDown * dxUp;
+
+		final double lower = -mu0 / dxSum + a00 / (dxSum * dxDown);
+		final double diag  = -a00 / dxProd;
+		final double upper =  mu0 / dxSum + a00 / (dxSum * dxUp);
+
+		return new DirectionalCoefficients(lower, diag, upper);
+	}
+
+	public DirectionalCoefficients getSecondDirectionCoefficients(
+			final double time,
+			final int x0Index,
+			final int x1Index) {
+
+		final double x0 = x0Grid[x0Index];
+		final double x1 = x1Grid[x1Index];
+
+		final double[] drift = model.getDrift(time, x0, x1);
+		final double[][] factorLoading = model.getFactorLoading(time, x0, x1);
+
+		final double mu1 = drift[1];
+
+		double a11 = 0.0;
+		for(int f = 0; f < factorLoading[1].length; f++) {
+			a11 += factorLoading[1][f] * factorLoading[1][f];
+		}
+
+		final double dxDown = x1Grid[x1Index] - x1Grid[x1Index - 1];
+		final double dxUp = x1Grid[x1Index + 1] - x1Grid[x1Index];
+		final double dxSum = dxDown + dxUp;
+		final double dxProd = dxDown * dxUp;
+
+		final double lower = -mu1 / dxSum + a11 / (dxSum * dxDown);
+		final double diag  = -a11 / dxProd;
+		final double upper =  mu1 / dxSum + a11 / (dxSum * dxUp);
+
+		return new DirectionalCoefficients(lower, diag, upper);
+	}
+
+	private int flatten(final int i0, final int i1) {
+		return i0 + i1 * n0;
 	}
 }

@@ -289,87 +289,11 @@ public abstract class AbstractADI2D implements FDMSolver {
 	}
 
 	protected double[] applyA1Explicit(final double[] u, final double time) {
-
-		final double[] out = new double[n];
-
-		for(int j = 0; j < n1; j++) {
-			for(int i = 1; i < n0 - 1; i++) {
-				final int k = flatten(i, j);
-
-				final double x0 = x0Grid[i];
-				final double x1 = x1Grid[j];
-
-				final double[] drift = model.getDrift(time, x0, x1);
-				final double[][] b = model.getFactorLoading(time, x0, x1);
-
-				final double mu0 = drift[0];
-
-				double a00 = 0.0;
-				for(int f = 0; f < b[0].length; f++) {
-					a00 += b[0][f] * b[0][f];
-				}
-
-				final double dxDown = x0Grid[i] - x0Grid[i - 1];
-				final double dxUp = x0Grid[i + 1] - x0Grid[i];
-
-				final double d1 =
-						(u[flatten(i + 1, j)] - u[flatten(i - 1, j)])
-						/ (dxDown + dxUp);
-
-				final double d2 =
-						2.0 * (
-								(u[flatten(i + 1, j)] - u[k]) / dxUp
-								- (u[k] - u[flatten(i - 1, j)]) / dxDown
-						)
-						/ (dxDown + dxUp);
-
-				out[k] = mu0 * d1 + 0.5 * a00 * d2;
-			}
-		}
-
-		return out;
+		return stencilBuilder.applyFirstDirectionOperator(u, time);
 	}
 
 	protected double[] applyA2Explicit(final double[] u, final double time) {
-
-		final double[] out = new double[n];
-
-		for(int j = 1; j < n1 - 1; j++) {
-			for(int i = 0; i < n0; i++) {
-				final int k = flatten(i, j);
-
-				final double x0 = x0Grid[i];
-				final double x1 = x1Grid[j];
-
-				final double[] drift = model.getDrift(time, x0, x1);
-				final double[][] b = model.getFactorLoading(time, x0, x1);
-
-				final double mu1 = drift[1];
-
-				double a11 = 0.0;
-				for(int f = 0; f < b[1].length; f++) {
-					a11 += b[1][f] * b[1][f];
-				}
-
-				final double dxDown = x1Grid[j] - x1Grid[j - 1];
-				final double dxUp = x1Grid[j + 1] - x1Grid[j];
-
-				final double d1 =
-						(u[flatten(i, j + 1)] - u[flatten(i, j - 1)])
-						/ (dxDown + dxUp);
-
-				final double d2 =
-						2.0 * (
-								(u[flatten(i, j + 1)] - u[k]) / dxUp
-								- (u[k] - u[flatten(i, j - 1)]) / dxDown
-						)
-						/ (dxDown + dxUp);
-
-				out[k] = mu1 * d1 + 0.5 * a11 * d2;
-			}
-		}
-
-		return out;
+		return stencilBuilder.applySecondDirectionOperator(u, time);
 	}
 
 	protected double[] solveFirstDirectionLines(

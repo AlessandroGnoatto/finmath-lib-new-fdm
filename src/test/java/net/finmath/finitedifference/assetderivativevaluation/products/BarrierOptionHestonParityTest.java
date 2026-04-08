@@ -59,7 +59,7 @@ public class BarrierOptionHestonParityTest {
 	private static final double XI = 0.30;
 	private static final double RHO = -0.70;
 
-	private static final double THETA = 0.5;
+	private static final double THETA = 1.0/3.0;
 
 	private static final int NUMBER_OF_TIME_STEPS = 100;
 	private static final int NUMBER_OF_SPACE_STEPS_S = 160;
