@@ -12,6 +12,7 @@ import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
+import net.finmath.finitedifference.solvers.adi.AbstractADI2D;
 import net.finmath.finitedifference.solvers.adi.ActivatedBarrierTrace2D;
 import net.finmath.finitedifference.solvers.adi.BarrierPDEMode;
 import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
@@ -575,13 +576,15 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			final BarrierPreHitSpecification preHitSpecification) {
 
 		if(model instanceof FDMHestonModel) {
+			final AbstractADI2D.ADIScheme scheme = AbstractADI2D.ADIScheme.MCS;
 			return new FDMBarrierHestonADI2D(
 					model,
 					this,
 					model.getSpaceTimeDiscretization(),
 					exercise,
 					mode,
-					preHitSpecification
+					preHitSpecification,
+					scheme
 			);
 		}
 		if(model instanceof FDMSabrModel) {

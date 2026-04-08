@@ -68,6 +68,30 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		this.preHitSpecification = preHitSpecification;
 	}
 
+	public FDMBarrierHestonADI2D(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise,
+			final BarrierPDEMode mode,
+			final AbstractADI2D.ADIScheme adiScheme) {
+		this(model, product, spaceTimeDiscretization, exercise, mode, null, adiScheme);
+	}
+
+	public FDMBarrierHestonADI2D(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise,
+			final BarrierPDEMode mode,
+			final BarrierPreHitSpecification preHitSpecification,
+			final AbstractADI2D.ADIScheme adiScheme) {
+		super(model, product, spaceTimeDiscretization, exercise, adiScheme);
+		this.stencilBuilder = new ADI2DStencilBuilder(model, x0Grid, x1Grid);
+		this.mode = mode;
+		this.preHitSpecification = preHitSpecification;
+	}
+
 	public BarrierPDEMode getMode() {
 		return mode;
 	}
