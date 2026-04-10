@@ -38,10 +38,9 @@ import net.finmath.time.TimeDiscretization;
  *       using internal state constraints on the original product grid,</li>
  *   <li>1D knock-in options are priced directly through a coupled two-state PDE
  *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
- *   <li>2D Heston knock-in options are priced directly through a coupled two-state ADI PDE
- *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
- *   <li>the resulting direct knock-in surface is interpolated back to the original product grid,</li>
- *   <li>other 2D knock-in options currently fall back to parity,</li>
+ *   <li>2D knock-in options currently fall back to in-out parity,</li>
+ *   <li>for 2D parity pricing, the vanilla surface is computed on an auxiliary grid
+ *       and interpolated back to the original product grid along the first state variable,</li>
  *   <li>exercise is currently European only.</li>
  * </ul>
  *
