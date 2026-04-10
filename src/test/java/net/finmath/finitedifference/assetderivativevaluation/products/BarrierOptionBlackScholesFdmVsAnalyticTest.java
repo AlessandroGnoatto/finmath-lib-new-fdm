@@ -48,7 +48,7 @@ import net.finmath.time.TimeDiscretizationFromArray;
  *       an auxiliary interior-barrier grid.</li>
  * </ul>
  */
-public class BarrierOptionBlackScholesUnifiedFdmVsAnalyticTest {
+public class BarrierOptionBlackScholesFdmVsAnalyticTest {
 
 	private static final double MATURITY = 1.0;
 	private static final double STRIKE = 100.0;

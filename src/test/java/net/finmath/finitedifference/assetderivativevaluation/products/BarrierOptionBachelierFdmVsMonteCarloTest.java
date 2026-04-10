@@ -52,7 +52,7 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * Hence agreement improves when the Monte Carlo time grid is refined.
  * </p>
  */
-public class BachelierBarrierOptionFdmVsMonteCarloTest {
+public class BarrierOptionBachelierFdmVsMonteCarloTest {
 
 	private static final double MATURITY = 1.0;
 	private static final double STRIKE = 100.0;
