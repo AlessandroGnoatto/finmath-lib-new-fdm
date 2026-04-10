@@ -1,10 +1,11 @@
-package net.finmath.finitedifference.assetderivativevaluation.products;
+package net.finmath.finitedifference.assetderivativevaluation.models;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.EuropeanOption;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
