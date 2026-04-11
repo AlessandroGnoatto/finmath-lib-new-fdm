@@ -96,29 +96,10 @@ public class FDMThetaMethod1D implements FDMSolver {
 	 *
 	 * <p>
 	 * The method initializes the terminal condition from {@code valueAtMaturity}, then steps backward
-	 * in time using the theta scheme. At each step it
-	 * </p>
-	 * <ul>
-	 *   <li>assembles the tridiagonal left- and right-hand-side operators,</li>
-	 *   <li>applies model boundary conditions,</li>
-	 *   <li>imposes internal state constraints if provided by the product,</li>
-	 *   <li>handles Bermudan or American exercise where applicable.</li>
-	 * </ul>
-	 *
-	 * <p>
-	 * For American exercise dates, the method solves the resulting linear complementarity problem via
-	 * projected SOR. For non-American products, or for time steps where no early exercise is allowed,
-	 * a standard tridiagonal solve is performed.
+	 * in time using the theta scheme.
 	 * </p>
 	 *
-	 * <p>
-	 * The returned matrix is indexed as {@code values[spaceIndex][timeIndex]}, where
-	 * {@code timeIndex = 0} corresponds to maturity and increasing indices move backward toward the
-	 * present in time-to-maturity coordinates.
-	 * </p>
-	 *
-	 * @param time The maturity time of the claim. This parameter is used consistently with the solver
-	 *        interface; the backward stepping itself is governed by the time discretization.
+	 * @param time The maturity time of the claim.
 	 * @param valueAtMaturity The terminal payoff function as a function of the spatial grid variable.
 	 * @return The full space-time value surface on the finite-difference grid.
 	 */
@@ -126,17 +107,69 @@ public class FDMThetaMethod1D implements FDMSolver {
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 
 		final double[] xGrid = spaceTimeDiscretization.getSpaceGrid(0).getGrid();
+		final double[] terminalValues = new double[xGrid.length];
+
+		for(int i = 0; i < xGrid.length; i++) {
+			terminalValues[i] = valueAtMaturity.applyAsDouble(xGrid[i]);
+		}
+
+		return getValues(time, terminalValues, valueAtMaturity);
+	}
+
+	/**
+	 * Solves the backward PDE on the full space-time grid using a precomputed
+	 * terminal value vector.
+	 *
+	 * <p>
+	 * This overload is intended for products requiring a non-pointwise terminal
+	 * initialization, for example cell-averaged digital payoffs.
+	 * </p>
+	 *
+	 * @param time The maturity time of the claim.
+	 * @param terminalValues The terminal values on the spatial grid.
+	 * @return The full space-time value surface on the finite-difference grid.
+	 */
+	@Override
+	public double[][] getValues(final double time, final double[] terminalValues) {
+		return getValues(time, terminalValues, null);
+	}
+
+	/**
+	 * Shared implementation for terminal-function and terminal-vector initialization.
+	 *
+	 * @param time The maturity time of the claim.
+	 * @param terminalValues The terminal values on the spatial grid.
+	 * @param valueAtMaturity The intrinsic payoff function used for exercise decisions.
+	 *        This may be {@code null} if early exercise is not needed.
+	 * @return The full space-time value surface on the finite-difference grid.
+	 */
+	private double[][] getValues(
+			final double time,
+			final double[] terminalValues,
+			final DoubleUnaryOperator valueAtMaturity) {
+
+		final double[] xGrid = spaceTimeDiscretization.getSpaceGrid(0).getGrid();
 		final int nX = xGrid.length;
+
+		if(terminalValues == null) {
+			throw new IllegalArgumentException("terminalValues must not be null.");
+		}
+		if(terminalValues.length != nX) {
+			throw new IllegalArgumentException("terminalValues length does not match spatial grid length.");
+		}
+		if(!exercise.isEuropean() && valueAtMaturity == null) {
+			throw new IllegalArgumentException(
+					"Early-exercise products require a pointwise payoff function for obstacle/projection handling.");
+		}
 
 		final double theta = spaceTimeDiscretization.getTheta();
 		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
 
-		double[] u = new double[nX];
+		double[] u = terminalValues.clone();
 		final double[][] z = new double[nX][timeLength];
 
 		for(int i = 0; i < nX; i++) {
-			u[i] = valueAtMaturity.applyAsDouble(xGrid[i]);
 			z[i][0] = u[i];
 		}
 
@@ -204,6 +237,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 			final double[] nextU;
 			if(exercise.isAmerican() && isExerciseDate) {
+
 				final double[] obstacle = buildObstacleVector(
 						xGrid,
 						boundaryTime,
@@ -248,12 +282,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 	 * Returns the value vector at a specific evaluation time by extracting the appropriate time slice
 	 * from the full space-time solution.
 	 *
-	 * <p>
-	 * Internally, this method first computes the full value surface via {@link #getValues(double, DoubleUnaryOperator)}
-	 * and then selects the time column corresponding to the nearest discretization point with time-to-maturity
-	 * less than or equal to {@code time - evaluationTime}.
-	 * </p>
-	 *
 	 * @param evaluationTime The time at which the value is requested.
 	 * @param time The maturity time of the claim.
 	 * @param valueAtMaturity The terminal payoff function as a function of the spatial grid variable.
@@ -278,17 +306,34 @@ public class FDMThetaMethod1D implements FDMSolver {
 	}
 
 	/**
-	 * Builds the obstacle vector used in the projected solve for American exercise.
+	 * Returns the value vector at a specific evaluation time using a precomputed
+	 * terminal value vector.
 	 *
-	 * <p>
-	 * At each grid node, the obstacle is chosen as follows:
-	 * </p>
-	 * <ul>
-	 *   <li>Dirichlet boundary value at the lower boundary, if active,</li>
-	 *   <li>Dirichlet boundary value at the upper boundary, if active,</li>
-	 *   <li>internal constrained value, if an internal state constraint is active,</li>
-	 *   <li>otherwise the intrinsic exercise value from {@code valueAtMaturity}.</li>
-	 * </ul>
+	 * @param evaluationTime The time at which the value is requested.
+	 * @param time The maturity time of the claim.
+	 * @param terminalValues The terminal values on the spatial grid.
+	 * @return The value vector across the spatial grid at the requested evaluation time.
+	 */
+	@Override
+	public double[] getValue(
+			final double evaluationTime,
+			final double time,
+			final double[] terminalValues) {
+
+		final double[][] values = getValues(time, terminalValues);
+
+		final double tau = time - evaluationTime;
+		final int timeIndex = this.spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
+
+		final double[] column = new double[values.length];
+		for(int i = 0; i < values.length; i++) {
+			column[i] = values[i][timeIndex];
+		}
+		return column;
+	}
+
+	/**
+	 * Builds the obstacle vector used in the projected solve for American exercise.
 	 *
 	 * @param xGrid The spatial grid.
 	 * @param boundaryTime The current backward time level expressed in model time.
@@ -325,12 +370,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 	/**
 	 * Applies pointwise exercise projection to a solution vector at an exercise date.
 	 *
-	 * <p>
-	 * The projection preserves active Dirichlet boundary values and active internal constraints.
-	 * At all unconstrained interior nodes, the continuation value is replaced by the maximum of
-	 * continuation and intrinsic value.
-	 * </p>
-	 *
 	 * @param u The solution vector to be modified in place.
 	 * @param xGrid The spatial grid corresponding to {@code u}.
 	 * @param boundaryTime The current backward time level expressed in model time.
@@ -365,11 +404,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 	/**
 	 * Reapplies active internal state constraints to the interior grid nodes of a solution vector.
 	 *
-	 * <p>
-	 * This is used after a linear or projected solve to ensure that constrained nodes remain exactly
-	 * at their prescribed values, compensating for possible numerical drift.
-	 * </p>
-	 *
 	 * @param u The solution vector to be modified in place.
 	 * @param xGrid The spatial grid corresponding to {@code u}.
 	 * @param boundaryTime The current backward time level expressed in model time.
@@ -388,11 +422,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 	/**
 	 * Reapplies active Dirichlet boundary values to the solution vector.
-	 *
-	 * <p>
-	 * Boundary values are only overwritten if the corresponding boundary condition is of Dirichlet type.
-	 * If a boundary condition is not Dirichlet, the existing value is left unchanged.
-	 * </p>
 	 *
 	 * @param u The solution vector to be modified in place.
 	 * @param lowerCondition The lower boundary condition.
@@ -414,11 +443,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 	/**
 	 * Checks whether the product defines an active internal state constraint at the given time and state.
 	 *
-	 * <p>
-	 * The check is only performed if the product implements
-	 * {@link FiniteDifferenceInternalStateConstraint}. Otherwise this method returns {@code false}.
-	 * </p>
-	 *
 	 * @param time The model time at which the constraint is queried.
 	 * @param x The spatial state variable value.
 	 * @return {@code true} if an internal constraint is active at the specified point, {@code false} otherwise.
@@ -432,12 +456,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 	/**
 	 * Returns the value prescribed by the product's internal state constraint at the given time and state.
-	 *
-	 * <p>
-	 * This method assumes that {@code product} implements {@link FiniteDifferenceInternalStateConstraint}
-	 * and is typically called only after {@link #isInternalConstraintActive(double, double)} has returned
-	 * {@code true}.
-	 * </p>
 	 *
 	 * @param time The model time at which the constrained value is queried.
 	 * @param x The spatial state variable value.

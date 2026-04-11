@@ -57,6 +57,53 @@ public interface FDMSolver {
 			DoubleUnaryOperator valueAtMaturity);
 
 	/**
+	 * Returns the solution at a given evaluation time using a precomputed
+	 * terminal value vector on the spatial grid.
+	 *
+	 * <p>
+	 * This overload is useful for products that require a non-pointwise
+	 * terminal initialization, for example cell-averaged digitals.
+	 * </p>
+	 *
+	 * <p>
+	 * The supplied array is interpreted as the maturity layer ordered
+	 * consistently with the solver's spatial grid.
+	 * </p>
+	 *
+	 * @param evaluationTime The evaluation time.
+	 * @param time The maturity time.
+	 * @param terminalValues The terminal values on the spatial grid.
+	 * @return The value vector at the requested evaluation time.
+	 */
+	default double[] getValue(
+			final double evaluationTime,
+			final double time,
+			final double[] terminalValues) {
+		throw new UnsupportedOperationException(
+				getClass().getSimpleName() + " does not support direct terminal-vector initialization.");
+	}
+
+	/**
+	 * Returns the full time history of the solution using a precomputed
+	 * terminal value vector on the spatial grid.
+	 *
+	 * <p>
+	 * This overload is useful for products that require a non-pointwise
+	 * terminal initialization, for example cell-averaged digitals.
+	 * </p>
+	 *
+	 * @param time The maturity time.
+	 * @param terminalValues The terminal values on the spatial grid.
+	 * @return The full time-space solution.
+	 */
+	default double[][] getValues(
+			final double time,
+			final double[] terminalValues) {
+		throw new UnsupportedOperationException(
+				getClass().getSimpleName() + " does not support direct terminal-vector initialization.");
+	}
+
+	/**
 	 * Default binary-payoff version.
 	 * For solvers that are effectively 1D, the second state variable is ignored.
 	 */
