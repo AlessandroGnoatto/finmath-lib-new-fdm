@@ -1,40 +1,57 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
+import java.util.function.DoubleUnaryOperator;
+
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
+import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
 import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
+import net.finmath.time.TimeDiscretization;
 
 /**
- * European digital option supporting cash-or-nothing and asset-or-nothing payoffs.
+ * Digital option supporting cash-or-nothing and asset-or-nothing payoffs.
  *
  * <p>
- * This implementation uses cell-averaged terminal values on one-dimensional
- * grids in order to reduce the grid bias caused by the payoff discontinuity
- * at the strike.
+ * The class supports multiple exercise styles through the generic
+ * {@link Exercise} field. European exercise is the default when no explicit
+ * exercise object is provided.
  * </p>
  *
  * <p>
- * For a one-dimensional model, the terminal layer is built directly on the
- * spatial grid using cell averages over the local dual cell around each node.
+ * For one-dimensional models, the terminal payoff is initialized using
+ * cell-averaged values in order to reduce grid bias caused by the payoff
+ * discontinuity at the strike.
  * </p>
  *
  * <p>
- * This class currently supports European exercise only.
+ * For Bermudan and American exercise, the maturity layer is still cell-averaged,
+ * while exercise projection remains pointwise.
  * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class DigitalOption implements FiniteDifferenceProduct {
 
+	/**
+	 * Type of digital payoff.
+	 */
 	public enum DigitalPayoffType {
+		/**
+		 * Payoff is a fixed cash amount if in the money.
+		 */
 		CASH_OR_NOTHING,
+
+		/**
+		 * Payoff is the underlying value if in the money.
+		 */
 		ASSET_OR_NOTHING
 	}
 
@@ -47,14 +64,15 @@ public class DigitalOption implements FiniteDifferenceProduct {
 	private final Exercise exercise;
 
 	/**
-	 * Creates a digital option.
+	 * Creates a digital option with explicit exercise specification.
 	 *
 	 * @param underlyingName Name of the underlying.
 	 * @param maturity Option maturity.
 	 * @param strike Option strike.
 	 * @param callOrPutSign Call or put flag.
-	 * @param digitalPayoffType Cash-or-nothing or asset-or-nothing.
-	 * @param cashPayoff Cash payoff amount for cash-or-nothing.
+	 * @param digitalPayoffType Type of digital payoff.
+	 * @param cashPayoff Cash payoff for cash-or-nothing products.
+	 * @param exercise Exercise specification.
 	 */
 	public DigitalOption(
 			final String underlyingName,
@@ -62,13 +80,20 @@ public class DigitalOption implements FiniteDifferenceProduct {
 			final double strike,
 			final CallOrPut callOrPutSign,
 			final DigitalPayoffType digitalPayoffType,
-			final double cashPayoff) {
+			final double cashPayoff,
+			final Exercise exercise) {
 
 		if(callOrPutSign == null) {
 			throw new IllegalArgumentException("Option type must not be null.");
 		}
 		if(digitalPayoffType == null) {
 			throw new IllegalArgumentException("Digital payoff type must not be null.");
+		}
+		if(exercise == null) {
+			throw new IllegalArgumentException("Exercise must not be null.");
+		}
+		if(maturity < 0.0) {
+			throw new IllegalArgumentException("Maturity must be non-negative.");
 		}
 		if(digitalPayoffType == DigitalPayoffType.CASH_OR_NOTHING && cashPayoff < 0.0) {
 			throw new IllegalArgumentException("Cash payoff must be non-negative.");
@@ -80,17 +105,65 @@ public class DigitalOption implements FiniteDifferenceProduct {
 		this.callOrPutSign = callOrPutSign;
 		this.digitalPayoffType = digitalPayoffType;
 		this.cashPayoff = digitalPayoffType == DigitalPayoffType.CASH_OR_NOTHING ? cashPayoff : Double.NaN;
-		this.exercise = new EuropeanExercise(maturity);
+		this.exercise = exercise;
 	}
 
 	/**
-	 * Creates a digital option.
+	 * Creates a European digital option.
+	 *
+	 * @param underlyingName Name of the underlying.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param callOrPutSign Call or put flag.
+	 * @param digitalPayoffType Type of digital payoff.
+	 * @param cashPayoff Cash payoff for cash-or-nothing products.
+	 */
+	public DigitalOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final CallOrPut callOrPutSign,
+			final DigitalPayoffType digitalPayoffType,
+			final double cashPayoff) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				callOrPutSign,
+				digitalPayoffType,
+				cashPayoff,
+				new EuropeanExercise(maturity)
+		);
+	}
+
+	/**
+	 * Creates a digital option with explicit exercise specification.
 	 *
 	 * @param maturity Option maturity.
 	 * @param strike Option strike.
 	 * @param callOrPutSign Call or put flag.
-	 * @param digitalPayoffType Cash-or-nothing or asset-or-nothing.
-	 * @param cashPayoff Cash payoff amount for cash-or-nothing.
+	 * @param digitalPayoffType Type of digital payoff.
+	 * @param cashPayoff Cash payoff for cash-or-nothing products.
+	 * @param exercise Exercise specification.
+	 */
+	public DigitalOption(
+			final double maturity,
+			final double strike,
+			final CallOrPut callOrPutSign,
+			final DigitalPayoffType digitalPayoffType,
+			final double cashPayoff,
+			final Exercise exercise) {
+		this(null, maturity, strike, callOrPutSign, digitalPayoffType, cashPayoff, exercise);
+	}
+
+	/**
+	 * Creates a European digital option.
+	 *
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param callOrPutSign Call or put flag.
+	 * @param digitalPayoffType Type of digital payoff.
+	 * @param cashPayoff Cash payoff for cash-or-nothing products.
 	 */
 	public DigitalOption(
 			final double maturity,
@@ -98,18 +171,48 @@ public class DigitalOption implements FiniteDifferenceProduct {
 			final CallOrPut callOrPutSign,
 			final DigitalPayoffType digitalPayoffType,
 			final double cashPayoff) {
-		this(null, maturity, strike, callOrPutSign, digitalPayoffType, cashPayoff);
+		this(null, maturity, strike, callOrPutSign, digitalPayoffType, cashPayoff, new EuropeanExercise(maturity));
 	}
 
 	/**
-	 * Creates a digital option.
+	 * Creates a digital option with explicit exercise specification.
 	 *
 	 * @param underlyingName Name of the underlying.
 	 * @param maturity Option maturity.
 	 * @param strike Option strike.
 	 * @param callOrPutSign +1 for call, -1 for put.
-	 * @param digitalPayoffType Cash-or-nothing or asset-or-nothing.
-	 * @param cashPayoff Cash payoff amount for cash-or-nothing.
+	 * @param digitalPayoffType Type of digital payoff.
+	 * @param cashPayoff Cash payoff for cash-or-nothing products.
+	 * @param exercise Exercise specification.
+	 */
+	public DigitalOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double callOrPutSign,
+			final DigitalPayoffType digitalPayoffType,
+			final double cashPayoff,
+			final Exercise exercise) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				mapCallOrPut(callOrPutSign),
+				digitalPayoffType,
+				cashPayoff,
+				exercise
+		);
+	}
+
+	/**
+	 * Creates a European digital option.
+	 *
+	 * @param underlyingName Name of the underlying.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param callOrPutSign +1 for call, -1 for put.
+	 * @param digitalPayoffType Type of digital payoff.
+	 * @param cashPayoff Cash payoff for cash-or-nothing products.
 	 */
 	public DigitalOption(
 			final String underlyingName,
@@ -118,43 +221,158 @@ public class DigitalOption implements FiniteDifferenceProduct {
 			final double callOrPutSign,
 			final DigitalPayoffType digitalPayoffType,
 			final double cashPayoff) {
-		this(underlyingName, maturity, strike, mapCallOrPut(callOrPutSign), digitalPayoffType, cashPayoff);
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				mapCallOrPut(callOrPutSign),
+				digitalPayoffType,
+				cashPayoff,
+				new EuropeanExercise(maturity)
+		);
 	}
 
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 
-		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
+		final SpaceTimeDiscretization discretization = getEffectiveSpaceTimeDiscretization(model);
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, discretization, exercise);
 
 		if(isOneDimensionalModel(model)) {
-			final double[] terminalValues = buildCellAveragedTerminalValues(model);
-			return solver.getValue(evaluationTime, maturity, terminalValues);
+			final double[] terminalValues = buildCellAveragedTerminalValues(discretization);
+
+			if(exercise.isEuropean()) {
+				return solver.getValue(evaluationTime, maturity, terminalValues);
+			}
+			else {
+				return solver.getValue(
+						evaluationTime,
+						maturity,
+						terminalValues,
+						getExercisePayoffFunction()
+				);
+			}
 		}
 
-		return solver.getValue(evaluationTime, maturity, this::payoff);
+		return solver.getValue(evaluationTime, maturity, getExercisePayoffFunction());
 	}
 
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 
-		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
+		final SpaceTimeDiscretization discretization = getEffectiveSpaceTimeDiscretization(model);
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, discretization, exercise);
 
 		if(isOneDimensionalModel(model)) {
-			final double[] terminalValues = buildCellAveragedTerminalValues(model);
-			return solver.getValues(maturity, terminalValues);
+			final double[] terminalValues = buildCellAveragedTerminalValues(discretization);
+
+			if(exercise.isEuropean()) {
+				return solver.getValues(maturity, terminalValues);
+			}
+			else {
+				return solver.getValues(
+						maturity,
+						terminalValues,
+						getExercisePayoffFunction()
+				);
+			}
 		}
 
-		return solver.getValues(maturity, this::payoff);
+		return solver.getValues(maturity, getExercisePayoffFunction());
 	}
 
 	/**
-	 * Pointwise payoff. Used as fallback for models where cell-averaged terminal
-	 * initialization is not yet available.
+	 * Returns the effective space-time discretization.
 	 *
-	 * @param assetValue Asset value.
-	 * @return Payoff at maturity.
+	 * <p>
+	 * Bermudan exercise dates are inserted exactly into the time discretization.
+	 * European and American exercise keep the model discretization unchanged.
+	 * </p>
+	 *
+	 * @param model The finite-difference model.
+	 * @return The effective space-time discretization.
 	 */
-	private double payoff(final double assetValue) {
+	private SpaceTimeDiscretization getEffectiveSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
+
+		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
+
+		if(!exercise.isBermudan()) {
+			return base;
+		}
+
+		final TimeDiscretization refinedTimeDiscretization =
+				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+						base.getTimeDiscretization(),
+						exercise
+				);
+
+		if(base.getNumberOfSpaceGrids() == 1) {
+			return new SpaceTimeDiscretization(
+					base.getSpaceGrid(0),
+					refinedTimeDiscretization,
+					base.getTheta(),
+					new double[] { base.getCenter(0) }
+			);
+		}
+
+		final int numberOfSpaceGrids = base.getNumberOfSpaceGrids();
+		final Grid[] spaceGrids = new Grid[numberOfSpaceGrids];
+		final double[] center = new double[numberOfSpaceGrids];
+
+		for(int i = 0; i < numberOfSpaceGrids; i++) {
+			spaceGrids[i] = base.getSpaceGrid(i);
+			center[i] = base.getCenter(i);
+		}
+
+		return new SpaceTimeDiscretization(
+				spaceGrids,
+				refinedTimeDiscretization,
+				base.getTheta(),
+				center
+		);
+	}
+
+	/**
+	 * Builds the cell-averaged terminal values on the one-dimensional spot grid.
+	 *
+	 * @param discretization The effective discretization.
+	 * @return Terminal values on the spot grid.
+	 */
+	private double[] buildCellAveragedTerminalValues(final SpaceTimeDiscretization discretization) {
+
+		final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
+		final double[] terminalValues = new double[sGrid.length];
+
+		for(int i = 0; i < sGrid.length; i++) {
+			final double leftEdge = getLeftDualCellEdge(sGrid, i);
+			final double rightEdge = getRightDualCellEdge(sGrid, i);
+			terminalValues[i] = cellAveragedPayoff(leftEdge, rightEdge);
+		}
+
+		return terminalValues;
+	}
+
+	/**
+	 * Returns the payoff function used for exercise projection.
+	 *
+	 * <p>
+	 * This payoff is pointwise and uses strict inequalities at the strike
+	 * in order to avoid a one-node bias exactly at the discontinuity.
+	 * </p>
+	 *
+	 * @return Pointwise exercise payoff function.
+	 */
+	private DoubleUnaryOperator getExercisePayoffFunction() {
+		return this::pointwisePayoff;
+	}
+
+	/**
+	 * Pointwise digital payoff used for exercise decisions.
+	 *
+	 * @param assetValue Underlying value.
+	 * @return Pointwise payoff.
+	 */
+	private double pointwisePayoff(final double assetValue) {
 
 		final boolean inTheMoney =
 				callOrPutSign == CallOrPut.CALL
@@ -173,26 +391,6 @@ public class DigitalOption implements FiniteDifferenceProduct {
 		default:
 			throw new IllegalStateException("Unsupported digital payoff type.");
 		}
-	}
-
-	/**
-	 * Builds the cell-averaged terminal values on the one-dimensional spot grid.
-	 *
-	 * @param model The finite-difference model.
-	 * @return Terminal values on the spot grid.
-	 */
-	private double[] buildCellAveragedTerminalValues(final FiniteDifferenceEquityModel model) {
-
-		final double[] sGrid = getSpotGrid(model);
-		final double[] terminalValues = new double[sGrid.length];
-
-		for(int i = 0; i < sGrid.length; i++) {
-			final double leftEdge = getLeftDualCellEdge(sGrid, i);
-			final double rightEdge = getRightDualCellEdge(sGrid, i);
-			terminalValues[i] = cellAveragedPayoff(leftEdge, rightEdge);
-		}
-
-		return terminalValues;
 	}
 
 	/**
@@ -309,17 +507,6 @@ public class DigitalOption implements FiniteDifferenceProduct {
 	}
 
 	/**
-	 * Returns the one-dimensional spot grid from the model.
-	 *
-	 * @param model The model.
-	 * @return The spot grid.
-	 */
-	private double[] getSpotGrid(final FiniteDifferenceEquityModel model) {
-		final Grid grid = model.getSpaceTimeDiscretization().getSpaceGrid(0);
-		return grid.getGrid();
-	}
-
-	/**
 	 * Checks whether the model is one-dimensional.
 	 *
 	 * @param model The model.
@@ -341,30 +528,65 @@ public class DigitalOption implements FiniteDifferenceProduct {
 		throw new IllegalArgumentException("Unknown option type.");
 	}
 
+	/**
+	 * Returns the underlying name.
+	 *
+	 * @return The underlying name.
+	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity.
+	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
+	/**
+	 * Returns the strike.
+	 *
+	 * @return The strike.
+	 */
 	public double getStrike() {
 		return strike;
 	}
 
+	/**
+	 * Returns call/put type.
+	 *
+	 * @return The option type.
+	 */
 	public CallOrPut getCallOrPut() {
 		return callOrPutSign;
 	}
 
+	/**
+	 * Returns the digital payoff type.
+	 *
+	 * @return The digital payoff type.
+	 */
 	public DigitalPayoffType getDigitalPayoffType() {
 		return digitalPayoffType;
 	}
 
+	/**
+	 * Returns the cash payoff amount.
+	 *
+	 * @return The cash payoff amount.
+	 */
 	public double getCashPayoff() {
 		return cashPayoff;
 	}
 
+	/**
+	 * Returns the exercise specification.
+	 *
+	 * @return The exercise specification.
+	 */
 	public Exercise getExercise() {
 		return exercise;
 	}

@@ -1,6 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
@@ -10,7 +10,7 @@ import net.finmath.modelling.products.CallOrPut;
 
 /**
  * Boundary conditions for {@link DigitalOption} under the
- * {@link FDMBlackScholesModel}.
+ * {@link FDMBachelierModel}.
  *
  * <p>
  * The boundary asymptotics depend on the exercise style:
@@ -20,42 +20,22 @@ import net.finmath.modelling.products.CallOrPut;
  *   <li>Bermudan / American exercise: early-exercise asymptotics.</li>
  * </ul>
  *
- * <p>
- * Conventions:
- * </p>
- * <ul>
- *   <li>For a cash-or-nothing call, the lower boundary is zero.</li>
- *   <li>For a cash-or-nothing put, the upper boundary is zero.</li>
- *   <li>For an asset-or-nothing call, the lower boundary is zero.</li>
- *   <li>For an asset-or-nothing put, the upper boundary is zero.</li>
- * </ul>
- *
- * <p>
- * At the in-the-money far boundary, the value is:
- * </p>
- * <ul>
- *   <li>European cash digital: discounted cash payoff.</li>
- *   <li>European asset digital: dividend-adjusted stock value.</li>
- *   <li>Bermudan/American cash digital: immediate cash payoff.</li>
- *   <li>Bermudan/American asset digital: immediate stock value.</li>
- * </ul>
- *
  * @author Alessandro Gnoatto
  */
-public class DigitalOptionBlackScholesModelBoundary implements FiniteDifferenceBoundary {
+public class DigitalOptionBachelierModelBoundary implements FiniteDifferenceBoundary {
 
 	private static final double EPSILON = 1E-6;
 
-	private final FDMBlackScholesModel model;
+	private final FDMBachelierModel model;
 
 	/**
 	 * Creates the boundary condition associated with a given
-	 * {@link FDMBlackScholesModel}.
+	 * {@link FDMBachelierModel}.
 	 *
-	 * @param model The Black-Scholes model used to determine
+	 * @param model The Bachelier model used to determine
 	 *              risk-free and dividend discount factors.
 	 */
-	public DigitalOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
+	public DigitalOptionBachelierModelBoundary(final FDMBachelierModel model) {
 		this.model = model;
 	}
 

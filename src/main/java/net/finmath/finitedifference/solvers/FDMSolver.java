@@ -123,4 +123,29 @@ public interface FDMSolver {
 			final DoubleBinaryOperator valueAtMaturity) {
 		return getValues(time, x -> valueAtMaturity.applyAsDouble(x, 0.0));
 	}
+
+	/**
+	 * Default binary-payoff version with early exercise
+	 * For solvers that are effectively 1D, the second state variable is ignored.
+	 */
+	default double[] getValue(
+			final double evaluationTime,
+			final double time,
+			final double[] terminalValues,
+			final DoubleUnaryOperator exerciseValue) {
+		throw new UnsupportedOperationException(
+				getClass().getSimpleName() + " does not support terminal-vector initialization with pointwise exercise payoff.");
+	}
+
+	/**
+	 * Default binary-payoff version with early exercise
+	 * For solvers that are effectively 1D, the second state variable is ignored.
+	 */
+	default double[][] getValues(
+			final double time,
+			final double[] terminalValues,
+			final DoubleUnaryOperator exerciseValue) {
+		throw new UnsupportedOperationException(
+				getClass().getSimpleName() + " does not support terminal-vector initialization with pointwise exercise payoff.");
+	}
 }

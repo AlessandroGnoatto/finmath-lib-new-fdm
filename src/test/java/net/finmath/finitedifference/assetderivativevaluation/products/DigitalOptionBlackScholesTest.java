@@ -13,6 +13,8 @@ import net.finmath.finitedifference.grids.GridWithMandatoryPoint;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.functions.AnalyticFormulas;
+import net.finmath.modelling.AmericanExercise;
+import net.finmath.modelling.BermudanExercise;
 import net.finmath.modelling.products.CallOrPut;
 import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
@@ -157,6 +159,380 @@ public class DigitalOptionBlackScholesTest {
 
 		assertTrue(fdPrice >= -1E-10);
 		assertEquals(analyticPrice, fdPrice, ASSET_DIGITAL_TOLERANCE);
+	}
+
+	@Test
+	public void testOneDateBermudanEqualsEuropeanCashOrNothingPut() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new net.finmath.modelling.BermudanExercise(new double[] { MATURITY }));
+
+		final double[] europeanValuesOnGrid = europeanOption.getValue(0.0, setup.model);
+		final double europeanPrice = interpolateAtSpot(europeanValuesOnGrid, setup.sNodes, SPOT);
+
+		final double[] bermudanValuesOnGrid = bermudanOption.getValue(0.0, setup.model);
+		final double bermudanPrice = interpolateAtSpot(bermudanValuesOnGrid, setup.sNodes, SPOT);
+
+		assertEquals(europeanPrice, bermudanPrice, CASH_DIGITAL_TOLERANCE);
+	}
+
+	@Test
+	public void testOneDateBermudanEqualsEuropeanAssetOrNothingCall() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new net.finmath.modelling.BermudanExercise(new double[] { MATURITY }));
+
+		final double[] europeanValuesOnGrid = europeanOption.getValue(0.0, setup.model);
+		final double europeanPrice = interpolateAtSpot(europeanValuesOnGrid, setup.sNodes, SPOT);
+
+		final double[] bermudanValuesOnGrid = bermudanOption.getValue(0.0, setup.model);
+		final double bermudanPrice = interpolateAtSpot(bermudanValuesOnGrid, setup.sNodes, SPOT);
+
+		assertEquals(europeanPrice, bermudanPrice, ASSET_DIGITAL_TOLERANCE);
+	}
+
+	@Test
+	public void testOneDateBermudanEqualsEuropeanAssetOrNothingPut() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new net.finmath.modelling.BermudanExercise(new double[] { MATURITY }));
+
+		final double[] europeanValuesOnGrid = europeanOption.getValue(0.0, setup.model);
+		final double europeanPrice = interpolateAtSpot(europeanValuesOnGrid, setup.sNodes, SPOT);
+
+		final double[] bermudanValuesOnGrid = bermudanOption.getValue(0.0, setup.model);
+		final double bermudanPrice = interpolateAtSpot(bermudanValuesOnGrid, setup.sNodes, SPOT);
+
+		assertEquals(europeanPrice, bermudanPrice, ASSET_DIGITAL_TOLERANCE);
+	}
+
+	@Test
+	public void testTwoDateBermudanGreaterOrEqualEuropeanCashOrNothingPut() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final double[] europeanValuesOnGrid = europeanOption.getValue(0.0, setup.model);
+		final double europeanPrice = interpolateAtSpot(europeanValuesOnGrid, setup.sNodes, SPOT);
+
+		final double[] bermudanValuesOnGrid = bermudanOption.getValue(0.0, setup.model);
+		final double bermudanPrice = interpolateAtSpot(bermudanValuesOnGrid, setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+	}
+
+	@Test
+	public void testTwoDateBermudanGreaterOrEqualEuropeanAssetOrNothingPut() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final double[] europeanValuesOnGrid = europeanOption.getValue(0.0, setup.model);
+		final double europeanPrice = interpolateAtSpot(europeanValuesOnGrid, setup.sNodes, SPOT);
+
+		final double[] bermudanValuesOnGrid = bermudanOption.getValue(0.0, setup.model);
+		final double bermudanPrice = interpolateAtSpot(bermudanValuesOnGrid, setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+	}
+
+	@Test
+	public void testTwoDateBermudanGreaterOrEqualEuropeanCashOrNothingCall() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final double[] europeanValuesOnGrid = europeanOption.getValue(0.0, setup.model);
+		final double europeanPrice = interpolateAtSpot(europeanValuesOnGrid, setup.sNodes, SPOT);
+
+		final double[] bermudanValuesOnGrid = bermudanOption.getValue(0.0, setup.model);
+		final double bermudanPrice = interpolateAtSpot(bermudanValuesOnGrid, setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+	}
+
+	@Test
+	public void testTwoDateBermudanGreaterOrEqualEuropeanAssetOrNothingCall() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final double[] europeanValuesOnGrid = europeanOption.getValue(0.0, setup.model);
+		final double europeanPrice = interpolateAtSpot(europeanValuesOnGrid, setup.sNodes, SPOT);
+
+		final double[] bermudanValuesOnGrid = bermudanOption.getValue(0.0, setup.model);
+		final double bermudanPrice = interpolateAtSpot(bermudanValuesOnGrid, setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+	}
+
+	@Test
+	public void testAmericanGreaterOrEqualBermudanGreaterOrEqualEuropeanCashOrNothingPut() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final DigitalOption americanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new AmericanExercise(0.0, MATURITY));
+
+		final double europeanPrice = interpolateAtSpot(europeanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double bermudanPrice = interpolateAtSpot(bermudanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double americanPrice = interpolateAtSpot(americanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+		assertTrue(americanPrice + 1E-12 >= bermudanPrice);
+	}
+
+	@Test
+	public void testAmericanGreaterOrEqualBermudanGreaterOrEqualEuropeanAssetOrNothingPut() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final DigitalOption americanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new AmericanExercise(0.0, MATURITY));
+
+		final double europeanPrice = interpolateAtSpot(europeanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double bermudanPrice = interpolateAtSpot(bermudanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double americanPrice = interpolateAtSpot(americanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+		assertTrue(americanPrice + 1E-12 >= bermudanPrice);
+	}
+
+	@Test
+	public void testAmericanGreaterOrEqualBermudanGreaterOrEqualEuropeanCashOrNothingCall() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final DigitalOption americanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new AmericanExercise(0.0, MATURITY));
+
+		final double europeanPrice = interpolateAtSpot(europeanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double bermudanPrice = interpolateAtSpot(bermudanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double americanPrice = interpolateAtSpot(americanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+		assertTrue(americanPrice + 1E-12 >= bermudanPrice);
+	}
+
+	@Test
+	public void testAmericanGreaterOrEqualBermudanGreaterOrEqualEuropeanAssetOrNothingCall() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption europeanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0);
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new BermudanExercise(new double[] { 0.5, MATURITY }));
+
+		final DigitalOption americanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.CALL,
+				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				0.0,
+				new AmericanExercise(0.0, MATURITY));
+
+		final double europeanPrice = interpolateAtSpot(europeanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double bermudanPrice = interpolateAtSpot(bermudanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double americanPrice = interpolateAtSpot(americanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+
+		assertTrue(bermudanPrice + 1E-12 >= europeanPrice);
+		assertTrue(americanPrice + 1E-12 >= bermudanPrice);
+	}
+
+	@Test
+	public void testDenseBermudanApproachesAmericanCashOrNothingPut() {
+
+		final TestSetup setup = createSetup();
+
+		final DigitalOption bermudanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new BermudanExercise(new double[] { 0.25, 0.5, 0.75, MATURITY }));
+
+		final DigitalOption americanOption = new DigitalOption(
+				MATURITY,
+				STRIKE,
+				CallOrPut.PUT,
+				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				CASH_PAYOFF,
+				new AmericanExercise(0.0, MATURITY));
+
+		final double bermudanPrice = interpolateAtSpot(bermudanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+		final double americanPrice = interpolateAtSpot(americanOption.getValue(0.0, setup.model), setup.sNodes, SPOT);
+
+		assertTrue(americanPrice + 1E-12 >= bermudanPrice);
 	}
 
 	private TestSetup createSetup() {

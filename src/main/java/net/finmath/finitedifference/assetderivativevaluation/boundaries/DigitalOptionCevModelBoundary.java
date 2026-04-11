@@ -1,6 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
@@ -10,7 +10,7 @@ import net.finmath.modelling.products.CallOrPut;
 
 /**
  * Boundary conditions for {@link DigitalOption} under the
- * {@link FDMBlackScholesModel}.
+ * {@link FDMCevModel}.
  *
  * <p>
  * The boundary asymptotics depend on the exercise style:
@@ -42,20 +42,20 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * @author Alessandro Gnoatto
  */
-public class DigitalOptionBlackScholesModelBoundary implements FiniteDifferenceBoundary {
+public class DigitalOptionCevModelBoundary implements FiniteDifferenceBoundary {
 
 	private static final double EPSILON = 1E-6;
 
-	private final FDMBlackScholesModel model;
+	private final FDMCevModel model;
 
 	/**
 	 * Creates the boundary condition associated with a given
-	 * {@link FDMBlackScholesModel}.
+	 * {@link FDMCevModel}.
 	 *
-	 * @param model The Black-Scholes model used to determine
+	 * @param model The CEV model used to determine
 	 *              risk-free and dividend discount factors.
 	 */
-	public DigitalOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
+	public DigitalOptionCevModelBoundary(final FDMCevModel model) {
 		this.model = model;
 	}
 
