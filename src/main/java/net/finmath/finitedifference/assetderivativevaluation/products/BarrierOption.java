@@ -36,7 +36,7 @@ import net.finmath.time.TimeDiscretization;
  *   <li>2D knock-in options currently fall back to in-out parity,</li>
  *   <li>for 2D parity pricing, the vanilla surface is computed on an auxiliary grid
  *       and interpolated back to the original product grid along the first state variable,</li>
- *   <li>exercise is currently European only.</li>
+ *   <li>non-European exercise is currently supported only for 1D knock-out options.</li>
  * </ul>
  *
  * <p>
@@ -73,12 +73,51 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 	public BarrierOption(final String underlyingName, final double maturity, final double strike,
 			final double barrierValue, final double rebate, final double callOrPutSign, final BarrierType barrierType) {
-		this(underlyingName, maturity, strike, barrierValue, rebate, mapCallOrPut(callOrPutSign), barrierType);
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				mapCallOrPut(callOrPutSign),
+				barrierType,
+				new EuropeanExercise(maturity)
+		);
 	}
 
 	public BarrierOption(final String underlyingName, final double maturity, final double strike,
 			final double barrierValue, final double rebate, final CallOrPut callOrPutSign,
 			final BarrierType barrierType) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				callOrPutSign,
+				barrierType,
+				new EuropeanExercise(maturity)
+		);
+	}
+
+	public BarrierOption(final String underlyingName, final double maturity, final double strike,
+			final double barrierValue, final double rebate, final double callOrPutSign,
+			final BarrierType barrierType, final Exercise exercise) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				mapCallOrPut(callOrPutSign),
+				barrierType,
+				exercise
+		);
+	}
+
+	public BarrierOption(final String underlyingName, final double maturity, final double strike,
+			final double barrierValue, final double rebate, final CallOrPut callOrPutSign,
+			final BarrierType barrierType, final Exercise exercise) {
 		super();
 		this.underlyingName = underlyingName;
 		this.maturity = maturity;
@@ -87,7 +126,7 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		this.rebate = rebate;
 		this.callOrPutSign = callOrPutSign;
 		this.barrierType = barrierType;
-		this.exercise = new EuropeanExercise(maturity);
+		this.exercise = exercise;
 	}
 
 	public BarrierOption(final double maturity, final double strike, final double barrierValue, final double rebate,
@@ -100,14 +139,35 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
 	}
 
+	public BarrierOption(final double maturity, final double strike, final double barrierValue, final double rebate,
+			final double callOrPutSign, final BarrierType barrierType, final Exercise exercise) {
+		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType, exercise);
+	}
+
+	public BarrierOption(final double maturity, final double strike, final double barrierValue, final double rebate,
+			final CallOrPut callOrPutSign, final BarrierType barrierType, final Exercise exercise) {
+		this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType, exercise);
+	}
+
 	public BarrierOption(final String underlyingName, final double maturity, final double strike,
 			final double barrierValue, final CallOrPut callOrPutSign, final BarrierType barrierType) {
 		this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
 	}
 
+	public BarrierOption(final String underlyingName, final double maturity, final double strike,
+			final double barrierValue, final CallOrPut callOrPutSign, final BarrierType barrierType,
+			final Exercise exercise) {
+		this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType, exercise);
+	}
+
 	public BarrierOption(final double maturity, final double strike, final double barrierValue,
 			final double callOrPutSign, final BarrierType barrierType) {
 		this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
+	}
+
+	public BarrierOption(final double maturity, final double strike, final double barrierValue,
+			final double callOrPutSign, final BarrierType barrierType, final Exercise exercise) {
+		this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType, exercise);
 	}
 
 	@Override
@@ -152,11 +212,21 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
-		if(!exercise.isEuropean()) {
-			throw new IllegalArgumentException("BarrierOption currently supports only European exercise.");
-		}
 
 		validateBarrierInsideGrid(model);
+
+		if(exercise.isEuropean()) {
+			return;
+		}
+
+		final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(numberOfSpaceDimensions == 1 && isOutOption()) {
+			return;
+		}
+
+		throw new IllegalArgumentException(
+				"Non-European exercise is currently supported only for 1D knock-out barriers.");
 	}
 
 	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
@@ -376,8 +446,16 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	}
 
 	private BarrierOption createCorrespondingOutOption() {
-		return new BarrierOption(underlyingName, maturity, strike, barrierValue, rebate, callOrPutSign,
-				getCorrespondingOutBarrierType());
+		return new BarrierOption(
+				underlyingName,
+				maturity,
+				strike,
+				barrierValue,
+				rebate,
+				callOrPutSign,
+				getCorrespondingOutBarrierType(),
+				exercise
+		);
 	}
 
 	private BarrierType getCorrespondingOutBarrierType() {
