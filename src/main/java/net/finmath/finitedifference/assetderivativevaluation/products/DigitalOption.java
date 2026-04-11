@@ -32,8 +32,13 @@ import net.finmath.time.TimeDiscretization;
  * </p>
  *
  * <p>
- * For Bermudan and American exercise, the maturity layer is still cell-averaged,
- * while exercise projection remains pointwise.
+ * For Bermudan and American exercise in one-dimensional models, the maturity
+ * layer remains cell-averaged, while exercise projection remains pointwise.
+ * </p>
+ *
+ * <p>
+ * For the current two-dimensional models, the payoff is initialized pointwise
+ * on the first state variable, that is, on the asset dimension.
  * </p>
  *
  * @author Alessandro Gnoatto

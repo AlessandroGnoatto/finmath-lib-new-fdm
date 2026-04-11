@@ -24,8 +24,14 @@ import net.finmath.modelling.Exercise;
  *
  * <p>
  * The supplied {@link SpaceTimeDiscretization} is used directly for 1D theta-method
- * solvers. For current 2D ADI solvers, the model's own discretization is used,
- * preserving the existing behavior in the product classes.
+ * solvers. For current 2D ADI solvers, the model's own discretization is used
+ * directly, preserving the existing behavior in the product classes.
+ * </p>
+ * 
+ * <p>
+ * In particular, Bermudan time-grid refinement performed at product level is
+ * currently effective for the 1D solver path. The current 2D ADI solver path
+ * continues to use the discretization stored in the model.
  * </p>
  *
  * @author Alessandro Gnoatto
