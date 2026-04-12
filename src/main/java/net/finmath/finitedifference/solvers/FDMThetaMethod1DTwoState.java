@@ -7,6 +7,7 @@ import net.finmath.finitedifference.assetderivativevaluation.products.BarrierOpt
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 
 /**
  * Direct two-state theta-method solver for 1D knock-in barrier options.
@@ -27,7 +28,7 @@ import net.finmath.modelling.products.BarrierType;
  * </ul>
  *
  * <p>
- * Currently supports only European exercise.
+ * Supports European exercise and Bermudan exercise in the active regime.
  * </p>
  * 
  * @author Alessandro Gnoatto
@@ -108,12 +109,13 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 
-		if(!exercise.isEuropean()) {
-			throw new IllegalArgumentException("FDMThetaMethod1DTwoState currently supports only European exercise.");
-		}
-
 		if(activeBoundaryProvider == null) {
 			throw new IllegalArgumentException("Active boundary provider must not be null.");
+		}
+
+		if(!exercise.isEuropean() && !exercise.isBermudan()) {
+			throw new IllegalArgumentException(
+					"FDMThetaMethod1DTwoState currently supports only European and Bermudan exercise.");
 		}
 
 		final BarrierType barrierType = product.getBarrierType();
@@ -160,14 +162,22 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 			final double lowerActiveBoundary = activeBoundaryProvider.getLowerBoundaryValue(currentTime, xGrid[0]);
 			final double upperActiveBoundary = activeBoundaryProvider.getUpperBoundaryValue(currentTime, xGrid[nX - 1]);
 
-			final double[] nextActive = solveVanillaStep(
+			final double[] nextActiveContinuation = solveVanillaStep(
 					xGrid,
 					active,
 					t_m,
 					t_mp1,
 					deltaTau,
 					lowerActiveBoundary,
-					upperActiveBoundary);
+					upperActiveBoundary
+			);
+
+			final double[] nextActive = applyBermudanExerciseIfNeeded(
+					nextActiveContinuation,
+					xGrid,
+					tau_mp1,
+					valueAtMaturity
+			);
 
 			final double[] nextInactive = new double[nX];
 
@@ -581,5 +591,28 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		default:
 			throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
 		}
+	}
+
+	private double[] applyBermudanExerciseIfNeeded(
+			final double[] continuationValues,
+			final double[] xGrid,
+			final double tau,
+			final DoubleUnaryOperator exercisePayoff) {
+
+		if(!exercise.isBermudan()) {
+			return continuationValues;
+		}
+
+		if(!FiniteDifferenceExerciseUtil.isDiscreteExerciseTime(tau, exercise)) {
+			return continuationValues;
+		}
+
+		final double[] exercisedValues = new double[continuationValues.length];
+
+		for(int i = 0; i < continuationValues.length; i++) {
+			exercisedValues[i] = Math.max(continuationValues[i], exercisePayoff.applyAsDouble(xGrid[i]));
+		}
+
+		return exercisedValues;
 	}
 }

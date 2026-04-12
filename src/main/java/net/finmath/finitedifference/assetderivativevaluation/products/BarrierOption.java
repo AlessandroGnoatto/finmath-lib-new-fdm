@@ -16,6 +16,7 @@ import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
 import net.finmath.time.TimeDiscretization;
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 
 /**
  * Finite-difference valuation of a standard single-barrier option on one asset.
@@ -36,7 +37,8 @@ import net.finmath.time.TimeDiscretization;
  *   <li>2D knock-in options currently fall back to in-out parity,</li>
  *   <li>for 2D parity pricing, the vanilla surface is computed on an auxiliary grid
  *       and interpolated back to the original product grid along the first state variable,</li>
- *   <li>non-European exercise is currently supported only for 1D knock-out options.</li>
+ *   <li>non-European exercise is currently supported for 1D knock-out options
+ *       and for 1D Bermudan knock-in options,</li>
  * </ul>
  *
  * <p>
@@ -173,8 +175,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
+
+		final SpaceTimeDiscretization valuationDiscretization = getValuationSpaceTimeDiscretization(model);
 		final double tau = maturity - evaluationTime;
-		final int timeIndex = model.getSpaceTimeDiscretization().getTimeDiscretization()
+		final int timeIndex = valuationDiscretization.getTimeDiscretization()
 				.getTimeIndexNearestLessOrEqual(tau);
 
 		final double[] column = new double[values.length];
@@ -225,8 +229,12 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			return;
 		}
 
+		if(numberOfSpaceDimensions == 1 && !isOutOption() && exercise.isBermudan()) {
+			return;
+		}
+
 		throw new IllegalArgumentException(
-				"Non-European exercise is currently supported only for 1D knock-out barriers.");
+				"Non-European exercise is currently supported only for 1D knock-out barriers and 1D Bermudan knock-in barriers.");
 	}
 
 	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
@@ -256,7 +264,8 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 		}
 
 		if(numberOfSpaceDimensions == 1) {
-			final FiniteDifferenceEquityModel knockInModel = createAuxiliaryKnockInModel1D(model);
+			final FiniteDifferenceEquityModel effectiveBaseModel = getEffectiveModelForOneDimensionalKnockIn(model);
+			final FiniteDifferenceEquityModel knockInModel = createAuxiliaryKnockInModel1D(effectiveBaseModel);
 
 			final FDMSolver solver = new FDMThetaMethod1DTwoState(
 					knockInModel,
@@ -725,6 +734,40 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			return CallOrPut.PUT;
 		}
 		throw new IllegalArgumentException("Unknown option type.");
+	}
+
+	private SpaceTimeDiscretization getValuationSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
+
+		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
+
+		if(!(exercise.isBermudan() && !isOutOption() && base.getNumberOfSpaceGrids() == 1)) {
+			return base;
+		}
+
+		final TimeDiscretization refinedTimeDiscretization =
+				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+						base.getTimeDiscretization(),
+						exercise
+				);
+
+		return new SpaceTimeDiscretization(
+				base.getSpaceGrid(0),
+				refinedTimeDiscretization,
+				base.getTheta(),
+				new double[] { base.getCenter(0) }
+		);
+	}
+
+	private FiniteDifferenceEquityModel getEffectiveModelForOneDimensionalKnockIn(
+			final FiniteDifferenceEquityModel model) {
+
+		final SpaceTimeDiscretization effectiveDiscretization = getValuationSpaceTimeDiscretization(model);
+
+		if(effectiveDiscretization == model.getSpaceTimeDiscretization()) {
+			return model;
+		}
+
+		return model.getCloneWithModifiedSpaceTimeDiscretization(effectiveDiscretization);
 	}
 
 	public String getUnderlyingName() {
