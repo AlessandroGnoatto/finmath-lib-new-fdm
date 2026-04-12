@@ -37,8 +37,10 @@ import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
  *   <li>2D knock-in options currently fall back to in-out parity,</li>
  *   <li>for 2D parity pricing, the vanilla surface is computed on an auxiliary grid
  *       and interpolated back to the original product grid along the first state variable,</li>
- *   <li>non-European exercise is currently supported for 1D knock-out options
- *       and for 1D Bermudan knock-in options,</li>
+ *   <li>1D knock-out options support European, Bermudan, and American exercise,</li>
+ *   <li>1D knock-in options support European, Bermudan, and American exercise through
+ *       a coupled two-state PDE where early exercise applies only in the active regime,</li>
+ *   <li>2D knock-in options currently fall back to in-out parity,</li>
  * </ul>
  *
  * <p>
@@ -229,12 +231,12 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 			return;
 		}
 
-		if(numberOfSpaceDimensions == 1 && !isOutOption() && exercise.isBermudan()) {
+		if(numberOfSpaceDimensions == 1 && !isOutOption() && (exercise.isBermudan() || exercise.isAmerican())) {
 			return;
 		}
 
 		throw new IllegalArgumentException(
-				"Non-European exercise is currently supported only for 1D knock-out barriers and 1D Bermudan knock-in barriers.");
+				"Non-European exercise is currently supported only for 1D knock-out barriers and 1D Bermudan/American knock-in barriers.");
 	}
 
 	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {

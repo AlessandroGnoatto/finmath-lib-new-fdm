@@ -8,6 +8,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 
 /**
  * Direct two-state theta-method solver for 1D knock-in barrier options.
@@ -28,7 +29,7 @@ import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
  * </ul>
  *
  * <p>
- * Supports European exercise and Bermudan exercise in the active regime.
+ * Supports European, Bermudan, and American exercise in the active regime.
  * </p>
  * 
  * @author Alessandro Gnoatto
@@ -63,7 +64,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 	 * @param model The finite-difference equity model providing local PDE coefficients and discounting.
 	 * @param product The knock-in barrier option to be valued.
 	 * @param spaceTimeDiscretization The spatial and temporal discretization, including the theta parameter.
-	 * @param exercise The exercise specification. Only European exercise is supported.
+	  * @param exercise The exercise specification. Bermudan and American exercise are applied only to the active regime.
 	 * @param activeBoundaryProvider Provider for the boundary values of the already-activated regime.
 	 */
 	public FDMThetaMethod1DTwoState(
@@ -113,9 +114,9 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 			throw new IllegalArgumentException("Active boundary provider must not be null.");
 		}
 
-		if(!exercise.isEuropean() && !exercise.isBermudan()) {
+		if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
 			throw new IllegalArgumentException(
-					"FDMThetaMethod1DTwoState currently supports only European and Bermudan exercise.");
+					"FDMThetaMethod1DTwoState currently supports only European, Bermudan, and American exercise.");
 		}
 
 		final BarrierType barrierType = product.getBarrierType();
@@ -162,22 +163,46 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 			final double lowerActiveBoundary = activeBoundaryProvider.getLowerBoundaryValue(currentTime, xGrid[0]);
 			final double upperActiveBoundary = activeBoundaryProvider.getUpperBoundaryValue(currentTime, xGrid[nX - 1]);
 
-			final double[] nextActiveContinuation = solveVanillaStep(
-					xGrid,
-					active,
-					t_m,
-					t_mp1,
-					deltaTau,
-					lowerActiveBoundary,
-					upperActiveBoundary
-			);
+			final boolean isExerciseDate =
+					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
 
-			final double[] nextActive = applyBermudanExerciseIfNeeded(
-					nextActiveContinuation,
-					xGrid,
-					tau_mp1,
-					valueAtMaturity
-			);
+			final double[] nextActive;
+			if(exercise.isAmerican() && isExerciseDate) {
+				nextActive = solveVanillaStepAmerican(
+						xGrid,
+						active,
+						t_m,
+						t_mp1,
+						deltaTau,
+						lowerActiveBoundary,
+						upperActiveBoundary,
+						valueAtMaturity
+				);
+			}
+			else {
+				final double[] nextActiveContinuation = solveVanillaStep(
+						xGrid,
+						active,
+						t_m,
+						t_mp1,
+						deltaTau,
+						lowerActiveBoundary,
+						upperActiveBoundary
+				);
+
+				if(exercise.isBermudan() && isExerciseDate) {
+					nextActive = applyBermudanExerciseProjection(
+							nextActiveContinuation,
+							xGrid,
+							valueAtMaturity,
+							lowerActiveBoundary,
+							upperActiveBoundary
+					);
+				}
+				else {
+					nextActive = nextActiveContinuation;
+				}
+			}
 
 			final double[] nextInactive = new double[nX];
 
@@ -593,26 +618,130 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 		}
 	}
 
-	private double[] applyBermudanExerciseIfNeeded(
+	private double[] solveVanillaStepAmerican(
+			final double[] xGrid,
+			final double[] previousValues,
+			final double t_m,
+			final double t_mp1,
+			final double deltaTau,
+			final double lowerBoundaryValue,
+			final double upperBoundaryValue,
+			final DoubleUnaryOperator exerciseValue) {
+
+		final int n = xGrid.length;
+
+		if(n != previousValues.length) {
+			throw new IllegalArgumentException("Grid and solution vector size mismatch.");
+		}
+
+		if(n == 1) {
+			return new double[] { lowerBoundaryValue };
+		}
+
+		if(n == 2) {
+			return new double[] { lowerBoundaryValue, upperBoundaryValue };
+		}
+
+		final double theta = spaceTimeDiscretization.getTheta();
+
+		final ThetaMethod1DAssembly.ModelCoefficients coefficients_m =
+				ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_m);
+		final ThetaMethod1DAssembly.ModelCoefficients coefficients_mp1 =
+				ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_mp1);
+
+		final TridiagonalMatrix lhs = new TridiagonalMatrix(n);
+		final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(n);
+
+		ThetaMethod1DAssembly.buildThetaLeftHandSide(
+				lhs,
+				xGrid,
+				coefficients_mp1.getDrift(),
+				coefficients_mp1.getVariance(),
+				coefficients_mp1.getShortRate(),
+				deltaTau,
+				theta);
+
+		ThetaMethod1DAssembly.buildThetaRightHandSide(
+				rhsOperator,
+				xGrid,
+				coefficients_m.getDrift(),
+				coefficients_m.getVariance(),
+				coefficients_m.getShortRate(),
+				deltaTau,
+				theta);
+
+		final double[] rhs = ThetaMethod1DAssembly.apply(rhsOperator, previousValues);
+
+		ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, 0, lowerBoundaryValue);
+		ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, n - 1, upperBoundaryValue);
+
+		final double[] obstacle = buildActiveObstacleVector(
+				xGrid,
+				exerciseValue,
+				lowerBoundaryValue,
+				upperBoundaryValue
+		);
+
+		final double[] next = ProjectedTridiagonalSOR.solve(
+				lhs,
+				rhs,
+				obstacle,
+				previousValues,
+				1.2,
+				500,
+				1E-10
+		);
+
+		next[0] = lowerBoundaryValue;
+		next[n - 1] = upperBoundaryValue;
+
+		return next;
+	}
+
+	private double[] applyBermudanExerciseProjection(
 			final double[] continuationValues,
 			final double[] xGrid,
-			final double tau,
-			final DoubleUnaryOperator exercisePayoff) {
+			final DoubleUnaryOperator exerciseValue,
+			final double lowerBoundaryValue,
+			final double upperBoundaryValue) {
 
-		if(!exercise.isBermudan()) {
-			return continuationValues;
-		}
+		final double[] exercisedValues = continuationValues.clone();
 
-		if(!FiniteDifferenceExerciseUtil.isDiscreteExerciseTime(tau, exercise)) {
-			return continuationValues;
-		}
-
-		final double[] exercisedValues = new double[continuationValues.length];
-
-		for(int i = 0; i < continuationValues.length; i++) {
-			exercisedValues[i] = Math.max(continuationValues[i], exercisePayoff.applyAsDouble(xGrid[i]));
+		for(int i = 0; i < exercisedValues.length; i++) {
+			if(i == 0) {
+				exercisedValues[i] = lowerBoundaryValue;
+			}
+			else if(i == exercisedValues.length - 1) {
+				exercisedValues[i] = upperBoundaryValue;
+			}
+			else {
+				exercisedValues[i] = Math.max(exercisedValues[i], exerciseValue.applyAsDouble(xGrid[i]));
+			}
 		}
 
 		return exercisedValues;
+	}
+
+	private double[] buildActiveObstacleVector(
+			final double[] xGrid,
+			final DoubleUnaryOperator exerciseValue,
+			final double lowerBoundaryValue,
+			final double upperBoundaryValue) {
+
+		final double[] obstacle = new double[xGrid.length];
+
+		for(int i = 0; i < xGrid.length; i++) {
+			if(i == 0) {
+				obstacle[i] = lowerBoundaryValue;
+			}
+			else if(i == xGrid.length - 1) {
+				obstacle[i] = upperBoundaryValue;
+			}
+			else {
+				obstacle[i] = exerciseValue.applyAsDouble(xGrid[i]);
+			}
+		}
+
+		return obstacle;
 	}
 }
