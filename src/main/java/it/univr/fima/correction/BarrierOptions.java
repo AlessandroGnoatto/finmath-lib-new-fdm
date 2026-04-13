@@ -831,4 +831,258 @@ public class BarrierOptions {
             throw new IllegalArgumentException(name + " must be >= 0");
         }
     }
+
+    /**
+     * Settlement timing for the binary barrier payoff.
+     */
+    public enum BinaryBarrierSettlement {
+        /** Pays immediately when the barrier is first hit. */
+        AT_HIT,
+        /** Pays at expiry if the barrier event condition is satisfied. */
+        AT_EXPIRY
+    }
+
+    /**
+     * Barrier-event style for strike-free binary barriers.
+     */
+    public enum BinaryBarrierEventType {
+        /** Pays if the barrier has been hit before maturity. */
+        HIT,
+        /** Pays if the barrier has not been hit before maturity. */
+        NO_HIT
+    }
+
+    /**
+     * Prices a continuously monitored single-barrier binary paying at the first hit time.
+     *
+     * <p>This covers the Reiner-Rubinstein / Haug formulas:
+     * <ul>
+     *   <li>down-and-in cash-(at-hit)-or-nothing,</li>
+     *   <li>up-and-in cash-(at-hit)-or-nothing,</li>
+     *   <li>down-and-in asset-(at-hit)-or-nothing,</li>
+     *   <li>up-and-in asset-(at-hit)-or-nothing.</li>
+     * </ul>
+     *
+     * <p>For asset-at-hit, the payoff at hit is the barrier level {@code H}, since the hit occurs exactly at {@code S=H}.</p>
+     *
+     * @param initialStockValue Spot price {@code S0}.
+     * @param riskFreeRate Continuously compounded risk-free rate {@code r}.
+     * @param dividendYield Continuously compounded dividend yield {@code q}.
+     * @param volatility Black-Scholes volatility {@code sigma}.
+     * @param optionMaturity Time to maturity {@code T}.
+     * @param barrierValue Barrier level {@code H}.
+     * @param barrierType Must be {@code DOWN_IN} or {@code UP_IN}.
+     * @param binaryPayoffType Cash-or-nothing or asset-or-nothing payoff.
+     * @param cashPayoff Cash amount used for cash-or-nothing.
+     * @return The at-hit binary barrier value.
+     */
+    public static double blackScholesBinaryBarrierAtHitValue(
+            final double initialStockValue,
+            final double riskFreeRate,
+            final double dividendYield,
+            final double volatility,
+            final double optionMaturity,
+            final double barrierValue,
+            final BarrierType barrierType,
+            final BinaryPayoffType binaryPayoffType,
+            final double cashPayoff) {
+
+        validatePositive(initialStockValue, "initialStockValue");
+        validatePositive(barrierValue, "barrierValue");
+        validateNonNegative(volatility, "volatility");
+        validateNonNegative(optionMaturity, "optionMaturity");
+
+        if (barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+            throw new IllegalArgumentException("At-hit formulas only apply to DOWN_IN or UP_IN.");
+        }
+
+        final boolean alreadyHit =
+                (barrierType == BarrierType.DOWN_IN && initialStockValue <= barrierValue)
+                || (barrierType == BarrierType.UP_IN && initialStockValue >= barrierValue);
+
+        if (alreadyHit) {
+            if (binaryPayoffType == BinaryPayoffType.CASH_OR_NOTHING) {
+                return cashPayoff;
+            }
+            return barrierValue;
+        }
+
+        if (optionMaturity <= 0.0) {
+            return 0.0;
+        }
+
+        if (volatility <= 0.0) {
+            return 0.0;
+        }
+
+        final double sigmaSq = volatility * volatility;
+        final double volTime = volatility * Math.sqrt(optionMaturity);
+        final double mu = (riskFreeRate - dividendYield - 0.5 * sigmaSq) / sigmaSq;
+        final double lambda = Math.sqrt(mu * mu + 2.0 * riskFreeRate / sigmaSq);
+        final int eta = getEta(barrierType);
+
+        final double z = Math.log(barrierValue / initialStockValue) / volTime + lambda * volTime;
+        final double payoffAmount = binaryPayoffType == BinaryPayoffType.CASH_OR_NOTHING ? cashPayoff : barrierValue;
+        final double hs = barrierValue / initialStockValue;
+
+        return payoffAmount
+                * (Math.pow(hs, mu + lambda) * n(eta * z)
+                + Math.pow(hs, mu - lambda) * n(eta * (z - 2.0 * lambda * volTime)));
+    }
+
+    /**
+     * Prices a continuously monitored single-barrier binary paying at expiry,
+     * depending only on whether the barrier has been hit or not.
+     *
+     * <p>This covers the Reiner-Rubinstein / Haug formulas:
+     * <ul>
+     *   <li>down/up-and-in cash-(at-expiration)-or-nothing,</li>
+     *   <li>down/up-and-in asset-(at-expiration)-or-nothing,</li>
+     *   <li>down/up-and-out cash-or-nothing,</li>
+     *   <li>down/up-and-out asset-or-nothing.</li>
+     * </ul>
+     *
+     * @param initialStockValue Spot price {@code S0}.
+     * @param riskFreeRate Continuously compounded risk-free rate {@code r}.
+     * @param dividendYield Continuously compounded dividend yield {@code q}.
+     * @param volatility Black-Scholes volatility {@code sigma}.
+     * @param optionMaturity Time to maturity {@code T}.
+     * @param barrierValue Barrier level {@code H}.
+     * @param barrierType Barrier orientation and knock style.
+     * @param eventType HIT for knock-in style payoff, NO_HIT for knock-out style payoff.
+     * @param binaryPayoffType Cash-or-nothing or asset-or-nothing.
+     * @param cashPayoff Cash amount used when {@code binaryPayoffType} is cash-or-nothing.
+     * @return The expiry binary barrier value.
+     */
+    public static double blackScholesBinaryBarrierStatusAtExpiryValue(
+            final double initialStockValue,
+            final double riskFreeRate,
+            final double dividendYield,
+            final double volatility,
+            final double optionMaturity,
+            final double barrierValue,
+            final BarrierType barrierType,
+            final BinaryBarrierEventType eventType,
+            final BinaryPayoffType binaryPayoffType,
+            final double cashPayoff) {
+
+        validatePositive(initialStockValue, "initialStockValue");
+        validatePositive(barrierValue, "barrierValue");
+        validateNonNegative(volatility, "volatility");
+        validateNonNegative(optionMaturity, "optionMaturity");
+
+        final boolean isKnockIn = barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.UP_IN;
+        final boolean isKnockOut = barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT;
+
+        if ((eventType == BinaryBarrierEventType.HIT && !isKnockIn)
+                || (eventType == BinaryBarrierEventType.NO_HIT && !isKnockOut)) {
+            throw new IllegalArgumentException(
+                    "Use HIT with DOWN_IN/UP_IN and NO_HIT with DOWN_OUT/UP_OUT.");
+        }
+
+        final boolean alreadyHit =
+                ((barrierType == BarrierType.DOWN_IN || barrierType == BarrierType.DOWN_OUT) && initialStockValue <= barrierValue)
+                || ((barrierType == BarrierType.UP_IN || barrierType == BarrierType.UP_OUT) && initialStockValue >= barrierValue);
+
+        if (alreadyHit) {
+            if (eventType == BinaryBarrierEventType.HIT) {
+                if (binaryPayoffType == BinaryPayoffType.CASH_OR_NOTHING) {
+                    return cashPayoff * Math.exp(-riskFreeRate * optionMaturity);
+                }
+                return initialStockValue * Math.exp(-dividendYield * optionMaturity);
+            }
+            return 0.0;
+        }
+
+        if (optionMaturity <= 0.0) {
+            return 0.0;
+        }
+
+        if (volatility <= 0.0) {
+            return 0.0;
+        }
+
+        final double sigmaSq = volatility * volatility;
+        final double volTime = volatility * Math.sqrt(optionMaturity);
+        final double mu = (riskFreeRate - dividendYield - 0.5 * sigmaSq) / sigmaSq;
+        final double eta = getEta(barrierType);
+        final double phi = isKnockIn ? -eta : eta;
+
+        final double x2 = Math.log(initialStockValue / barrierValue) / volTime + (1.0 + mu) * volTime;
+        final double y2 = Math.log(barrierValue / initialStockValue) / volTime + (1.0 + mu) * volTime;
+        final double hs2mu = Math.pow(barrierValue / initialStockValue, 2.0 * mu);
+
+        if (binaryPayoffType == BinaryPayoffType.CASH_OR_NOTHING) {
+            final double K = cashPayoff;
+            final double B2 = K * Math.exp(-riskFreeRate * optionMaturity) * n(phi * (x2 - volTime));
+            final double B4 = K * Math.exp(-riskFreeRate * optionMaturity) * hs2mu * n(eta * (y2 - volTime));
+            return isKnockIn ? B2 + B4 : B2 - B4;
+        } else {
+            final double A2 = initialStockValue * Math.exp(-dividendYield * optionMaturity) * n(phi * x2);
+            final double A4 = initialStockValue * Math.exp(-dividendYield * optionMaturity)
+                    * Math.pow(barrierValue / initialStockValue, 2.0 * (mu + 1.0))
+                    * n(eta * y2);
+            return isKnockIn ? A2 + A4 : A2 - A4;
+        }
+    }
+
+    /**
+     * One-touch / asset-touch convenience wrapper.
+     *
+     * <p>For cash-or-nothing this is a standard one-touch paying {@code cashPayoff} at hit.
+     * For asset-or-nothing this is an asset-touch paying the barrier level at hit.</p>
+     */
+    public static double blackScholesOneTouchValue(
+            final double initialStockValue,
+            final double riskFreeRate,
+            final double dividendYield,
+            final double volatility,
+            final double optionMaturity,
+            final double barrierValue,
+            final BarrierType barrierType,
+            final BinaryPayoffType binaryPayoffType,
+            final double cashPayoff) {
+
+        return blackScholesBinaryBarrierAtHitValue(
+                initialStockValue,
+                riskFreeRate,
+                dividendYield,
+                volatility,
+                optionMaturity,
+                barrierValue,
+                barrierType,
+                binaryPayoffType,
+                cashPayoff);
+    }
+
+    /**
+     * No-touch / hit-at-expiry convenience wrapper.
+     *
+     * <p>Use DOWN_OUT or UP_OUT with eventType NO_HIT for no-touch,
+     * and DOWN_IN or UP_IN with eventType HIT for hit-by-expiry.</p>
+     */
+    public static double blackScholesBarrierStatusBinaryValue(
+            final double initialStockValue,
+            final double riskFreeRate,
+            final double dividendYield,
+            final double volatility,
+            final double optionMaturity,
+            final double barrierValue,
+            final BarrierType barrierType,
+            final BinaryBarrierEventType eventType,
+            final BinaryPayoffType binaryPayoffType,
+            final double cashPayoff) {
+
+        return blackScholesBinaryBarrierStatusAtExpiryValue(
+                initialStockValue,
+                riskFreeRate,
+                dividendYield,
+                volatility,
+                optionMaturity,
+                barrierValue,
+                barrierType,
+                eventType,
+                binaryPayoffType,
+                cashPayoff);
+    }
 }
