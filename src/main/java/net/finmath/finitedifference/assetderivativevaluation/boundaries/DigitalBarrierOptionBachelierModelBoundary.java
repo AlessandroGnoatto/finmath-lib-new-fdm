@@ -1,0 +1,127 @@
+package net.finmath.finitedifference.assetderivativevaluation.boundaries;
+
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.DigitalBarrierOption;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
+import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
+import net.finmath.modelling.products.BarrierType;
+import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.DigitalPayoffType;
+
+/**
+ * Boundary conditions for {@link DigitalBarrierOption} under the
+ * {@link FDMBachelierModel}.
+ *
+ * @author Alessandro Gnoatto
+ */
+public class DigitalBarrierOptionBachelierModelBoundary implements FiniteDifferenceBoundary {
+
+    private static final double EPSILON = 1E-6;
+
+    private final FDMBachelierModel model;
+
+    public DigitalBarrierOptionBachelierModelBoundary(final FDMBachelierModel model) {
+        this.model = model;
+    }
+
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+            final FiniteDifferenceProduct product,
+            double time,
+            final double... stateVariables) {
+
+        final DigitalBarrierOption option = (DigitalBarrierOption) product;
+        final BarrierType barrierType = option.getBarrierType();
+        final CallOrPut sign = option.getCallOrPut();
+        final DigitalPayoffType payoffType = option.getDigitalPayoffType();
+
+        if(barrierType == BarrierType.DOWN_OUT) {
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(0.0)
+            };
+        }
+
+        if(sign == CallOrPut.CALL) {
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(0.0)
+            };
+        }
+
+        time = Math.max(time, EPSILON);
+
+        if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
+            };
+        }
+        else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
+            final double stateVariable = stateVariables[0];
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(stateVariable, option, time))
+            };
+        }
+        else {
+            throw new IllegalArgumentException("Unsupported digital payoff type.");
+        }
+    }
+
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+            final FiniteDifferenceProduct product,
+            double time,
+            final double... stateVariables) {
+
+        final DigitalBarrierOption option = (DigitalBarrierOption) product;
+        final BarrierType barrierType = option.getBarrierType();
+        final CallOrPut sign = option.getCallOrPut();
+        final DigitalPayoffType payoffType = option.getDigitalPayoffType();
+
+        if(barrierType == BarrierType.UP_OUT) {
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(0.0)
+            };
+        }
+
+        if(sign == CallOrPut.PUT) {
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(0.0)
+            };
+        }
+
+        time = Math.max(time, EPSILON);
+
+        if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
+            };
+        }
+        else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
+            final double stateVariable = stateVariables[0];
+            return new BoundaryCondition[] {
+                    StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(stateVariable, option, time))
+            };
+        }
+        else {
+            throw new IllegalArgumentException("Unsupported digital payoff type.");
+        }
+    }
+
+    private double getDiscountedCashValue(final DigitalBarrierOption option, final double time) {
+        final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
+        final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
+        final double maturity = option.getMaturity();
+        return option.getCashPayoff() * Math.exp(-riskFreeRate * (maturity - time));
+    }
+
+    private double getDiscountedAssetValue(
+            final double stateVariable,
+            final DigitalBarrierOption option,
+            final double time) {
+
+        final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(time);
+        final double dividendYieldRate = -Math.log(discountFactorDividend) / time;
+        final double maturity = option.getMaturity();
+        return stateVariable * Math.exp(-dividendYieldRate * (maturity - time));
+    }
+}

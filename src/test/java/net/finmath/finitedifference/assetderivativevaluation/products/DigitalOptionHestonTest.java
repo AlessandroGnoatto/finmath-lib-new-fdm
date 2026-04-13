@@ -13,6 +13,7 @@ import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.modelling.AmericanExercise;
 import net.finmath.modelling.BermudanExercise;
 import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.DigitalPayoffType;
 import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
@@ -56,7 +57,7 @@ public class DigitalOptionHestonTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final double[] values = option.getValue(0.0, setup.model);
@@ -76,14 +77,14 @@ public class DigitalOptionHestonTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { MATURITY }));
 
@@ -113,14 +114,14 @@ public class DigitalOptionHestonTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -128,7 +129,7 @@ public class DigitalOptionHestonTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new AmericanExercise(0.0, MATURITY));
 

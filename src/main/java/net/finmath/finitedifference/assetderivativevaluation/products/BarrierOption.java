@@ -52,7 +52,7 @@ import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
  *
  * @author Alessandro Gnoatto
  */
-public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint {
+public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint, FiniteDifferenceOneDimensionalKnockInProduct {
 
 	private enum PricingMode {
 		DIRECT_OUT, ACTIVATION_POLICY_IN
@@ -802,5 +802,10 @@ public class BarrierOption implements FiniteDifferenceProduct, FiniteDifferenceI
 
 	public Exercise getExercise() {
 		return exercise;
+	}
+
+	@Override
+	public double getInactiveValueAtMaturity() {
+	    return rebate;
 	}
 }

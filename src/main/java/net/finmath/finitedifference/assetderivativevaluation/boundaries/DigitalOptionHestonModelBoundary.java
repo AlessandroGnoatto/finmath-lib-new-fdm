@@ -7,6 +7,7 @@ import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.DigitalPayoffType;
 
 /**
  * Boundary conditions for {@link DigitalOption} under the
@@ -53,7 +54,7 @@ public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundar
 
 		final DigitalOption option = (DigitalOption) product;
 		final CallOrPut sign = option.getCallOrPut();
-		final DigitalOption.DigitalPayoffType payoffType = option.getDigitalPayoffType();
+		final DigitalPayoffType payoffType = option.getDigitalPayoffType();
 		final Exercise exercise = option.getExercise();
 
 		final BoundaryCondition[] result = new BoundaryCondition[2];
@@ -66,7 +67,7 @@ public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundar
 
 		time = Math.max(time, EPSILON);
 
-		if(payoffType == DigitalOption.DigitalPayoffType.CASH_OR_NOTHING) {
+		if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
 			final double value = isEuropeanExercise(exercise)
 					? getDiscountedCashValue(option, time)
 					: option.getCashPayoff();
@@ -75,7 +76,7 @@ public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundar
 			result[1] = StandardBoundaryCondition.none();
 			return result;
 		}
-		else if(payoffType == DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING) {
+		else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
 			final double stateVariable = stateVariables[0];
 			final double value = isEuropeanExercise(exercise)
 					? getDiscountedAssetValue(stateVariable, option, time)
@@ -98,7 +99,7 @@ public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundar
 
 		final DigitalOption option = (DigitalOption) product;
 		final CallOrPut sign = option.getCallOrPut();
-		final DigitalOption.DigitalPayoffType payoffType = option.getDigitalPayoffType();
+		final DigitalPayoffType payoffType = option.getDigitalPayoffType();
 		final Exercise exercise = option.getExercise();
 
 		final BoundaryCondition[] result = new BoundaryCondition[2];
@@ -111,7 +112,7 @@ public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundar
 
 		time = Math.max(time, EPSILON);
 
-		if(payoffType == DigitalOption.DigitalPayoffType.CASH_OR_NOTHING) {
+		if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
 			final double value = isEuropeanExercise(exercise)
 					? getDiscountedCashValue(option, time)
 					: option.getCashPayoff();
@@ -120,7 +121,7 @@ public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundar
 			result[1] = StandardBoundaryCondition.none();
 			return result;
 		}
-		else if(payoffType == DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING) {
+		else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
 			final double stateVariable = stateVariables[0];
 			final double value = isEuropeanExercise(exercise)
 					? getDiscountedAssetValue(stateVariable, option, time)

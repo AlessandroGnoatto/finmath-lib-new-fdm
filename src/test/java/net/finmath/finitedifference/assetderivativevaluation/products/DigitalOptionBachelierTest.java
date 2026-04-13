@@ -14,6 +14,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.AmericanExercise;
 import net.finmath.modelling.BermudanExercise;
 import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.DigitalPayoffType;
 import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
@@ -48,7 +49,7 @@ public class DigitalOptionBachelierTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final double[] valuesOnGrid = option.getValue(0.0, setup.model);
@@ -68,14 +69,14 @@ public class DigitalOptionBachelierTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { MATURITY }));
 
@@ -96,14 +97,14 @@ public class DigitalOptionBachelierTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -111,7 +112,7 @@ public class DigitalOptionBachelierTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new AmericanExercise(0.0, MATURITY));
 

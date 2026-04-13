@@ -14,6 +14,7 @@ import net.finmath.finitedifference.solvers.FDMSolverFactory;
 import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.DigitalPayoffType;
 import net.finmath.time.TimeDiscretization;
 
 /**
@@ -44,21 +45,6 @@ import net.finmath.time.TimeDiscretization;
  * @author Alessandro Gnoatto
  */
 public class DigitalOption implements FiniteDifferenceProduct {
-
-	/**
-	 * Type of digital payoff.
-	 */
-	public enum DigitalPayoffType {
-		/**
-		 * Payoff is a fixed cash amount if in the money.
-		 */
-		CASH_OR_NOTHING,
-
-		/**
-		 * Payoff is the underlying value if in the money.
-		 */
-		ASSET_OR_NOTHING
-	}
 
 	private final String underlyingName;
 	private final double maturity;

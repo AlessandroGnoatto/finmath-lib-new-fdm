@@ -16,6 +16,7 @@ import net.finmath.functions.AnalyticFormulas;
 import net.finmath.modelling.AmericanExercise;
 import net.finmath.modelling.BermudanExercise;
 import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.DigitalPayoffType;
 import net.finmath.time.TimeDiscretization;
 import net.finmath.time.TimeDiscretizationFromArray;
 
@@ -60,7 +61,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final double[] fdValuesOnGrid = option.getValue(0.0, setup.model);
@@ -88,7 +89,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final double[] fdValuesOnGrid = option.getValue(0.0, setup.model);
@@ -116,7 +117,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final double[] fdValuesOnGrid = option.getValue(0.0, setup.model);
@@ -143,7 +144,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final double[] fdValuesOnGrid = option.getValue(0.0, setup.model);
@@ -170,14 +171,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new net.finmath.modelling.BermudanExercise(new double[] { MATURITY }));
 
@@ -199,14 +200,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new net.finmath.modelling.BermudanExercise(new double[] { MATURITY }));
 
@@ -228,14 +229,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new net.finmath.modelling.BermudanExercise(new double[] { MATURITY }));
 
@@ -257,14 +258,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -286,14 +287,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -315,14 +316,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -344,14 +345,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -373,14 +374,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -388,7 +389,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new AmericanExercise(0.0, MATURITY));
 
@@ -409,14 +410,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -424,7 +425,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new AmericanExercise(0.0, MATURITY));
 
@@ -445,14 +446,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -460,7 +461,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new AmericanExercise(0.0, MATURITY));
 
@@ -481,14 +482,14 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0);
 
 		final DigitalOption bermudanOption = new DigitalOption(
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new BermudanExercise(new double[] { 0.5, MATURITY }));
 
@@ -496,7 +497,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.CALL,
-				DigitalOption.DigitalPayoffType.ASSET_OR_NOTHING,
+				DigitalPayoffType.ASSET_OR_NOTHING,
 				0.0,
 				new AmericanExercise(0.0, MATURITY));
 
@@ -517,7 +518,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new BermudanExercise(new double[] { 0.25, 0.5, 0.75, MATURITY }));
 
@@ -525,7 +526,7 @@ public class DigitalOptionBlackScholesTest {
 				MATURITY,
 				STRIKE,
 				CallOrPut.PUT,
-				DigitalOption.DigitalPayoffType.CASH_OR_NOTHING,
+				DigitalPayoffType.CASH_OR_NOTHING,
 				CASH_PAYOFF,
 				new AmericanExercise(0.0, MATURITY));
 

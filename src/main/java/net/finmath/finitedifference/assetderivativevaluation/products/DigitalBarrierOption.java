@@ -1,0 +1,947 @@
+package net.finmath.finitedifference.assetderivativevaluation.products;
+
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
+import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.grids.Grid;
+import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.finitedifference.grids.UniformGrid;
+import net.finmath.finitedifference.solvers.FDMSolver;
+import net.finmath.finitedifference.solvers.FDMSolverFactory;
+import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
+import net.finmath.interpolation.RationalFunctionInterpolation;
+import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
+import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
+import net.finmath.modelling.EuropeanExercise;
+import net.finmath.modelling.Exercise;
+import net.finmath.modelling.products.BarrierType;
+import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.DigitalPayoffType;
+import net.finmath.time.TimeDiscretization;
+
+/**
+ * Finite-difference valuation of a European single-barrier digital option on one asset.
+ *
+ * <p>
+ * Supported payoff families:
+ * </p>
+ * <ul>
+ *   <li>cash-or-nothing call / put,</li>
+ *   <li>asset-or-nothing call / put,</li>
+ *   <li>down-in / up-in / down-out / up-out.</li>
+ * </ul>
+ *
+ * <p>
+ * Current implementation policy:
+ * </p>
+ * <ul>
+ *   <li>knock-out options are priced directly by the finite-difference solver,
+ *       using internal state constraints on the original product grid,</li>
+ *   <li>1D knock-in options are priced directly through a coupled two-state PDE
+ *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
+ *   <li>2D knock-in options currently fall back to in-out parity against the corresponding
+ *       vanilla digital option,</li>
+ *   <li>for one-dimensional models, terminal payoff initialization is cell-averaged
+ *       in order to reduce strike-discontinuity grid bias.</li>
+ * </ul>
+ *
+ * <p>
+ * This first version supports European exercise only.
+ * </p>
+ *
+ * @author Alessandro Gnoatto
+ */
+public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint, FiniteDifferenceOneDimensionalKnockInProduct {
+
+    /*
+     * Internal pricing split.
+     */
+    private enum PricingMode {
+        DIRECT_OUT,
+        ACTIVATION_POLICY_IN
+    }
+
+    /*
+     * 1D direct knock-in settings copied from BarrierOption-style logic.
+     */
+    private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
+    private static final int DOWN_IN_PUT_EXTRA_STEPS_1D = 160;
+    private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
+
+    private final String underlyingName;
+    private final double maturity;
+    private final double strike;
+    private final double barrierValue;
+    private final CallOrPut callOrPutSign;
+    private final BarrierType barrierType;
+    private final DigitalPayoffType digitalPayoffType;
+    private final double cashPayoff;
+    private final Exercise exercise;
+
+    public DigitalBarrierOption(
+            final String underlyingName,
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final CallOrPut callOrPutSign,
+            final BarrierType barrierType,
+            final DigitalPayoffType digitalPayoffType,
+            final double cashPayoff,
+            final Exercise exercise) {
+
+        if(callOrPutSign == null) {
+            throw new IllegalArgumentException("Option type must not be null.");
+        }
+        if(barrierType == null) {
+            throw new IllegalArgumentException("Barrier type must not be null.");
+        }
+        if(digitalPayoffType == null) {
+            throw new IllegalArgumentException("Digital payoff type must not be null.");
+        }
+        if(exercise == null) {
+            throw new IllegalArgumentException("Exercise must not be null.");
+        }
+        if(!exercise.isEuropean()) {
+            throw new IllegalArgumentException("DigitalBarrierOption currently supports European exercise only.");
+        }
+        if(maturity < 0.0) {
+            throw new IllegalArgumentException("Maturity must be non-negative.");
+        }
+        if(digitalPayoffType == DigitalPayoffType.CASH_OR_NOTHING && cashPayoff < 0.0) {
+            throw new IllegalArgumentException("Cash payoff must be non-negative.");
+        }
+
+        this.underlyingName = underlyingName;
+        this.maturity = maturity;
+        this.strike = strike;
+        this.barrierValue = barrierValue;
+        this.callOrPutSign = callOrPutSign;
+        this.barrierType = barrierType;
+        this.digitalPayoffType = digitalPayoffType;
+        this.cashPayoff = digitalPayoffType == DigitalPayoffType.CASH_OR_NOTHING ? cashPayoff : Double.NaN;
+        this.exercise = exercise;
+    }
+
+    public DigitalBarrierOption(
+            final String underlyingName,
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final CallOrPut callOrPutSign,
+            final BarrierType barrierType,
+            final DigitalPayoffType digitalPayoffType,
+            final double cashPayoff) {
+        this(
+                underlyingName,
+                maturity,
+                strike,
+                barrierValue,
+                callOrPutSign,
+                barrierType,
+                digitalPayoffType,
+                cashPayoff,
+                new EuropeanExercise(maturity)
+        );
+    }
+
+    public DigitalBarrierOption(
+            final String underlyingName,
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final double callOrPutSign,
+            final BarrierType barrierType,
+            final DigitalPayoffType digitalPayoffType,
+            final double cashPayoff) {
+        this(
+                underlyingName,
+                maturity,
+                strike,
+                barrierValue,
+                mapCallOrPut(callOrPutSign),
+                barrierType,
+                digitalPayoffType,
+                cashPayoff,
+                new EuropeanExercise(maturity)
+        );
+    }
+
+    public DigitalBarrierOption(
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final CallOrPut callOrPutSign,
+            final BarrierType barrierType,
+            final DigitalPayoffType digitalPayoffType,
+            final double cashPayoff) {
+        this(
+                null,
+                maturity,
+                strike,
+                barrierValue,
+                callOrPutSign,
+                barrierType,
+                digitalPayoffType,
+                cashPayoff,
+                new EuropeanExercise(maturity)
+        );
+    }
+
+    public DigitalBarrierOption(
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final double callOrPutSign,
+            final BarrierType barrierType,
+            final DigitalPayoffType digitalPayoffType,
+            final double cashPayoff) {
+        this(
+                null,
+                maturity,
+                strike,
+                barrierValue,
+                mapCallOrPut(callOrPutSign),
+                barrierType,
+                digitalPayoffType,
+                cashPayoff,
+                new EuropeanExercise(maturity)
+        );
+    }
+
+    @Override
+    public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
+        final double[][] values = getValues(model);
+
+        final SpaceTimeDiscretization valuationDiscretization = model.getSpaceTimeDiscretization();
+        final double tau = maturity - evaluationTime;
+        final int timeIndex = valuationDiscretization.getTimeDiscretization()
+                .getTimeIndexNearestLessOrEqual(tau);
+
+        final double[] column = new double[values.length];
+        for(int i = 0; i < values.length; i++) {
+            column[i] = values[i][timeIndex];
+        }
+        return column;
+    }
+
+    @Override
+    public double[][] getValues(final FiniteDifferenceEquityModel model) {
+
+        validateProductConfiguration(model);
+
+        if(isDegenerateZeroCase()) {
+            return buildZeroValueSurface(model);
+        }
+
+        if(isDegenerateVanillaCase()) {
+            return createVanillaDigitalOption().getValues(model);
+        }
+
+        switch(getPricingMode()) {
+        case DIRECT_OUT:
+            return priceOutOptionDirectly(model);
+        case ACTIVATION_POLICY_IN:
+            return priceInOptionThroughActivationPolicy(model);
+        default:
+            throw new IllegalStateException("Unsupported pricing mode.");
+        }
+    }
+
+    private PricingMode getPricingMode() {
+        return isOutOption() ? PricingMode.DIRECT_OUT : PricingMode.ACTIVATION_POLICY_IN;
+    }
+
+    private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
+        validateBarrierInsideGrid(model);
+        if(!exercise.isEuropean()) {
+            throw new IllegalArgumentException("Only European exercise is currently supported.");
+        }
+    }
+
+    private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
+        final int numberOfSpacePoints = getTotalNumberOfSpacePoints(model.getSpaceTimeDiscretization());
+        final int numberOfTimePoints =
+                model.getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps() + 1;
+
+        final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
+        for(int i = 0; i < numberOfSpacePoints; i++) {
+            for(int j = 0; j < numberOfTimePoints; j++) {
+                zeroValues[i][j] = 0.0;
+            }
+        }
+        return zeroValues;
+    }
+
+    private double[][] priceOutOptionDirectly(final FiniteDifferenceEquityModel model) {
+        final FDMSolver solver = FDMSolverFactory.createSolver(
+                model,
+                this,
+                model.getSpaceTimeDiscretization(),
+                exercise
+        );
+
+        if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1) {
+            return solver.getValues(maturity, buildCellAveragedTerminalValues(model.getSpaceTimeDiscretization()));
+        }
+
+        return solver.getValues(maturity, this::pointwisePayoffForDirectOutPricing);
+    }
+
+    private double[][] priceInOptionThroughActivationPolicy(final FiniteDifferenceEquityModel model) {
+
+        final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+            throw new IllegalStateException(
+                    "priceInOptionThroughActivationPolicy was called for a non knock-in barrier type.");
+        }
+
+        if(numberOfSpaceDimensions == 1) {
+            final FiniteDifferenceEquityModel knockInModel = createAuxiliaryKnockInModel1D(model);
+
+            final FDMSolver solver = new FDMThetaMethod1DTwoState(
+                    knockInModel,
+                    this,
+                    knockInModel.getSpaceTimeDiscretization(),
+                    exercise,
+                    ActiveBoundaryProviderFactory.createProvider(
+                            knockInModel,
+                            strike,
+                            maturity,
+                            callOrPutSign
+                    )
+            );
+
+            final double[][] knockInValuesOnAuxiliaryGrid = solver.getValues(
+                    maturity,
+                    buildCellAveragedTerminalValues(knockInModel.getSpaceTimeDiscretization())
+            );
+
+            return interpolateSurfaceToOriginalGrid1D(
+                    knockInValuesOnAuxiliaryGrid,
+                    knockInModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+                    model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid()
+            );
+        }
+        else {
+            return priceInOptionByParity(model);
+        }
+    }
+
+    private double[][] priceInOptionByParity(final FiniteDifferenceEquityModel barrierModel) {
+
+        final DigitalOption vanillaOption = createVanillaDigitalOption();
+        final DigitalBarrierOption correspondingOutOption = createCorrespondingOutOption();
+
+        final double[][] outValues = correspondingOutOption.getValues(barrierModel);
+
+        final FiniteDifferenceEquityModel vanillaModel = createAuxiliaryVanillaModel(barrierModel);
+        final double[][] vanillaValues = vanillaOption.getValues(vanillaModel);
+
+        final SpaceTimeDiscretization barrierDiscretization = barrierModel.getSpaceTimeDiscretization();
+        final SpaceTimeDiscretization vanillaDiscretization = vanillaModel.getSpaceTimeDiscretization();
+
+        final int dims = barrierDiscretization.getNumberOfSpaceGrids();
+
+        if(dims == 1) {
+            final double[] barrierGrid = barrierDiscretization.getSpaceGrid(0).getGrid();
+            final double[] vanillaGrid = vanillaDiscretization.getSpaceGrid(0).getGrid();
+
+            final int numberOfColumns = outValues[0].length;
+            final double[][] inValues = new double[outValues.length][numberOfColumns];
+
+            for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+                final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+                        vanillaGrid,
+                        getColumn(vanillaValues, timeIndex),
+                        InterpolationMethod.LINEAR,
+                        ExtrapolationMethod.CONSTANT
+                );
+
+                for(int i = 0; i < barrierGrid.length; i++) {
+                    final double stock = barrierGrid[i];
+                    final double vanillaValue = interpolator.getValue(stock);
+                    inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
+                }
+            }
+
+            return inValues;
+        }
+        else if(dims == 2) {
+            final double[][] vanillaOnBarrierGrid = interpolateSurfaceToOriginalGrid2DAlongFirstState(
+                    vanillaValues,
+                    vanillaDiscretization,
+                    barrierDiscretization
+            );
+
+            final int numberOfRows = outValues.length;
+            final int numberOfColumns = outValues[0].length;
+            final double[][] inValues = new double[numberOfRows][numberOfColumns];
+
+            for(int i = 0; i < numberOfRows; i++) {
+                for(int j = 0; j < numberOfColumns; j++) {
+                    inValues[i][j] = vanillaOnBarrierGrid[i][j] - outValues[i][j];
+                }
+            }
+
+            return inValues;
+        }
+        else {
+            throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+        }
+    }
+
+    private double[] buildCellAveragedTerminalValues(final SpaceTimeDiscretization discretization) {
+        final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
+        final double[] terminalValues = new double[sGrid.length];
+
+        for(int i = 0; i < sGrid.length; i++) {
+            final double leftEdge = getLeftDualCellEdge(sGrid, i);
+            final double rightEdge = getRightDualCellEdge(sGrid, i);
+            terminalValues[i] = cellAveragedPayoffForProductMode(leftEdge, rightEdge);
+        }
+
+        return terminalValues;
+    }
+
+    private double cellAveragedPayoffForProductMode(final double leftEdge, final double rightEdge) {
+        switch(getPricingMode()) {
+        case DIRECT_OUT:
+            return cellAveragedPayoffForDirectOutPricing(leftEdge, rightEdge);
+        case ACTIVATION_POLICY_IN:
+            return cellAveragedPureDigital(leftEdge, rightEdge);
+        default:
+            throw new IllegalStateException("Unsupported pricing mode.");
+        }
+    }
+
+    private double pointwisePayoffForDirectOutPricing(final double assetValue) {
+        if(!isAliveAtMaturityForOutOption(assetValue)) {
+            return 0.0;
+        }
+        return pointwiseDigitalPayoff(assetValue);
+    }
+
+    private double cellAveragedPayoffForDirectOutPricing(final double leftEdge, final double rightEdge) {
+        if(!(leftEdge < rightEdge)) {
+            throw new IllegalArgumentException("Require leftEdge < rightEdge.");
+        }
+
+        switch(barrierType) {
+        case DOWN_OUT:
+            if(rightEdge <= barrierValue) {
+                return 0.0;
+            }
+            if(leftEdge >= barrierValue) {
+                return cellAveragedPureDigital(leftEdge, rightEdge);
+            }
+            return cellAveragedPureDigital(Math.max(leftEdge, barrierValue), rightEdge)
+                    * (rightEdge - Math.max(leftEdge, barrierValue)) / (rightEdge - leftEdge);
+
+        case UP_OUT:
+            if(leftEdge >= barrierValue) {
+                return 0.0;
+            }
+            if(rightEdge <= barrierValue) {
+                return cellAveragedPureDigital(leftEdge, rightEdge);
+            }
+            return cellAveragedPureDigital(leftEdge, Math.min(rightEdge, barrierValue))
+                    * (Math.min(rightEdge, barrierValue) - leftEdge) / (rightEdge - leftEdge);
+
+        default:
+            throw new IllegalArgumentException("Direct out payoff requested for non out-option.");
+        }
+    }
+
+    private double pointwiseDigitalPayoff(final double assetValue) {
+        final boolean inTheMoney =
+                callOrPutSign == CallOrPut.CALL
+                        ? assetValue > strike
+                        : assetValue < strike;
+
+        if(!inTheMoney) {
+            return 0.0;
+        }
+
+        switch(digitalPayoffType) {
+        case CASH_OR_NOTHING:
+            return cashPayoff;
+        case ASSET_OR_NOTHING:
+            return assetValue;
+        default:
+            throw new IllegalStateException("Unsupported digital payoff type.");
+        }
+    }
+
+    private double cellAveragedPureDigital(final double leftEdge, final double rightEdge) {
+        switch(digitalPayoffType) {
+        case CASH_OR_NOTHING:
+            return cellAveragedCashDigital(leftEdge, rightEdge);
+        case ASSET_OR_NOTHING:
+            return cellAveragedAssetDigital(leftEdge, rightEdge);
+        default:
+            throw new IllegalStateException("Unsupported digital payoff type.");
+        }
+    }
+
+    private double cellAveragedCashDigital(final double leftEdge, final double rightEdge) {
+        final double cellLength = rightEdge - leftEdge;
+
+        if(callOrPutSign == CallOrPut.CALL) {
+            if(rightEdge <= strike) {
+                return 0.0;
+            }
+            if(leftEdge >= strike) {
+                return cashPayoff;
+            }
+            return cashPayoff * (rightEdge - strike) / cellLength;
+        }
+        else {
+            if(rightEdge <= strike) {
+                return cashPayoff;
+            }
+            if(leftEdge >= strike) {
+                return 0.0;
+            }
+            return cashPayoff * (strike - leftEdge) / cellLength;
+        }
+    }
+
+    private double cellAveragedAssetDigital(final double leftEdge, final double rightEdge) {
+        final double cellLength = rightEdge - leftEdge;
+
+        if(callOrPutSign == CallOrPut.CALL) {
+            if(rightEdge <= strike) {
+                return 0.0;
+            }
+            if(leftEdge >= strike) {
+                return 0.5 * (leftEdge + rightEdge);
+            }
+            return (rightEdge * rightEdge - strike * strike) / (2.0 * cellLength);
+        }
+        else {
+            if(rightEdge <= strike) {
+                return 0.5 * (leftEdge + rightEdge);
+            }
+            if(leftEdge >= strike) {
+                return 0.0;
+            }
+            return (strike * strike - leftEdge * leftEdge) / (2.0 * cellLength);
+        }
+    }
+
+    private double getLeftDualCellEdge(final double[] grid, final int i) {
+        if(i == 0) {
+            return grid[0];
+        }
+        return 0.5 * (grid[i - 1] + grid[i]);
+    }
+
+    private double getRightDualCellEdge(final double[] grid, final int i) {
+        if(i == grid.length - 1) {
+            return grid[grid.length - 1];
+        }
+        return 0.5 * (grid[i] + grid[i + 1]);
+    }
+
+    private boolean isAliveAtMaturityForOutOption(final double assetValue) {
+        switch(barrierType) {
+        case DOWN_OUT:
+            return assetValue > barrierValue;
+        case UP_OUT:
+            return assetValue < barrierValue;
+        default:
+            return false;
+        }
+    }
+
+    private double[][] interpolateSurfaceToOriginalGrid1D(
+            final double[][] valuesOnAuxiliaryGrid,
+            final double[] auxiliaryGrid,
+            final double[] originalGrid) {
+
+        final int numberOfColumns = valuesOnAuxiliaryGrid[0].length;
+        final double[][] interpolatedValues = new double[originalGrid.length][numberOfColumns];
+
+        for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+            final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+                    auxiliaryGrid,
+                    getColumn(valuesOnAuxiliaryGrid, timeIndex),
+                    InterpolationMethod.LINEAR,
+                    ExtrapolationMethod.CONSTANT
+            );
+
+            for(int i = 0; i < originalGrid.length; i++) {
+                interpolatedValues[i][timeIndex] = interpolator.getValue(originalGrid[i]);
+            }
+        }
+
+        return interpolatedValues;
+    }
+
+    private double[][] interpolateSurfaceToOriginalGrid2DAlongFirstState(
+            final double[][] valuesOnAuxiliaryGrid,
+            final SpaceTimeDiscretization auxiliaryDiscretization,
+            final SpaceTimeDiscretization originalDiscretization) {
+
+        final double[] auxiliaryX0 = auxiliaryDiscretization.getSpaceGrid(0).getGrid();
+        final double[] auxiliaryX1 = auxiliaryDiscretization.getSpaceGrid(1).getGrid();
+
+        final double[] originalX0 = originalDiscretization.getSpaceGrid(0).getGrid();
+        final double[] originalX1 = originalDiscretization.getSpaceGrid(1).getGrid();
+
+        if(auxiliaryX1.length != originalX1.length) {
+            throw new IllegalArgumentException(
+                    "2D knock-in interpolation currently requires the second state-variable grid to remain unchanged.");
+        }
+
+        for(int j = 0; j < originalX1.length; j++) {
+            if(Math.abs(auxiliaryX1[j] - originalX1[j]) > 1E-12) {
+                throw new IllegalArgumentException(
+                        "2D knock-in interpolation currently requires the second state-variable grid to remain unchanged.");
+            }
+        }
+
+        final int auxiliaryN0 = auxiliaryX0.length;
+        final int originalN0 = originalX0.length;
+        final int originalN1 = originalX1.length;
+
+        final int numberOfColumns = valuesOnAuxiliaryGrid[0].length;
+        final double[][] interpolatedValues = new double[originalN0 * originalN1][numberOfColumns];
+
+        for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+            for(int j = 0; j < originalN1; j++) {
+
+                final double[] auxiliarySlice = new double[auxiliaryN0];
+                for(int i = 0; i < auxiliaryN0; i++) {
+                    final int k = flatten(i, j, auxiliaryN0);
+                    auxiliarySlice[i] = valuesOnAuxiliaryGrid[k][timeIndex];
+                }
+
+                final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+                        auxiliaryX0,
+                        auxiliarySlice,
+                        InterpolationMethod.LINEAR,
+                        ExtrapolationMethod.CONSTANT
+                );
+
+                for(int i = 0; i < originalN0; i++) {
+                    final int k = flatten(i, j, originalN0);
+                    interpolatedValues[k][timeIndex] = interpolator.getValue(originalX0[i]);
+                }
+            }
+        }
+
+        return interpolatedValues;
+    }
+
+    private DigitalOption createVanillaDigitalOption() {
+        return new DigitalOption(
+                underlyingName,
+                maturity,
+                strike,
+                callOrPutSign,
+                digitalPayoffType,
+                getCashPayoffOrZero(),
+                exercise
+        );
+    }
+
+    private DigitalBarrierOption createCorrespondingOutOption() {
+        return new DigitalBarrierOption(
+                underlyingName,
+                maturity,
+                strike,
+                barrierValue,
+                callOrPutSign,
+                getCorrespondingOutBarrierType(),
+                digitalPayoffType,
+                getCashPayoffOrZero(),
+                exercise
+        );
+    }
+
+    private double getCashPayoffOrZero() {
+        return digitalPayoffType == DigitalPayoffType.CASH_OR_NOTHING ? cashPayoff : 0.0;
+    }
+
+    private BarrierType getCorrespondingOutBarrierType() {
+        if(barrierType == BarrierType.DOWN_IN) {
+            return BarrierType.DOWN_OUT;
+        }
+        if(barrierType == BarrierType.UP_IN) {
+            return BarrierType.UP_OUT;
+        }
+        throw new IllegalArgumentException("No corresponding out barrier type for " + barrierType);
+    }
+
+    private FiniteDifferenceEquityModel createAuxiliaryVanillaModel(final FiniteDifferenceEquityModel barrierModel) {
+
+        final SpaceTimeDiscretization barrierDiscretization = barrierModel.getSpaceTimeDiscretization();
+        final TimeDiscretization timeDiscretization = barrierDiscretization.getTimeDiscretization();
+        final double thetaValue = barrierDiscretization.getTheta();
+
+        final double[] barrierGrid = barrierDiscretization.getSpaceGrid(0).getGrid();
+        if(barrierGrid.length < 2) {
+            throw new IllegalArgumentException("Barrier grid must contain at least two points.");
+        }
+
+        final double deltaS = barrierGrid[1] - barrierGrid[0];
+
+        final double initialValue = barrierModel.getInitialValue()[0];
+        final double currentMin = barrierGrid[0];
+        final double currentMax = barrierGrid[barrierGrid.length - 1];
+        final double currentHalfWidth = Math.max(initialValue - currentMin, currentMax - initialValue);
+
+        final double targetMin = Math.max(1E-8, initialValue - 2.0 * currentHalfWidth);
+        final double targetMax = initialValue + 2.0 * currentHalfWidth;
+
+        final double sMin = Math.floor(targetMin / deltaS) * deltaS;
+        final double sMax = Math.ceil(targetMax / deltaS) * deltaS;
+        final int numberOfSteps = (int)Math.round((sMax - sMin) / deltaS);
+
+        final Grid vanillaSpotGrid = new UniformGrid(numberOfSteps, sMin, sMax);
+
+        if(barrierDiscretization.getNumberOfSpaceGrids() == 1) {
+            final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
+                    vanillaSpotGrid,
+                    timeDiscretization,
+                    thetaValue,
+                    new double[] { initialValue }
+            );
+            return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
+        }
+        else if(barrierDiscretization.getNumberOfSpaceGrids() == 2) {
+            final double[] secondGrid = barrierDiscretization.getSpaceGrid(1).getGrid();
+            final Grid preservedSecondGrid = new UniformGrid(
+                    secondGrid.length - 1,
+                    secondGrid[0],
+                    secondGrid[secondGrid.length - 1]
+            );
+
+            final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
+                    new Grid[] { vanillaSpotGrid, preservedSecondGrid },
+                    timeDiscretization,
+                    thetaValue,
+                    barrierModel.getInitialValue()
+            );
+            return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
+        }
+        else {
+            throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+        }
+    }
+
+    private FiniteDifferenceEquityModel createAuxiliaryKnockInModel1D(final FiniteDifferenceEquityModel originalModel) {
+
+        final SpaceTimeDiscretization originalDiscretization = originalModel.getSpaceTimeDiscretization();
+        final TimeDiscretization timeDiscretization = originalDiscretization.getTimeDiscretization();
+        final double thetaValue = originalDiscretization.getTheta();
+
+        final double[] originalGrid = originalDiscretization.getSpaceGrid(0).getGrid();
+        if(originalGrid.length < 2) {
+            throw new IllegalArgumentException("Barrier grid must contain at least two points.");
+        }
+
+        final double deltaS = originalGrid[1] - originalGrid[0];
+        final int numberOfSteps = originalGrid.length - 1;
+        final double initialValue = originalModel.getInitialValue()[0];
+        final int extraStepsBeyondBarrier = getKnockInExtraStepsBeyondBarrier1D();
+
+        final double sMin;
+        final double sMax;
+
+        if(barrierType == BarrierType.DOWN_IN) {
+            sMin = barrierValue - extraStepsBeyondBarrier * deltaS;
+            sMax = sMin + numberOfSteps * deltaS;
+        }
+        else if(barrierType == BarrierType.UP_IN) {
+            sMax = barrierValue + extraStepsBeyondBarrier * deltaS;
+            sMin = sMax - numberOfSteps * deltaS;
+        }
+        else {
+            throw new IllegalArgumentException("Auxiliary knock-in model requested for non knock-in barrier type.");
+        }
+
+        validateBarrierIsInteriorGridNode(sMin, sMax, deltaS, numberOfSteps);
+
+        final Grid knockInGrid = new UniformGrid(numberOfSteps, sMin, sMax);
+
+        final SpaceTimeDiscretization knockInDiscretization = new SpaceTimeDiscretization(
+                knockInGrid,
+                timeDiscretization,
+                thetaValue,
+                new double[] { initialValue }
+        );
+
+        return originalModel.getCloneWithModifiedSpaceTimeDiscretization(knockInDiscretization);
+    }
+
+    private int getKnockInExtraStepsBeyondBarrier1D() {
+        if(barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT) {
+            return DOWN_IN_PUT_EXTRA_STEPS_1D;
+        }
+        if(barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL) {
+            return UP_IN_CALL_EXTRA_STEPS_1D;
+        }
+        return DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D;
+    }
+
+    private void validateBarrierIsInteriorGridNode(
+            final double sMin,
+            final double sMax,
+            final double deltaS,
+            final int numberOfSteps) {
+
+        final double barrierIndexReal = (barrierValue - sMin) / deltaS;
+        final long barrierIndexRounded = Math.round(barrierIndexReal);
+
+        if(Math.abs(barrierIndexReal - barrierIndexRounded) > 1E-8) {
+            throw new IllegalArgumentException("Auxiliary knock-in grid does not place the barrier on a grid node.");
+        }
+
+        if(barrierIndexRounded <= 0 || barrierIndexRounded >= numberOfSteps) {
+            throw new IllegalArgumentException("Auxiliary knock-in grid must place the barrier on an interior node.");
+        }
+
+        if(barrierValue <= sMin || barrierValue >= sMax) {
+            throw new IllegalArgumentException(
+                    "Auxiliary knock-in grid must contain the barrier strictly inside the domain.");
+        }
+    }
+
+    private static double[] getColumn(final double[][] matrix, final int columnIndex) {
+        final double[] column = new double[matrix.length];
+        for(int i = 0; i < matrix.length; i++) {
+            column[i] = matrix[i][columnIndex];
+        }
+        return column;
+    }
+
+    private static int flatten(final int i0, final int i1, final int n0) {
+        return i0 + i1 * n0;
+    }
+
+    private int getTotalNumberOfSpacePoints(final SpaceTimeDiscretization discretization) {
+        final int dims = discretization.getNumberOfSpaceGrids();
+        if(dims == 1) {
+            return discretization.getSpaceGrid(0).getGrid().length;
+        }
+        else if(dims == 2) {
+            return discretization.getSpaceGrid(0).getGrid().length
+                    * discretization.getSpaceGrid(1).getGrid().length;
+        }
+        else {
+            throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+        }
+    }
+
+    private boolean isOutOption() {
+        return barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT;
+    }
+
+    /*
+     * Digital analogues of the BarrierOption degeneracies.
+     */
+    private boolean isDegenerateZeroCase() {
+        return (barrierType == BarrierType.UP_OUT && callOrPutSign == CallOrPut.CALL && barrierValue <= strike)
+                || (barrierType == BarrierType.DOWN_OUT && callOrPutSign == CallOrPut.PUT && barrierValue >= strike)
+                || (barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.CALL && barrierValue >= strike)
+                || (barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.PUT && barrierValue <= strike);
+    }
+
+    private boolean isDegenerateVanillaCase() {
+        return (barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL && barrierValue <= strike)
+                || (barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT && barrierValue >= strike);
+    }
+
+    private void validateBarrierInsideGrid(final FiniteDifferenceEquityModel model) {
+        final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+        final double lowerBoundary = grid[0];
+        final double upperBoundary = grid[grid.length - 1];
+
+        if(barrierValue < lowerBoundary || barrierValue > upperBoundary) {
+            throw new IllegalArgumentException(
+                    "The barrier must lie inside the first state-variable grid domain of the supplied model.");
+        }
+    }
+
+    @Override
+    public boolean isConstraintActive(final double time, final double... stateVariables) {
+        if(!isOutOption()) {
+            return false;
+        }
+
+        final double underlyingLevel = stateVariables[0];
+
+        switch(barrierType) {
+        case DOWN_OUT:
+            return underlyingLevel <= barrierValue;
+        case UP_OUT:
+            return underlyingLevel >= barrierValue;
+        default:
+            return false;
+        }
+    }
+
+    @Override
+    public double getConstrainedValue(final double time, final double... stateVariables) {
+        if(!isOutOption()) {
+            throw new IllegalStateException("Internal constrained value requested for a non out-option.");
+        }
+        return 0.0;
+    }
+
+    private static CallOrPut mapCallOrPut(final double callOrPutSign) {
+        if(callOrPutSign == 1.0) {
+            return CallOrPut.CALL;
+        }
+        if(callOrPutSign == -1.0) {
+            return CallOrPut.PUT;
+        }
+        throw new IllegalArgumentException("Unknown option type.");
+    }
+
+    public String getUnderlyingName() {
+        return underlyingName;
+    }
+
+    @Override
+    public double getMaturity() {
+        return maturity;
+    }
+
+    public double getStrike() {
+        return strike;
+    }
+
+    @Override
+    public double getBarrierValue() {
+        return barrierValue;
+    }
+
+    public CallOrPut getCallOrPut() {
+        return callOrPutSign;
+    }
+
+    @Override
+    public BarrierType getBarrierType() {
+        return barrierType;
+    }
+
+    public DigitalPayoffType getDigitalPayoffType() {
+        return digitalPayoffType;
+    }
+
+    public double getCashPayoff() {
+        return cashPayoff;
+    }
+
+    public Exercise getExercise() {
+        return exercise;
+    }
+
+    @Override
+    public double getInactiveValueAtMaturity() {
+        return 0.0;
+    }
+}
