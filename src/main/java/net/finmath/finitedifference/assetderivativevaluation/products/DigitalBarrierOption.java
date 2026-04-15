@@ -19,7 +19,7 @@ import net.finmath.modelling.products.DigitalPayoffType;
 import net.finmath.time.TimeDiscretization;
 
 /**
- * Finite-difference valuation of a European single-barrier digital option on one asset.
+ * Finite-difference valuation of a single-barrier digital option on one asset.
  *
  * <p>
  * Supported payoff families:
@@ -45,24 +45,26 @@ import net.finmath.time.TimeDiscretization;
  * </ul>
  *
  * <p>
- * This first version supports European exercise only.
+ * Current exercise support:
  * </p>
+ * <ul>
+ *   <li>European: knock-in and knock-out,</li>
+ *   <li>Bermudan: knock-in and knock-out,</li>
+ *   <li>American: knock-in and knock-out.</li>
+ * </ul>
  *
  * @author Alessandro Gnoatto
  */
-public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint, FiniteDifferenceOneDimensionalKnockInProduct {
+public class DigitalBarrierOption implements
+        FiniteDifferenceProduct,
+        FiniteDifferenceInternalStateConstraint,
+        FiniteDifferenceOneDimensionalKnockInProduct {
 
-    /*
-     * Internal pricing split.
-     */
     private enum PricingMode {
         DIRECT_OUT,
         ACTIVATION_POLICY_IN
     }
 
-    /*
-     * 1D direct knock-in settings copied from BarrierOption-style logic.
-     */
     private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
     private static final int DOWN_IN_PUT_EXTRA_STEPS_1D = 160;
     private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
@@ -100,8 +102,9 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
         if(exercise == null) {
             throw new IllegalArgumentException("Exercise must not be null.");
         }
-        if(!exercise.isEuropean()) {
-            throw new IllegalArgumentException("DigitalBarrierOption currently supports European exercise only.");
+        if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+            throw new IllegalArgumentException(
+                    "DigitalBarrierOption currently supports only European, Bermudan, and American exercise.");
         }
         if(maturity < 0.0) {
             throw new IllegalArgumentException("Maturity must be non-negative.");
@@ -190,6 +193,28 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
             final double maturity,
             final double strike,
             final double barrierValue,
+            final CallOrPut callOrPutSign,
+            final BarrierType barrierType,
+            final DigitalPayoffType digitalPayoffType,
+            final double cashPayoff,
+            final Exercise exercise) {
+        this(
+                null,
+                maturity,
+                strike,
+                barrierValue,
+                callOrPutSign,
+                barrierType,
+                digitalPayoffType,
+                cashPayoff,
+                exercise
+        );
+    }
+
+    public DigitalBarrierOption(
+            final double maturity,
+            final double strike,
+            final double barrierValue,
             final double callOrPutSign,
             final BarrierType barrierType,
             final DigitalPayoffType digitalPayoffType,
@@ -252,8 +277,10 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
 
     private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
         validateBarrierInsideGrid(model);
-        if(!exercise.isEuropean()) {
-            throw new IllegalArgumentException("Only European exercise is currently supported.");
+
+        if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+            throw new IllegalArgumentException(
+                    "DigitalBarrierOption currently supports only European, Bermudan, and American exercise.");
         }
     }
 
@@ -279,8 +306,22 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
                 exercise
         );
 
-        if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1) {
-            return solver.getValues(maturity, buildCellAveragedTerminalValues(model.getSpaceTimeDiscretization()));
+        final boolean isOneDimensional =
+                model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1;
+
+        if(isOneDimensional) {
+            final double[] terminalValues =
+                    buildCellAveragedTerminalValues(model.getSpaceTimeDiscretization());
+
+            if(exercise.isEuropean()) {
+                return solver.getValues(maturity, terminalValues);
+            }
+
+            return solver.getValues(
+                    maturity,
+                    terminalValues,
+                    this::pointwisePayoffForDirectOutPricing
+            );
         }
 
         return solver.getValues(maturity, this::pointwisePayoffForDirectOutPricing);
@@ -293,6 +334,11 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
         if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
             throw new IllegalStateException(
                     "priceInOptionThroughActivationPolicy was called for a non knock-in barrier type.");
+        }
+
+        if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+            throw new IllegalArgumentException(
+                    "Direct knock-in pricing for DigitalBarrierOption currently supports only European, Bermudan, and American exercise.");
         }
 
         if(numberOfSpaceDimensions == 1) {
@@ -415,10 +461,30 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
     }
 
     private double pointwisePayoffForDirectOutPricing(final double assetValue) {
-        if(!isAliveAtMaturityForOutOption(assetValue)) {
+        if(!isAliveAtExerciseOrMaturityForOutOption(assetValue)) {
             return 0.0;
         }
-        return pointwiseDigitalPayoff(assetValue);
+        return pointwiseImmediateExercisePayoff(assetValue);
+    }
+
+    private double pointwiseImmediateExercisePayoff(final double assetValue) {
+        final boolean inTheMoney =
+                callOrPutSign == CallOrPut.CALL
+                        ? assetValue > strike
+                        : assetValue < strike;
+
+        if(!inTheMoney) {
+            return 0.0;
+        }
+
+        switch(digitalPayoffType) {
+        case CASH_OR_NOTHING:
+            return cashPayoff;
+        case ASSET_OR_NOTHING:
+            return assetValue;
+        default:
+            throw new IllegalStateException("Unsupported digital payoff type.");
+        }
     }
 
     private double cellAveragedPayoffForDirectOutPricing(final double leftEdge, final double rightEdge) {
@@ -449,26 +515,6 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
 
         default:
             throw new IllegalArgumentException("Direct out payoff requested for non out-option.");
-        }
-    }
-
-    private double pointwiseDigitalPayoff(final double assetValue) {
-        final boolean inTheMoney =
-                callOrPutSign == CallOrPut.CALL
-                        ? assetValue > strike
-                        : assetValue < strike;
-
-        if(!inTheMoney) {
-            return 0.0;
-        }
-
-        switch(digitalPayoffType) {
-        case CASH_OR_NOTHING:
-            return cashPayoff;
-        case ASSET_OR_NOTHING:
-            return assetValue;
-        default:
-            throw new IllegalStateException("Unsupported digital payoff type.");
         }
     }
 
@@ -543,7 +589,7 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
         return 0.5 * (grid[i] + grid[i + 1]);
     }
 
-    private boolean isAliveAtMaturityForOutOption(final double assetValue) {
+    private boolean isAliveAtExerciseOrMaturityForOutOption(final double assetValue) {
         switch(barrierType) {
         case DOWN_OUT:
             return assetValue > barrierValue;
@@ -568,7 +614,7 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
                     getColumn(valuesOnAuxiliaryGrid, timeIndex),
                     InterpolationMethod.LINEAR,
                     ExtrapolationMethod.CONSTANT
-            );
+                );
 
             for(int i = 0; i < originalGrid.length; i++) {
                 interpolatedValues[i][timeIndex] = interpolator.getValue(originalGrid[i]);
@@ -839,9 +885,6 @@ public class DigitalBarrierOption implements FiniteDifferenceProduct, FiniteDiff
         return barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT;
     }
 
-    /*
-     * Digital analogues of the BarrierOption degeneracies.
-     */
     private boolean isDegenerateZeroCase() {
         return (barrierType == BarrierType.UP_OUT && callOrPutSign == CallOrPut.CALL && barrierValue <= strike)
                 || (barrierType == BarrierType.DOWN_OUT && callOrPutSign == CallOrPut.PUT && barrierValue >= strike)
