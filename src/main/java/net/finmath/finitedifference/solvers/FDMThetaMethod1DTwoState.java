@@ -24,7 +24,8 @@ import net.finmath.modelling.products.BarrierType;
  * <ul>
  *   <li>The active regime is solved on the full grid using a tridiagonal theta step.</li>
  *   <li>The inactive regime is solved only on the continuation-side subgrid.</li>
- *   <li>On the already-hit region, the inactive regime is eliminated by imposing {@code inactive = active}.</li>
+ *   <li>On the already-hit region and at the barrier interface, the coupling between inactive
+ *       and active regimes is governed by a {@link TwoStateActivationPolicy}.</li>
  * </ul>
  *
  * <p>
@@ -42,6 +43,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     private final SpaceTimeDiscretization spaceTimeDiscretization;
     private final Exercise exercise;
     private final TwoStateActiveBoundaryProvider activeBoundaryProvider;
+    private final TwoStateActivationPolicy activationPolicy;
 
     /**
      * Creates a direct two-state theta-method solver for one-dimensional knock-in products.
@@ -56,8 +58,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
      *
      * <p>
      * The active regime is solved on the full spatial grid, while the inactive regime is solved only on the
-     * portion of the grid where the barrier has not yet been triggered. On the already-hit region, the inactive
-     * value is identified with the active one.
+     * portion of the grid where the barrier has not yet been triggered. The already-hit region and the
+     * continuation-side interface are coupled through the default continuation-style activation policy.
      * </p>
      *
      * @param model The finite-difference equity model providing local PDE coefficients and discounting.
@@ -72,11 +74,68 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final SpaceTimeDiscretization spaceTimeDiscretization,
             final Exercise exercise,
             final TwoStateActiveBoundaryProvider activeBoundaryProvider) {
+        this(
+                model,
+                product,
+                spaceTimeDiscretization,
+                exercise,
+                activeBoundaryProvider,
+                new ContinuationActivationPolicy()
+        );
+    }
+
+    /**
+     * Creates a direct two-state theta-method solver with an explicit activation policy.
+     *
+     * <p>
+     * The activation policy controls:
+     * </p>
+     * <ul>
+     *   <li>the inactive value on the already-hit region at maturity,</li>
+     *   <li>the inactive value on the already-hit region during backward stepping,</li>
+     *   <li>the interface value seen by the continuation-side inactive PDE at the barrier.</li>
+     * </ul>
+     *
+     * @param model The finite-difference equity model providing local PDE coefficients and discounting.
+     * @param product The knock-in product to be valued.
+     * @param spaceTimeDiscretization The spatial and temporal discretization, including the theta parameter.
+     * @param exercise The exercise specification. Bermudan and American exercise are applied only to the active regime.
+     * @param activeBoundaryProvider Provider for the boundary values of the already-activated regime.
+     * @param activationPolicy Policy governing activation coupling between inactive and active regimes.
+     */
+    public FDMThetaMethod1DTwoState(
+            final FiniteDifferenceEquityModel model,
+            final FiniteDifferenceOneDimensionalKnockInProduct product,
+            final SpaceTimeDiscretization spaceTimeDiscretization,
+            final Exercise exercise,
+            final TwoStateActiveBoundaryProvider activeBoundaryProvider,
+            final TwoStateActivationPolicy activationPolicy) {
+
+        if(model == null) {
+            throw new IllegalArgumentException("Model must not be null.");
+        }
+        if(product == null) {
+            throw new IllegalArgumentException("Product must not be null.");
+        }
+        if(spaceTimeDiscretization == null) {
+            throw new IllegalArgumentException("Space-time discretization must not be null.");
+        }
+        if(exercise == null) {
+            throw new IllegalArgumentException("Exercise must not be null.");
+        }
+        if(activeBoundaryProvider == null) {
+            throw new IllegalArgumentException("Active boundary provider must not be null.");
+        }
+        if(activationPolicy == null) {
+            throw new IllegalArgumentException("Activation policy must not be null.");
+        }
+
         this.model = model;
         this.product = product;
         this.spaceTimeDiscretization = spaceTimeDiscretization;
         this.exercise = exercise;
         this.activeBoundaryProvider = activeBoundaryProvider;
+        this.activationPolicy = activationPolicy;
     }
 
     /**
@@ -84,13 +143,13 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
      *
      * <p>
      * At maturity, the active regime equals the supplied activated payoff, while the inactive regime equals either
-     * the activated payoff on the already-hit region or the product's inactive terminal value on the not-yet-hit region.
-     * The method then steps backward in time:
+     * the activation-policy value on the already-hit region or the product's inactive terminal value on the
+     * not-yet-hit region. The method then steps backward in time:
      * </p>
      * <ul>
      *   <li>solving the activated regime on the full grid,</li>
      *   <li>solving the non-activated regime on the continuation-side subgrid,</li>
-     *   <li>imposing the coupling condition {@code inactive = active} on the already-hit region.</li>
+     *   <li>applying the activation policy on the already-hit region and at the barrier interface.</li>
      * </ul>
      *
      * <p>
@@ -104,10 +163,6 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
      */
     @Override
     public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
-
-        if(activeBoundaryProvider == null) {
-            throw new IllegalArgumentException("Active boundary provider must not be null.");
-        }
 
         if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
             throw new IllegalArgumentException(
@@ -138,7 +193,10 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
             active[i] = payoff;
             inactive[i] = isAlreadyHitRegion(x, barrierType, product.getBarrierValue())
-                    ? payoff
+                    ? activationPolicy.getAlreadyHitValueAtMaturity(
+                            x,
+                            payoff,
+                            product.getInactiveValueAtMaturity())
                     : product.getInactiveValueAtMaturity();
         }
 
@@ -297,7 +355,11 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final double currentTime) {
 
         for(int i = 0; i <= barrierIndex; i++) {
-            inactiveNext[i] = activeNext[i];
+            inactiveNext[i] = activationPolicy.getAlreadyHitValue(
+                    currentTime,
+                    xGrid[i],
+                    activeNext[i]
+            );
         }
 
         if(barrierIndex == xGrid.length - 1) {
@@ -311,9 +373,19 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             previousSub[j] = inactivePrevious[barrierIndex + j];
         }
 
-        previousSub[0] = activePrevious[barrierIndex];
+        previousSub[0] = activationPolicy.getAlreadyHitValue(
+                t_m,
+                xGrid[barrierIndex],
+                activePrevious[barrierIndex]
+        );
 
         final double discountedNoHitValue = getDiscountedNoHitValue(currentTime);
+
+        final double interfaceValue = activationPolicy.getInterfaceValue(
+                currentTime,
+                xGrid[barrierIndex],
+                activeNext[barrierIndex]
+        );
 
         final double[] nextSub = solveVanillaStep(
                 subGrid,
@@ -321,7 +393,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                 t_m,
                 t_mp1,
                 deltaTau,
-                activeNext[barrierIndex],
+                interfaceValue,
                 discountedNoHitValue);
 
         for(int j = 0; j < nextSub.length; j++) {
@@ -329,7 +401,11 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         }
 
         for(int i = 0; i <= barrierIndex; i++) {
-            inactiveNext[i] = activeNext[i];
+            inactiveNext[i] = activationPolicy.getAlreadyHitValue(
+                    currentTime,
+                    xGrid[i],
+                    activeNext[i]
+            );
         }
     }
 
@@ -346,7 +422,11 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final double currentTime) {
 
         for(int i = barrierIndex; i < xGrid.length; i++) {
-            inactiveNext[i] = activeNext[i];
+            inactiveNext[i] = activationPolicy.getAlreadyHitValue(
+                    currentTime,
+                    xGrid[i],
+                    activeNext[i]
+            );
         }
 
         if(barrierIndex == 0) {
@@ -360,9 +440,19 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             previousSub[j] = inactivePrevious[j];
         }
 
-        previousSub[subGrid.length - 1] = activePrevious[barrierIndex];
+        previousSub[subGrid.length - 1] = activationPolicy.getAlreadyHitValue(
+                t_m,
+                xGrid[barrierIndex],
+                activePrevious[barrierIndex]
+        );
 
         final double discountedNoHitValue = getDiscountedNoHitValue(currentTime);
+
+        final double interfaceValue = activationPolicy.getInterfaceValue(
+                currentTime,
+                xGrid[barrierIndex],
+                activeNext[barrierIndex]
+        );
 
         final double[] nextSub = solveVanillaStep(
                 subGrid,
@@ -371,14 +461,18 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                 t_mp1,
                 deltaTau,
                 discountedNoHitValue,
-                activeNext[barrierIndex]);
+                interfaceValue);
 
         for(int j = 0; j < nextSub.length; j++) {
             inactiveNext[j] = nextSub[j];
         }
 
         for(int i = barrierIndex; i < xGrid.length; i++) {
-            inactiveNext[i] = activeNext[i];
+            inactiveNext[i] = activationPolicy.getAlreadyHitValue(
+                    currentTime,
+                    xGrid[i],
+                    activeNext[i]
+            );
         }
     }
 

@@ -4,26 +4,30 @@ import net.finmath.functions.AnalyticFormulas;
 import net.finmath.functions.NormalDistribution;
 
 /**
- * This class implements the valuation of barrier options.
+ * Analytic helper formulas for barrier-style products under Black-Scholes.
  *
- * Currently only supports a a lognormal model.
+ * <p>
+ * This class is intentionally kept in {@code it.univr.fima.correction}
+ * and serves as the analytic regression backbone for the finite-difference
+ * barrier product layer in this project.
+ * </p>
  *
- * We use the notation from the book by Espeen Gaarder Haugh.
- * "The complete Guide to Option Pricing Formulas".
- * 
- * Moreover we cover
- * 
+ * <p>
+ * Covered formulas include:
+ * </p>
  * <ul>
- *   <li>single-barrier binary options (cash-or-nothing and asset-or-nothing),</li>
- *   <li>double-barrier vanilla options (knock-in / knock-out),</li>
- *   <li>double-barrier cash binaries (knock-in / knock-out / KIKO / KOKI),</li>
- *   <li>soft barriers (continuous upper/lower barrier band).</li>
+ *   <li>standard single-barrier vanilla options,</li>
+ *   <li>single-barrier binary options,</li>
+ *   <li>single-barrier one-touch / no-touch style binaries,</li>
+ *   <li>double-barrier vanilla options,</li>
+ *   <li>double-barrier cash binaries, including KIKO / KOKI,</li>
+ *   <li>soft barriers.</li>
  * </ul>
- * 
- * ATTENTION: THIS IS JUST A CLASS THAT FIXES A BUG INSIDE THE FINMATH
- * CLASS WITH THE SAME NAME. IT IS NOT MEANT FOR INTEGRATION IN THE LIBRARY.
- * THIS MAVEN PROJECT REFERENCES FINMATH 6.0.28 WHICH FEATURES THIS BUG - A SIGMA
- * MISSING IN THE IMPLEMENTATION OF HAUG'S FORMULAS.
+ *
+ * <p>
+ * The class remains in this package on purpose, to avoid name clashes
+ * with the upstream dependency class {@code net.finmath.functions.BarrierOptions}.
+ * </p>
  *
  * @author Alessandro Gnoatto
  * @version 1.0
