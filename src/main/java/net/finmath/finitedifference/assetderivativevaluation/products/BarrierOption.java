@@ -519,13 +519,15 @@ public class BarrierOption implements
          * For European direct knock-ins we prefer to reuse the original barrier-aligned
          * grid whenever the barrier is already a spot-grid node.
          *
-         * However, for the problematic Heston early-exercise DOWN_IN PUT case, the
-         * activated vanilla branch should be solved on a wider auxiliary grid, even if
-         * the barrier is already on the original grid. Otherwise the lower spot boundary
+         * However, for the problematic non-European DOWN_IN PUT case, the activated
+         * vanilla branch should be solved on a wider auxiliary grid, even if the
+         * barrier is already on the original grid. Otherwise the lower spot boundary
          * is too close and contaminates the activated Bermudan/American put values.
+         *
+         * This is needed for both Heston and SABR.
          */
         final boolean forceWidenedActivatedGrid =
-                barrierModel instanceof FDMHestonModel
+                (barrierModel instanceof FDMHestonModel || barrierModel instanceof FDMSabrModel)
                 && !exercise.isEuropean()
                 && barrierType == BarrierType.DOWN_IN
                 && callOrPutSign == CallOrPut.PUT;
