@@ -326,13 +326,10 @@ public class TouchOption implements
 		switch(getPricingMode(model)) {
 		case DIRECT_OUT:
 			return priceOutOptionDirectly(model);
-
 		case DIRECT_IN_1D_TWO_STATE:
 			return priceInOptionDirectly1D(model);
-
 		case DIRECT_IN_2D_PRE_HIT:
 			return priceInOptionDirectly2D(model);
-
 		default:
 			throw new IllegalStateException("Unsupported pricing mode.");
 		}
@@ -379,14 +376,13 @@ public class TouchOption implements
 		}
 
 		if(dims == 2) {
-			if(settlementTiming != TouchSettlementTiming.AT_EXPIRY) {
-				throw new IllegalArgumentException(
-						"Two-dimensional TouchOption currently supports only AT_EXPIRY settlement.");
-			}
-
 			if(!supportsDirect2D(model)) {
 				throw new IllegalArgumentException(
 						"Two-dimensional TouchOption currently supports only Heston and SABR models.");
+			}
+			if(settlementTiming == TouchSettlementTiming.AT_HIT && isOutOption()) {
+				throw new IllegalArgumentException(
+						"Two-dimensional AT_HIT currently supports only one-touch products.");
 			}
 		}
 	}
@@ -464,11 +460,6 @@ public class TouchOption implements
 			throw new IllegalArgumentException("priceInOptionDirectly2D requires a 2D model.");
 		}
 
-		if(settlementTiming != TouchSettlementTiming.AT_EXPIRY) {
-			throw new IllegalArgumentException(
-					"Direct 2D touch knock-in pricing currently supports only AT_EXPIRY settlement.");
-		}
-
 		final ActivatedBarrierTrace2D trace = createAnalyticalActivatedBarrierTrace2D(model);
 
 		final BarrierPreHitSpecification preHitSpecification =
@@ -520,14 +511,7 @@ public class TouchOption implements
 	}
 
 	private double[] buildActiveTerminalValues(final SpaceTimeDiscretization discretization) {
-		switch(settlementTiming) {
-		case AT_EXPIRY:
-			return buildConstantTerminalValues(discretization, payoffAmount);
-		case AT_HIT:
-			return buildConstantTerminalValues(discretization, payoffAmount);
-		default:
-			throw new IllegalStateException("Unsupported settlement timing: " + settlementTiming);
-		}
+		return buildConstantTerminalValues(discretization, payoffAmount);
 	}
 
 	private double[] buildCellAveragedTerminalValues(final SpaceTimeDiscretization discretization) {
@@ -813,7 +797,7 @@ public class TouchOption implements
 
 		for(int timeIndex = 0; timeIndex < timeCount; timeIndex++) {
 			final double tau = timeDiscretization.getTime(timeIndex);
-			final double value = getDiscountedCashValueForTau(model, tau);
+			final double value = getActivatedValueForTau(model, tau);
 
 			for(int j = 0; j < secondGrid.length; j++) {
 				traceValues[j][timeIndex] = value;
@@ -826,6 +810,20 @@ public class TouchOption implements
 				timeDiscretization,
 				traceValues
 				);
+	}
+
+	private double getActivatedValueForTau(
+			final FiniteDifferenceEquityModel model,
+			final double tau) {
+
+		switch(settlementTiming) {
+		case AT_EXPIRY:
+			return getDiscountedCashValueForTau(model, tau);
+		case AT_HIT:
+			return payoffAmount;
+		default:
+			throw new IllegalStateException("Unsupported settlement timing: " + settlementTiming);
+		}
 	}
 
 	private double getDiscountedCashValueForTau(
@@ -862,7 +860,7 @@ public class TouchOption implements
 
 		for(int timeIndex = 0; timeIndex < timeCount; timeIndex++) {
 			final double tau = disc.getTimeDiscretization().getTime(timeIndex);
-			final double value = getDiscountedCashValueForTau(originalModel, tau);
+			final double value = getActivatedValueForTau(originalModel, tau);
 
 			for(int j = 0; j < n1; j++) {
 				for(int i = 0; i < n0; i++) {
