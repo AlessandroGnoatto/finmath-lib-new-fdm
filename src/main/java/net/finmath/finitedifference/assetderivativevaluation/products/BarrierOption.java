@@ -510,11 +510,41 @@ public class BarrierOption implements
 
         final SpaceTimeDiscretization base = barrierModel.getSpaceTimeDiscretization();
         final double[] baseSpotGrid = base.getSpaceGrid(0).getGrid();
-        final double[] secondGrid = base.getSpaceGrid(1).getGrid();
 
         if(baseSpotGrid.length < 2) {
             throw new IllegalArgumentException("Barrier grid must contain at least two points.");
         }
+
+        /*
+         * First-choice policy:
+         * if the effective 2D barrier model already places the barrier exactly on a
+         * spot-grid node, then reuse that spot grid for the activated vanilla solve.
+         *
+         * This removes the main source of bias isolated by the decomposition tests:
+         * the previous implementation widened the domain and switched to a different
+         * uniform spot grid, then interpolated back. Reusing the original barrier-
+         * aligned grid keeps the activated branch numerically comparable to the final
+         * direct knock-in assembly grid.
+         */
+        boolean barrierAlreadyOnSpotGrid = false;
+        for(final double s : baseSpotGrid) {
+            if(Math.abs(s - barrierValue) <= GRID_TOLERANCE) {
+                barrierAlreadyOnSpotGrid = true;
+                break;
+            }
+        }
+
+        if(barrierAlreadyOnSpotGrid) {
+            return barrierModel;
+        }
+
+        /*
+         * Fallback:
+         * if the barrier is not already a node on the current spot grid, build a
+         * barrier-aligned auxiliary activated spot grid. The second-state grid and
+         * time grid are preserved exactly.
+         */
+        final double[] secondGrid = base.getSpaceGrid(1).getGrid();
 
         final Grid activatedSpotGrid = buildActivatedSpotGridAlignedAtBarrier(
                 baseSpotGrid,
