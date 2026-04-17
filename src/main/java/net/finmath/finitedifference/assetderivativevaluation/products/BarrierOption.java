@@ -516,16 +516,20 @@ public class BarrierOption implements
         }
 
         /*
-         * First-choice policy:
-         * if the effective 2D barrier model already places the barrier exactly on a
-         * spot-grid node, then reuse that spot grid for the activated vanilla solve.
+         * For European direct knock-ins we prefer to reuse the original barrier-aligned
+         * grid whenever the barrier is already a spot-grid node.
          *
-         * This removes the main source of bias isolated by the decomposition tests:
-         * the previous implementation widened the domain and switched to a different
-         * uniform spot grid, then interpolated back. Reusing the original barrier-
-         * aligned grid keeps the activated branch numerically comparable to the final
-         * direct knock-in assembly grid.
+         * However, for the problematic Heston early-exercise DOWN_IN PUT case, the
+         * activated vanilla branch should be solved on a wider auxiliary grid, even if
+         * the barrier is already on the original grid. Otherwise the lower spot boundary
+         * is too close and contaminates the activated Bermudan/American put values.
          */
+        final boolean forceWidenedActivatedGrid =
+                barrierModel instanceof FDMHestonModel
+                && !exercise.isEuropean()
+                && barrierType == BarrierType.DOWN_IN
+                && callOrPutSign == CallOrPut.PUT;
+
         boolean barrierAlreadyOnSpotGrid = false;
         for(final double s : baseSpotGrid) {
             if(Math.abs(s - barrierValue) <= GRID_TOLERANCE) {
@@ -534,15 +538,14 @@ public class BarrierOption implements
             }
         }
 
-        if(barrierAlreadyOnSpotGrid) {
+        if(barrierAlreadyOnSpotGrid && !forceWidenedActivatedGrid) {
             return barrierModel;
         }
 
         /*
-         * Fallback:
-         * if the barrier is not already a node on the current spot grid, build a
-         * barrier-aligned auxiliary activated spot grid. The second-state grid and
-         * time grid are preserved exactly.
+         * Fallback / forced-widening path:
+         * build a wider barrier-aligned auxiliary activated grid while preserving the
+         * second-state grid and time grid exactly.
          */
         final double[] secondGrid = base.getSpaceGrid(1).getGrid();
 
