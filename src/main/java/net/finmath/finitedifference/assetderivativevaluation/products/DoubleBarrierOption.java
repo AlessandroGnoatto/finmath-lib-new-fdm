@@ -1,404 +1,1616 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import java.util.Arrays;
+
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.boundaries.BoundaryCondition;
+import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
+import net.finmath.finitedifference.grids.Grid;
+import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
-import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.interpolation.RationalFunctionInterpolation;
+import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
+import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
+import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
 import net.finmath.modelling.products.DoubleBarrierType;
+import net.finmath.time.TimeDiscretization;
+import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 
 /**
  * Finite-difference valuation of a continuously monitored vanilla double-barrier option.
  *
  * <p>
- * Current implementation policy:
+ * This version supports:
  * </p>
  * <ul>
- *   <li>supports only vanilla call / put,</li>
- *   <li>supports only {@link DoubleBarrierType#KNOCK_OUT} and {@link DoubleBarrierType#KNOCK_IN},</li>
- *   <li>knock-out is priced directly by the finite-difference solver using internal state constraints,</li>
- *   <li>knock-in is obtained by in-out parity against the corresponding vanilla European option,</li>
- *   <li>current first-pass implementation is European only.</li>
+ *   <li>vanilla call / put,</li>
+ *   <li>{@link DoubleBarrierType#KNOCK_OUT} and {@link DoubleBarrierType#KNOCK_IN},</li>
+ *   <li>European, Bermudan, and American exercise,</li>
+ *   <li>direct knock-out pricing through internal-state constraints,</li>
+ *   <li>direct knock-in pricing without parity:
+ *       activated vanilla branch + pre-hit band PDE branch,</li>
+ *   <li>1D models and 2D Heston / SABR models.</li>
  * </ul>
- * 
+ *
+ * <p>
+ * Knock-in pricing logic:
+ * </p>
+ * <ul>
+ *   <li>outside the alive band: the option is already activated and equals the corresponding vanilla value,</li>
+ *   <li>inside the alive band: solve a pre-hit PDE on the band with time-dependent Dirichlet
+ *       boundaries equal to the activated vanilla value at the barriers,</li>
+ *   <li>for Bermudan / American exercise, the obstacle is applied only in the activated vanilla branch,
+ *       not in the pre-hit branch.</li>
+ * </ul>
+ *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierOption implements
-        FiniteDifferenceProduct,
-        FiniteDifferenceInternalStateConstraint {
+FiniteDifferenceProduct,
+FiniteDifferenceInternalStateConstraint {
 
-    private enum PricingMode {
-        DIRECT_OUT,
-        PARITY_IN
-    }
+	private enum PricingMode {
+		DIRECT_OUT,
+		DIRECT_IN_1D_PRE_HIT,
+		DIRECT_IN_2D_PRE_HIT
+	}
 
-    private final String underlyingName;
-    private final double maturity;
-    private final double strike;
-    private final double lowerBarrier;
-    private final double upperBarrier;
-    private final CallOrPut callOrPutSign;
-    private final DoubleBarrierType doubleBarrierType;
-    private final Exercise exercise;
+	private static final double GRID_TOLERANCE = 1E-8;
 
-    public DoubleBarrierOption(
-            final String underlyingName,
-            final double maturity,
-            final double strike,
-            final double lowerBarrier,
-            final double upperBarrier,
-            final CallOrPut callOrPutSign,
-            final DoubleBarrierType doubleBarrierType,
-            final Exercise exercise) {
+	private final String underlyingName;
+	private final double maturity;
+	private final double strike;
+	private final double lowerBarrier;
+	private final double upperBarrier;
+	private final CallOrPut callOrPutSign;
+	private final DoubleBarrierType doubleBarrierType;
+	private final Exercise exercise;
 
-        if(callOrPutSign == null) {
-            throw new IllegalArgumentException("Option type must not be null.");
-        }
-        if(doubleBarrierType == null) {
-            throw new IllegalArgumentException("Double barrier type must not be null.");
-        }
-        if(exercise == null) {
-            throw new IllegalArgumentException("Exercise must not be null.");
-        }
-        if(!exercise.isEuropean()) {
-            throw new IllegalArgumentException("DoubleBarrierOption currently supports only European exercise.");
-        }
-        if(maturity < 0.0) {
-            throw new IllegalArgumentException("Maturity must be non-negative.");
-        }
-        if(strike <= 0.0) {
-            throw new IllegalArgumentException("Strike must be positive.");
-        }
-        if(lowerBarrier <= 0.0 || upperBarrier <= 0.0) {
-            throw new IllegalArgumentException("Barriers must be positive.");
-        }
-        if(lowerBarrier >= upperBarrier) {
-            throw new IllegalArgumentException("lowerBarrier must be < upperBarrier.");
-        }
-        if(doubleBarrierType == DoubleBarrierType.KIKO || doubleBarrierType == DoubleBarrierType.KOKI) {
-            throw new IllegalArgumentException("KIKO/KOKI are not supported for vanilla double-barrier options.");
-        }
+	public DoubleBarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise) {
 
-        this.underlyingName = underlyingName;
-        this.maturity = maturity;
-        this.strike = strike;
-        this.lowerBarrier = lowerBarrier;
-        this.upperBarrier = upperBarrier;
-        this.callOrPutSign = callOrPutSign;
-        this.doubleBarrierType = doubleBarrierType;
-        this.exercise = exercise;
-    }
+		if(callOrPutSign == null) {
+			throw new IllegalArgumentException("Option type must not be null.");
+		}
+		if(doubleBarrierType == null) {
+			throw new IllegalArgumentException("Double barrier type must not be null.");
+		}
+		if(exercise == null) {
+			throw new IllegalArgumentException("Exercise must not be null.");
+		}
+		if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+			throw new IllegalArgumentException(
+					"DoubleBarrierOption currently supports only European, Bermudan, and American exercise.");
+		}
+		if(maturity < 0.0) {
+			throw new IllegalArgumentException("Maturity must be non-negative.");
+		}
+		if(strike <= 0.0) {
+			throw new IllegalArgumentException("Strike must be positive.");
+		}
+		if(lowerBarrier <= 0.0 || upperBarrier <= 0.0) {
+			throw new IllegalArgumentException("Barriers must be positive.");
+		}
+		if(lowerBarrier >= upperBarrier) {
+			throw new IllegalArgumentException("lowerBarrier must be < upperBarrier.");
+		}
+		if(doubleBarrierType == DoubleBarrierType.KIKO || doubleBarrierType == DoubleBarrierType.KOKI) {
+			throw new IllegalArgumentException("KIKO/KOKI are not supported for vanilla double-barrier options.");
+		}
 
-    public DoubleBarrierOption(
-            final String underlyingName,
-            final double maturity,
-            final double strike,
-            final double lowerBarrier,
-            final double upperBarrier,
-            final CallOrPut callOrPutSign,
-            final DoubleBarrierType doubleBarrierType) {
-        this(
-                underlyingName,
-                maturity,
-                strike,
-                lowerBarrier,
-                upperBarrier,
-                callOrPutSign,
-                doubleBarrierType,
-                new EuropeanExercise(maturity)
-        );
-    }
+		this.underlyingName = underlyingName;
+		this.maturity = maturity;
+		this.strike = strike;
+		this.lowerBarrier = lowerBarrier;
+		this.upperBarrier = upperBarrier;
+		this.callOrPutSign = callOrPutSign;
+		this.doubleBarrierType = doubleBarrierType;
+		this.exercise = exercise;
+	}
 
-    public DoubleBarrierOption(
-            final double maturity,
-            final double strike,
-            final double lowerBarrier,
-            final double upperBarrier,
-            final CallOrPut callOrPutSign,
-            final DoubleBarrierType doubleBarrierType) {
-        this(
-                null,
-                maturity,
-                strike,
-                lowerBarrier,
-                upperBarrier,
-                callOrPutSign,
-                doubleBarrierType,
-                new EuropeanExercise(maturity)
-        );
-    }
+	public DoubleBarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				callOrPutSign,
+				doubleBarrierType,
+				new EuropeanExercise(maturity)
+				);
+	}
 
-    public DoubleBarrierOption(
-            final double maturity,
-            final double strike,
-            final double lowerBarrier,
-            final double upperBarrier,
-            final double callOrPutSign,
-            final DoubleBarrierType doubleBarrierType) {
-        this(
-                null,
-                maturity,
-                strike,
-                lowerBarrier,
-                upperBarrier,
-                mapCallOrPut(callOrPutSign),
-                doubleBarrierType,
-                new EuropeanExercise(maturity)
-        );
-    }
+	public DoubleBarrierOption(
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType) {
+		this(
+				null,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				callOrPutSign,
+				doubleBarrierType,
+				new EuropeanExercise(maturity)
+				);
+	}
 
-    @Override
-    public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
-        final double[][] values = getValues(model);
+	public DoubleBarrierOption(
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final double callOrPutSign,
+			final DoubleBarrierType doubleBarrierType) {
+		this(
+				null,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				mapCallOrPut(callOrPutSign),
+				doubleBarrierType,
+				new EuropeanExercise(maturity)
+				);
+	}
 
-        final SpaceTimeDiscretization valuationDiscretization = model.getSpaceTimeDiscretization();
-        final double tau = maturity - evaluationTime;
-        final int timeIndex = valuationDiscretization.getTimeDiscretization()
-                .getTimeIndexNearestLessOrEqual(tau);
+	public DoubleBarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final double callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				mapCallOrPut(callOrPutSign),
+				doubleBarrierType,
+				exercise
+				);
+	}
 
-        final double[] column = new double[values.length];
-        for(int i = 0; i < values.length; i++) {
-            column[i] = values[i][timeIndex];
-        }
-        return column;
-    }
+	public DoubleBarrierOption(
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise) {
+		this(
+				null,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				callOrPutSign,
+				doubleBarrierType,
+				exercise
+				);
+	}
 
-    @Override
-    public double[][] getValues(final FiniteDifferenceEquityModel model) {
-        validateProductConfiguration(model);
+	@Override
+	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
+		final double[][] values = getValues(model);
 
-        switch(getPricingMode()) {
-        case DIRECT_OUT:
-            return priceOutOptionDirectly(model);
-        case PARITY_IN:
-            return priceInOptionByParity(model);
-        default:
-            throw new IllegalStateException("Unsupported pricing mode.");
-        }
-    }
+		final SpaceTimeDiscretization valuationDiscretization = getValuationSpaceTimeDiscretization(model);
+		final double tau = maturity - evaluationTime;
+		final int timeIndex = valuationDiscretization.getTimeDiscretization()
+				.getTimeIndexNearestLessOrEqual(tau);
 
-    private PricingMode getPricingMode() {
-        return doubleBarrierType == DoubleBarrierType.KNOCK_OUT
-                ? PricingMode.DIRECT_OUT
-                : PricingMode.PARITY_IN;
-    }
+		final double[] column = new double[values.length];
+		for(int i = 0; i < values.length; i++) {
+			column[i] = values[i][timeIndex];
+		}
+		return column;
+	}
 
-    private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
-        if(model == null) {
-            throw new IllegalArgumentException("Model must not be null.");
-        }
-        if(!exercise.isEuropean()) {
-            throw new IllegalArgumentException("DoubleBarrierOption currently supports only European exercise.");
-        }
+	@Override
+	public double[][] getValues(final FiniteDifferenceEquityModel model) {
+		validateProductConfiguration(model);
 
-        final double[] spotGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-        final double gridMin = spotGrid[0];
-        final double gridMax = spotGrid[spotGrid.length - 1];
+		if(isDegenerateZeroCase()) {
+			return buildZeroValueSurface(model);
+		}
 
-        if(lowerBarrier < gridMin || upperBarrier > gridMax) {
-            throw new IllegalArgumentException(
-                    "Both double barriers must lie inside the first state-variable grid domain of the supplied model.");
-        }
-    }
+		if(isDegenerateVanillaCase()) {
+			return createVanillaOption().getValues(getEffectiveModelForValuation(model));
+		}
 
-    private double[][] priceOutOptionDirectly(final FiniteDifferenceEquityModel model) {
-        final FDMSolver solver = FDMSolverFactory.createSolver(
-                model,
-                this,
-                model.getSpaceTimeDiscretization(),
-                exercise
-        );
+		switch(getPricingMode(model)) {
+		case DIRECT_OUT:
+			return priceOutOptionDirectly(model);
 
-        final boolean isOneDimensional = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1;
+		case DIRECT_IN_1D_PRE_HIT:
+			return priceInOptionDirectly1D(model);
 
-        if(isOneDimensional) {
-            final double[] terminalValues =
-                    buildCellAveragedTerminalValues(model.getSpaceTimeDiscretization());
+		case DIRECT_IN_2D_PRE_HIT:
+			return priceInOptionDirectly2D(model);
 
-            return solver.getValues(maturity, terminalValues);
-        }
+		default:
+			throw new IllegalStateException("Unsupported pricing mode.");
+		}
+	}
 
-        return solver.getValues(maturity, this::pointwisePayoffForDirectOutPricing);
-    }
+	private PricingMode getPricingMode(final FiniteDifferenceEquityModel model) {
+		if(isOutOption()) {
+			return PricingMode.DIRECT_OUT;
+		}
 
-    private double[][] priceInOptionByParity(final FiniteDifferenceEquityModel model) {
-        final DoubleBarrierOption correspondingOutOption = createCorrespondingOutOption();
-        final EuropeanOption vanillaOption = createVanillaEuropeanOption();
+		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
-        final double[][] outValues = correspondingOutOption.getValues(model);
-        final double[][] vanillaValues = vanillaOption.getValues(model);
+		if(dims == 1) {
+			return PricingMode.DIRECT_IN_1D_PRE_HIT;
+		}
 
-        final int numberOfRows = outValues.length;
-        final int numberOfColumns = outValues[0].length;
+		if(dims == 2 && supportsDirect2D(model)) {
+			return PricingMode.DIRECT_IN_2D_PRE_HIT;
+		}
 
-        final double[][] inValues = new double[numberOfRows][numberOfColumns];
+		throw new IllegalArgumentException(
+				"Direct double-barrier knock-in currently supports only 1D models and 2D Heston/SABR models.");
+	}
 
-        for(int i = 0; i < numberOfRows; i++) {
-            for(int j = 0; j < numberOfColumns; j++) {
-                inValues[i][j] = vanillaValues[i][j] - outValues[i][j];
-            }
-        }
+	private boolean supportsDirect2D(final FiniteDifferenceEquityModel model) {
+		return model instanceof FDMHestonModel || model instanceof FDMSabrModel;
+	}
 
-        return inValues;
-    }
+	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
+		if(model == null) {
+			throw new IllegalArgumentException("Model must not be null.");
+		}
 
-    private DoubleBarrierOption createCorrespondingOutOption() {
-        return new DoubleBarrierOption(
-                underlyingName,
-                maturity,
-                strike,
-                lowerBarrier,
-                upperBarrier,
-                callOrPutSign,
-                DoubleBarrierType.KNOCK_OUT,
-                exercise
-        );
-    }
+		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+		if(dims != 1 && dims != 2) {
+			throw new IllegalArgumentException("DoubleBarrierOption currently supports only 1D and 2D models.");
+		}
 
-    private EuropeanOption createVanillaEuropeanOption() {
-        return new EuropeanOption(
-                underlyingName,
-                maturity,
-                strike,
-                callOrPutSign
-        );
-    }
+		if(dims == 2 && !supportsDirect2D(model)) {
+			throw new IllegalArgumentException(
+					"Two-dimensional DoubleBarrierOption currently supports only Heston and SABR models.");
+		}
 
-    private double[] buildCellAveragedTerminalValues(final SpaceTimeDiscretization discretization) {
-        final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
-        final double[] terminalValues = new double[sGrid.length];
+		validateBarriersInsideGrid(model);
+	}
 
-        for(int i = 0; i < sGrid.length; i++) {
-            final double leftEdge = getLeftDualCellEdge(sGrid, i);
-            final double rightEdge = getRightDualCellEdge(sGrid, i);
-            terminalValues[i] = cellAveragedPayoffForDirectOutPricing(leftEdge, rightEdge);
-        }
+	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
+		final SpaceTimeDiscretization valuationDiscretization = getValuationSpaceTimeDiscretization(model);
+		final int numberOfSpacePoints = getTotalNumberOfSpacePoints(valuationDiscretization);
+		final int numberOfTimePoints = valuationDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 
-        return terminalValues;
-    }
+		final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
+		for(int i = 0; i < numberOfSpacePoints; i++) {
+			for(int j = 0; j < numberOfTimePoints; j++) {
+				zeroValues[i][j] = 0.0;
+			}
+		}
+		return zeroValues;
+	}
 
-    private double cellAveragedPayoffForDirectOutPricing(final double leftEdge, final double rightEdge) {
-        if(!(leftEdge < rightEdge)) {
-            throw new IllegalArgumentException("Require leftEdge < rightEdge.");
-        }
+	/*
+	 * ============================================
+	 * DIRECT KNOCK-OUT
+	 * ============================================
+	 */
 
-        final double aliveLeft = Math.max(leftEdge, lowerBarrier);
-        final double aliveRight = Math.min(rightEdge, upperBarrier);
+	private double[][] priceOutOptionDirectly(final FiniteDifferenceEquityModel model) {
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
+		final SpaceTimeDiscretization valuationDiscretization = effectiveModel.getSpaceTimeDiscretization();
 
-        if(aliveRight <= aliveLeft) {
-            return 0.0;
-        }
+		final FDMSolver solver = FDMSolverFactory.createSolver(
+				effectiveModel,
+				this,
+				valuationDiscretization,
+				exercise
+				);
 
-        final double aliveWeight = (aliveRight - aliveLeft) / (rightEdge - leftEdge);
-        return aliveWeight * cellAveragedVanillaPayoff(aliveLeft, aliveRight);
-    }
+		final boolean isOneDimensional = valuationDiscretization.getNumberOfSpaceGrids() == 1;
 
-    private double cellAveragedVanillaPayoff(final double leftEdge, final double rightEdge) {
-        final double cellLength = rightEdge - leftEdge;
+		if(isOneDimensional) {
+			final double[] terminalValues = buildCellAveragedTerminalValues(valuationDiscretization);
 
-        if(callOrPutSign == CallOrPut.CALL) {
-            if(rightEdge <= strike) {
-                return 0.0;
-            }
-            if(leftEdge >= strike) {
-                return 0.5 * (leftEdge + rightEdge) - strike;
-            }
-            return 0.5 * Math.pow(rightEdge - strike, 2.0) / cellLength;
-        }
-        else {
-            if(leftEdge >= strike) {
-                return 0.0;
-            }
-            if(rightEdge <= strike) {
-                return strike - 0.5 * (leftEdge + rightEdge);
-            }
-            return 0.5 * Math.pow(strike - leftEdge, 2.0) / cellLength;
-        }
-    }
+			if(exercise.isEuropean()) {
+				return solver.getValues(maturity, terminalValues);
+			}
 
-    private double pointwisePayoffForDirectOutPricing(final double assetValue) {
-        if(!isInsideBarrierBand(assetValue)) {
-            return 0.0;
-        }
+			return solver.getValues(
+					maturity,
+					terminalValues,
+					this::pointwisePayoffForDirectOutPricing
+					);
+		}
 
-        if(callOrPutSign == CallOrPut.CALL) {
-            return Math.max(assetValue - strike, 0.0);
-        }
-        else {
-            return Math.max(strike - assetValue, 0.0);
-        }
-    }
+		return solver.getValues(maturity, this::pointwisePayoffForDirectOutPricing);
+	}
 
-    private double getLeftDualCellEdge(final double[] grid, final int i) {
-        if(i == 0) {
-            return grid[0];
-        }
-        return 0.5 * (grid[i - 1] + grid[i]);
-    }
+	/*
+	 * ============================================
+	 * DIRECT KNOCK-IN 1D
+	 * ============================================
+	 */
 
-    private double getRightDualCellEdge(final double[] grid, final int i) {
-        if(i == grid.length - 1) {
-            return grid[grid.length - 1];
-        }
-        return 0.5 * (grid[i] + grid[i + 1]);
-    }
+	private double[][] priceInOptionDirectly1D(final FiniteDifferenceEquityModel model) {
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
 
-    private boolean isInsideBarrierBand(final double assetValue) {
-        return assetValue > lowerBarrier && assetValue < upperBarrier;
-    }
+		/*
+		 * Step 1: activated vanilla branch on a widened vanilla grid.
+		 */
+		final FiniteDifferenceEquityModel activatedModel = createAuxiliaryActivatedModel(effectiveModel);
+		final FiniteDifferenceProduct activatedProduct = createActivatedVanillaProduct();
 
-    @Override
-    public boolean isConstraintActive(final double time, final double... stateVariables) {
-        final double underlyingLevel = stateVariables[0];
-        return underlyingLevel <= lowerBarrier || underlyingLevel >= upperBarrier;
-    }
+		final double[][] activatedValues = activatedProduct.getValues(activatedModel);
 
-    @Override
-    public double getConstrainedValue(final double time, final double... stateVariables) {
-        return 0.0;
-    }
+		/*
+		 * Step 2: build lower / upper barrier traces from activated vanilla.
+		 */
+		final DoubleBarrierTrace1D lowerTrace = extractActivatedBoundaryTrace1D(
+				activatedModel,
+				activatedValues,
+				lowerBarrier
+				);
+		final DoubleBarrierTrace1D upperTrace = extractActivatedBoundaryTrace1D(
+				activatedModel,
+				activatedValues,
+				upperBarrier
+				);
 
-    public String getUnderlyingName() {
-        return underlyingName;
-    }
+		/*
+		 * Step 3: solve pre-hit PDE on the alive band only.
+		 */
+		final FiniteDifferenceEquityModel preHitModel = createAuxiliaryPreHitModel1D(
+				effectiveModel,
+				lowerTrace,
+				upperTrace
+				);
 
-    public double getMaturity() {
-        return maturity;
-    }
+		final FDMSolver preHitSolver = new FDMThetaMethod1D(
+				preHitModel,
+				this,
+				preHitModel.getSpaceTimeDiscretization(),
+				new EuropeanExercise(maturity)
+				);
 
-    public double getStrike() {
-        return strike;
-    }
+		final double[] zeroTerminal = buildZeroTerminalValues(preHitModel.getSpaceTimeDiscretization());
+		final double[][] preHitValues = preHitSolver.getValues(maturity, zeroTerminal);
 
-    public double getLowerBarrier() {
-        return lowerBarrier;
-    }
+		/*
+		 * Step 4: interpolate both branches back to the original grid and stitch.
+		 */
+		return assembleDirectKnockInSurface1D(
+				model,
+				activatedModel,
+				activatedValues,
+				preHitModel,
+				preHitValues
+				);
+	}
 
-    public double getUpperBarrier() {
-        return upperBarrier;
-    }
+	/*
+	 * ============================================
+	 * DIRECT KNOCK-IN 2D HESTON / SABR
+	 * ============================================
+	 */
 
-    public CallOrPut getCallOrPut() {
-        return callOrPutSign;
-    }
+	private double[][] priceInOptionDirectly2D(final FiniteDifferenceEquityModel model) {
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
 
-    public DoubleBarrierType getDoubleBarrierType() {
-        return doubleBarrierType;
-    }
+		/*
+		 * Step 1: activated vanilla branch on a widened vanilla grid.
+		 */
+		final FiniteDifferenceEquityModel activatedModel = createAuxiliaryActivatedModel(effectiveModel);
+		final FiniteDifferenceProduct activatedProduct = createActivatedVanillaProduct();
 
-    public Exercise getExercise() {
-        return exercise;
-    }
+		final double[][] activatedValues = activatedProduct.getValues(activatedModel);
 
-    private static CallOrPut mapCallOrPut(final double sign) {
-        if(sign == 1.0) {
-            return CallOrPut.CALL;
-        }
-        if(sign == -1.0) {
-            return CallOrPut.PUT;
-        }
-        throw new IllegalArgumentException("Unknown option type.");
-    }
+		/*
+		 * Step 2: lower / upper barrier traces depending on second state variable.
+		 */
+		final DoubleBarrierTrace2D lowerTrace = extractActivatedBoundaryTrace2D(
+				activatedModel,
+				activatedValues,
+				lowerBarrier
+				);
+		final DoubleBarrierTrace2D upperTrace = extractActivatedBoundaryTrace2D(
+				activatedModel,
+				activatedValues,
+				upperBarrier
+				);
+
+		/*
+		 * Step 3: solve pre-hit PDE on the alive band using ordinary 2D ADI,
+		 *         but with time-dependent Dirichlet spot boundaries.
+		 */
+		final FiniteDifferenceEquityModel preHitModel = createAuxiliaryPreHitModel2D(
+				effectiveModel,
+				lowerTrace,
+				upperTrace
+				);
+
+		final FDMSolver preHitSolver = FDMSolverFactory.createSolver(
+				preHitModel,
+				this,
+				preHitModel.getSpaceTimeDiscretization(),
+				new EuropeanExercise(maturity)
+				);
+
+		final double[][] preHitValues = preHitSolver.getValues(maturity, assetValue -> 0.0);
+
+		/*
+		 * Step 4: interpolate both branches back to the original grid and stitch.
+		 */
+		return assembleDirectKnockInSurface2D(
+				model,
+				activatedModel,
+				activatedValues,
+				preHitModel,
+				preHitValues
+				);
+	}
+
+	/*
+	 * ============================================
+	 * ACTIVATED VANILLA BRANCH
+	 * ============================================
+	 */
+
+	private FiniteDifferenceProduct createActivatedVanillaProduct() {
+		if(exercise.isEuropean()) {
+			return new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
+		}
+		if(exercise.isBermudan()) {
+			return new BermudanOption(underlyingName, exercise.getExerciseTimes(), strike, callOrPutSign);
+		}
+		if(exercise.isAmerican()) {
+			return new AmericanOption(underlyingName, maturity, strike, callOrPutSign);
+		}
+		throw new IllegalArgumentException("Unsupported exercise specification.");
+	}
+
+	private EuropeanOption createVanillaOption() {
+		return new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
+	}
+
+	private FiniteDifferenceEquityModel createAuxiliaryActivatedModel(final FiniteDifferenceEquityModel baseModel) {
+		final SpaceTimeDiscretization base = baseModel.getSpaceTimeDiscretization();
+		final TimeDiscretization timeDiscretization = base.getTimeDiscretization();
+		final double thetaValue = base.getTheta();
+
+		final double[] baseSpotGrid = base.getSpaceGrid(0).getGrid();
+		if(baseSpotGrid.length < 2) {
+			throw new IllegalArgumentException("Spot grid must contain at least two points.");
+		}
+
+		final double deltaS = baseSpotGrid[1] - baseSpotGrid[0];
+		final double initialSpot = baseModel.getInitialValue()[0];
+
+		final double currentMin = baseSpotGrid[0];
+		final double currentMax = baseSpotGrid[baseSpotGrid.length - 1];
+		final double currentHalfWidth = Math.max(initialSpot - currentMin, currentMax - initialSpot);
+
+		final double targetMin = Math.max(1E-8, initialSpot - 2.0 * currentHalfWidth);
+		final double targetMax = initialSpot + 2.0 * currentHalfWidth;
+
+		final double sMin = Math.floor(targetMin / deltaS) * deltaS;
+		final double sMax = Math.ceil(targetMax / deltaS) * deltaS;
+		final int numberOfSteps = Math.max(2, (int)Math.round((sMax - sMin) / deltaS));
+
+		final Grid activatedSpotGrid = new UniformGrid(numberOfSteps, sMin, sMax);
+
+		if(base.getNumberOfSpaceGrids() == 1) {
+			final SpaceTimeDiscretization activatedDiscretization = new SpaceTimeDiscretization(
+					activatedSpotGrid,
+					timeDiscretization,
+					thetaValue,
+					new double[] { initialSpot }
+					);
+			return baseModel.getCloneWithModifiedSpaceTimeDiscretization(activatedDiscretization);
+		}
+		else if(base.getNumberOfSpaceGrids() == 2) {
+			final double[] secondGrid = base.getSpaceGrid(1).getGrid();
+
+			final Grid preservedSecondGrid = new UniformGrid(
+					secondGrid.length - 1,
+					secondGrid[0],
+					secondGrid[secondGrid.length - 1]
+					);
+
+			final SpaceTimeDiscretization activatedDiscretization = new SpaceTimeDiscretization(
+					new Grid[] { activatedSpotGrid, preservedSecondGrid },
+					timeDiscretization,
+					thetaValue,
+					baseModel.getInitialValue()
+					);
+			return baseModel.getCloneWithModifiedSpaceTimeDiscretization(activatedDiscretization);
+		}
+		else {
+			throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+		}
+	}
+
+	/*
+	 * ============================================
+	 * PRE-HIT BAND MODELS
+	 * ============================================
+	 */
+
+	private FiniteDifferenceEquityModel createAuxiliaryPreHitModel1D(
+			final FiniteDifferenceEquityModel baseModel,
+			final DoubleBarrierTrace1D lowerTrace,
+			final DoubleBarrierTrace1D upperTrace) {
+
+		final SpaceTimeDiscretization base = baseModel.getSpaceTimeDiscretization();
+		final double[] originalSpotGrid = base.getSpaceGrid(0).getGrid();
+		final double deltaS = originalSpotGrid[1] - originalSpotGrid[0];
+
+		final int numberOfSteps = Math.max(2, (int)Math.ceil((upperBarrier - lowerBarrier) / deltaS));
+		final Grid preHitSpotGrid = new UniformGrid(numberOfSteps, lowerBarrier, upperBarrier);
+
+		final SpaceTimeDiscretization preHitDiscretization = new SpaceTimeDiscretization(
+				preHitSpotGrid,
+				base.getTimeDiscretization(),
+				base.getTheta(),
+				new double[] { baseModel.getInitialValue()[0] }
+				);
+
+		final FiniteDifferenceEquityModel wrappedBase =
+				baseModel.getCloneWithModifiedSpaceTimeDiscretization(preHitDiscretization);
+
+		return new DoubleBarrierPreHitModel1D(
+				wrappedBase,
+				preHitDiscretization,
+				lowerTrace,
+				upperTrace
+				);
+	}
+
+	private FiniteDifferenceEquityModel createAuxiliaryPreHitModel2D(
+			final FiniteDifferenceEquityModel baseModel,
+			final DoubleBarrierTrace2D lowerTrace,
+			final DoubleBarrierTrace2D upperTrace) {
+
+		final SpaceTimeDiscretization base = baseModel.getSpaceTimeDiscretization();
+		final double[] originalSpotGrid = base.getSpaceGrid(0).getGrid();
+		final double deltaS = originalSpotGrid[1] - originalSpotGrid[0];
+
+		final int numberOfSpotSteps = Math.max(2, (int)Math.ceil((upperBarrier - lowerBarrier) / deltaS));
+		final Grid preHitSpotGrid = new UniformGrid(numberOfSpotSteps, lowerBarrier, upperBarrier);
+
+		final double[] secondGrid = base.getSpaceGrid(1).getGrid();
+		final Grid preservedSecondGrid = new UniformGrid(
+				secondGrid.length - 1,
+				secondGrid[0],
+				secondGrid[secondGrid.length - 1]
+				);
+
+		final SpaceTimeDiscretization preHitDiscretization = new SpaceTimeDiscretization(
+				new Grid[] { preHitSpotGrid, preservedSecondGrid },
+				base.getTimeDiscretization(),
+				base.getTheta(),
+				baseModel.getInitialValue()
+				);
+
+		if(baseModel instanceof FDMHestonModel) {
+			final FDMHestonModel hestonBase = (FDMHestonModel) baseModel;
+			return new DoubleBarrierPreHitHestonModel(
+					hestonBase,
+					preHitDiscretization,
+					lowerTrace,
+					upperTrace
+					);
+		}
+		else if(baseModel instanceof FDMSabrModel) {
+			final FDMSabrModel sabrBase = (FDMSabrModel) baseModel;
+			return new DoubleBarrierPreHitSabrModel(
+					sabrBase,
+					preHitDiscretization,
+					lowerTrace,
+					upperTrace
+					);
+		}
+		else {
+			throw new IllegalArgumentException(
+					"Two-dimensional pre-hit double-barrier model currently supports only Heston and SABR.");
+		}
+	}
+
+	/*
+	 * ============================================
+	 * TRACE EXTRACTION
+	 * ============================================
+	 */
+
+	private DoubleBarrierTrace1D extractActivatedBoundaryTrace1D(
+			final FiniteDifferenceEquityModel activatedModel,
+			final double[][] activatedValues,
+			final double barrier) {
+
+		final SpaceTimeDiscretization disc = activatedModel.getSpaceTimeDiscretization();
+		final double[] spotGrid = disc.getSpaceGrid(0).getGrid();
+		final int numberOfColumns = activatedValues[0].length;
+
+		final double[] traceValues = new double[numberOfColumns];
+
+		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+					spotGrid,
+					getColumn(activatedValues, timeIndex),
+					InterpolationMethod.LINEAR,
+					ExtrapolationMethod.CONSTANT
+					);
+			traceValues[timeIndex] = interpolator.getValue(barrier);
+		}
+
+		return new DoubleBarrierTrace1D(
+				maturity,
+				disc.getTimeDiscretization(),
+				traceValues
+				);
+	}
+
+	private DoubleBarrierTrace2D extractActivatedBoundaryTrace2D(
+			final FiniteDifferenceEquityModel activatedModel,
+			final double[][] activatedValues,
+			final double barrier) {
+
+		final SpaceTimeDiscretization disc = activatedModel.getSpaceTimeDiscretization();
+
+		final double[] spotGrid = disc.getSpaceGrid(0).getGrid();
+		final double[] secondGrid = disc.getSpaceGrid(1).getGrid();
+
+		final int n0 = spotGrid.length;
+		final int n1 = secondGrid.length;
+		final int numberOfColumns = activatedValues[0].length;
+
+		final double[][] traceValues = new double[n1][numberOfColumns];
+
+		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			for(int j = 0; j < n1; j++) {
+				final double[] slice = new double[n0];
+				for(int i = 0; i < n0; i++) {
+					slice[i] = activatedValues[flatten(i, j, n0)][timeIndex];
+				}
+
+				final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+						spotGrid,
+						slice,
+						InterpolationMethod.LINEAR,
+						ExtrapolationMethod.CONSTANT
+						);
+
+				traceValues[j][timeIndex] = interpolator.getValue(barrier);
+			}
+		}
+
+		return new DoubleBarrierTrace2D(
+				maturity,
+				secondGrid,
+				disc.getTimeDiscretization(),
+				traceValues
+				);
+	}
+
+	/*
+	 * ============================================
+	 * STITCHING
+	 * ============================================
+	 */
+
+	private double[][] assembleDirectKnockInSurface1D(
+			final FiniteDifferenceEquityModel originalModel,
+			final FiniteDifferenceEquityModel activatedModel,
+			final double[][] activatedValues,
+			final FiniteDifferenceEquityModel preHitModel,
+			final double[][] preHitValues) {
+
+		final double[] originalGrid = getValuationSpaceTimeDiscretization(originalModel).getSpaceGrid(0).getGrid();
+
+		final double[][] activatedOnOriginalGrid = interpolateSurfaceToOriginalGrid1D(
+				activatedValues,
+				activatedModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+				originalGrid
+				);
+
+		final double[][] preHitOnOriginalGrid = interpolateSurfaceToOriginalGrid1D(
+				preHitValues,
+				preHitModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+				originalGrid
+				);
+
+		final int numberOfColumns = activatedOnOriginalGrid[0].length;
+		final double[][] result = new double[originalGrid.length][numberOfColumns];
+
+		for(int i = 0; i < originalGrid.length; i++) {
+			final boolean alreadyActivated = isKnockedIn(originalGrid[i]);
+			final double[][] source = alreadyActivated ? activatedOnOriginalGrid : preHitOnOriginalGrid;
+
+			for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+				result[i][timeIndex] = source[i][timeIndex];
+			}
+		}
+
+		return result;
+	}
+
+	private double[][] assembleDirectKnockInSurface2D(
+			final FiniteDifferenceEquityModel originalModel,
+			final FiniteDifferenceEquityModel activatedModel,
+			final double[][] activatedValues,
+			final FiniteDifferenceEquityModel preHitModel,
+			final double[][] preHitValues) {
+
+		final SpaceTimeDiscretization originalDiscretization = getValuationSpaceTimeDiscretization(originalModel);
+
+		final double[][] activatedOnOriginalGrid = interpolateSurfaceToOriginalGrid2DAlongFirstState(
+				activatedValues,
+				activatedModel.getSpaceTimeDiscretization(),
+				originalDiscretization
+				);
+
+		final double[][] preHitOnOriginalGrid = interpolateSurfaceToOriginalGrid2DAlongFirstState(
+				preHitValues,
+				preHitModel.getSpaceTimeDiscretization(),
+				originalDiscretization
+				);
+
+		final double[] x0 = originalDiscretization.getSpaceGrid(0).getGrid();
+		final double[] x1 = originalDiscretization.getSpaceGrid(1).getGrid();
+
+		final int numberOfColumns = activatedOnOriginalGrid[0].length;
+		final double[][] result = new double[x0.length * x1.length][numberOfColumns];
+
+		for(int j = 0; j < x1.length; j++) {
+			for(int i = 0; i < x0.length; i++) {
+				final boolean alreadyActivated = isKnockedIn(x0[i]);
+				final double[][] source = alreadyActivated ? activatedOnOriginalGrid : preHitOnOriginalGrid;
+				final int k = flatten(i, j, x0.length);
+
+				for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+					result[k][timeIndex] = source[k][timeIndex];
+				}
+			}
+		}
+
+		return result;
+	}
+
+	/*
+	 * ============================================
+	 * INTERPOLATION
+	 * ============================================
+	 */
+
+	private double[][] interpolateSurfaceToOriginalGrid1D(
+			final double[][] valuesOnAuxiliaryGrid,
+			final double[] auxiliaryGrid,
+			final double[] originalGrid) {
+
+		final int numberOfColumns = valuesOnAuxiliaryGrid[0].length;
+		final double[][] interpolatedValues = new double[originalGrid.length][numberOfColumns];
+
+		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+					auxiliaryGrid,
+					getColumn(valuesOnAuxiliaryGrid, timeIndex),
+					InterpolationMethod.LINEAR,
+					ExtrapolationMethod.CONSTANT
+					);
+
+			for(int i = 0; i < originalGrid.length; i++) {
+				interpolatedValues[i][timeIndex] = interpolator.getValue(originalGrid[i]);
+			}
+		}
+
+		return interpolatedValues;
+	}
+
+	private double[][] interpolateSurfaceToOriginalGrid2DAlongFirstState(
+			final double[][] valuesOnAuxiliaryGrid,
+			final SpaceTimeDiscretization auxiliaryDiscretization,
+			final SpaceTimeDiscretization originalDiscretization) {
+
+		final double[] auxiliaryX0 = auxiliaryDiscretization.getSpaceGrid(0).getGrid();
+		final double[] auxiliaryX1 = auxiliaryDiscretization.getSpaceGrid(1).getGrid();
+
+		final double[] originalX0 = originalDiscretization.getSpaceGrid(0).getGrid();
+		final double[] originalX1 = originalDiscretization.getSpaceGrid(1).getGrid();
+
+		if(auxiliaryX1.length != originalX1.length) {
+			throw new IllegalArgumentException(
+					"2D interpolation currently requires the second state-variable grid to remain unchanged.");
+		}
+
+		for(int j = 0; j < originalX1.length; j++) {
+			if(Math.abs(auxiliaryX1[j] - originalX1[j]) > 1E-12) {
+				throw new IllegalArgumentException(
+						"2D interpolation currently requires the second state-variable grid to remain unchanged.");
+			}
+		}
+
+		final int auxiliaryN0 = auxiliaryX0.length;
+		final int originalN0 = originalX0.length;
+		final int originalN1 = originalX1.length;
+
+		final int numberOfColumns = valuesOnAuxiliaryGrid[0].length;
+		final double[][] interpolatedValues = new double[originalN0 * originalN1][numberOfColumns];
+
+		for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+			for(int j = 0; j < originalN1; j++) {
+				final double[] auxiliarySlice = new double[auxiliaryN0];
+				for(int i = 0; i < auxiliaryN0; i++) {
+					auxiliarySlice[i] = valuesOnAuxiliaryGrid[flatten(i, j, auxiliaryN0)][timeIndex];
+				}
+
+				final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+						auxiliaryX0,
+						auxiliarySlice,
+						InterpolationMethod.LINEAR,
+						ExtrapolationMethod.CONSTANT
+						);
+
+				for(int i = 0; i < originalN0; i++) {
+					interpolatedValues[flatten(i, j, originalN0)][timeIndex] =
+							interpolator.getValue(originalX0[i]);
+				}
+			}
+		}
+
+		return interpolatedValues;
+	}
+
+	/*
+	 * ============================================
+	 * PAYOFFS / TERMINALS / STATE LOGIC
+	 * ============================================
+	 */
+
+	private double[] buildZeroTerminalValues(final SpaceTimeDiscretization discretization) {
+		final double[] spotGrid = discretization.getSpaceGrid(0).getGrid();
+		final double[] zero = new double[spotGrid.length];
+		for(int i = 0; i < zero.length; i++) {
+			zero[i] = 0.0;
+		}
+		return zero;
+	}
+
+	private double[] buildCellAveragedTerminalValues(final SpaceTimeDiscretization discretization) {
+		final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
+		final double[] terminalValues = new double[sGrid.length];
+
+		for(int i = 0; i < sGrid.length; i++) {
+			final double leftEdge = getLeftDualCellEdge(sGrid, i);
+			final double rightEdge = getRightDualCellEdge(sGrid, i);
+			terminalValues[i] = cellAveragedPayoffForDirectOutPricing(leftEdge, rightEdge);
+		}
+
+		return terminalValues;
+	}
+
+	private double cellAveragedPayoffForDirectOutPricing(final double leftEdge, final double rightEdge) {
+		if(!(leftEdge < rightEdge)) {
+			throw new IllegalArgumentException("Require leftEdge < rightEdge.");
+		}
+
+		final double aliveLeft = Math.max(leftEdge, lowerBarrier);
+		final double aliveRight = Math.min(rightEdge, upperBarrier);
+
+		if(aliveRight <= aliveLeft) {
+			return 0.0;
+		}
+
+		final double aliveWeight = (aliveRight - aliveLeft) / (rightEdge - leftEdge);
+		return aliveWeight * cellAveragedVanillaPayoff(aliveLeft, aliveRight);
+	}
+
+	private double cellAveragedVanillaPayoff(final double leftEdge, final double rightEdge) {
+		final double cellLength = rightEdge - leftEdge;
+
+		if(callOrPutSign == CallOrPut.CALL) {
+			if(rightEdge <= strike) {
+				return 0.0;
+			}
+			if(leftEdge >= strike) {
+				return 0.5 * (leftEdge + rightEdge) - strike;
+			}
+			return 0.5 * Math.pow(rightEdge - strike, 2.0) / cellLength;
+		}
+		else {
+			if(leftEdge >= strike) {
+				return 0.0;
+			}
+			if(rightEdge <= strike) {
+				return strike - 0.5 * (leftEdge + rightEdge);
+			}
+			return 0.5 * Math.pow(strike - leftEdge, 2.0) / cellLength;
+		}
+	}
+
+	private double pointwisePayoffForDirectOutPricing(final double assetValue) {
+		if(!isAliveInsideBand(assetValue)) {
+			return 0.0;
+		}
+		return pointwiseVanillaPayoff(assetValue);
+	}
+
+	private double pointwiseVanillaPayoff(final double assetValue) {
+		if(callOrPutSign == CallOrPut.CALL) {
+			return Math.max(assetValue - strike, 0.0);
+		}
+		return Math.max(strike - assetValue, 0.0);
+	}
+
+	private boolean isOutOption() {
+		return doubleBarrierType == DoubleBarrierType.KNOCK_OUT;
+	}
+
+	private boolean isInOption() {
+		return doubleBarrierType == DoubleBarrierType.KNOCK_IN;
+	}
+
+	private boolean isAliveInsideBand(final double assetValue) {
+		return assetValue > lowerBarrier && assetValue < upperBarrier;
+	}
+
+	private boolean isKnockedIn(final double assetValue) {
+		return assetValue <= lowerBarrier || assetValue >= upperBarrier;
+	}
+
+	private boolean isDegenerateZeroCase() {
+		return (doubleBarrierType == DoubleBarrierType.KNOCK_OUT && callOrPutSign == CallOrPut.CALL && upperBarrier <= strike)
+				|| (doubleBarrierType == DoubleBarrierType.KNOCK_OUT && callOrPutSign == CallOrPut.PUT && lowerBarrier >= strike)
+				|| (doubleBarrierType == DoubleBarrierType.KNOCK_IN && callOrPutSign == CallOrPut.CALL && lowerBarrier >= strike)
+				|| (doubleBarrierType == DoubleBarrierType.KNOCK_IN && callOrPutSign == CallOrPut.PUT && upperBarrier <= strike);
+	}
+
+	private boolean isDegenerateVanillaCase() {
+		return (doubleBarrierType == DoubleBarrierType.KNOCK_IN && callOrPutSign == CallOrPut.CALL && upperBarrier <= strike)
+				|| (doubleBarrierType == DoubleBarrierType.KNOCK_IN && callOrPutSign == CallOrPut.PUT && lowerBarrier >= strike);
+	}
+
+	private double getLeftDualCellEdge(final double[] grid, final int i) {
+		if(i == 0) {
+			return grid[0];
+		}
+		return 0.5 * (grid[i - 1] + grid[i]);
+	}
+
+	private double getRightDualCellEdge(final double[] grid, final int i) {
+		if(i == grid.length - 1) {
+			return grid[grid.length - 1];
+		}
+		return 0.5 * (grid[i] + grid[i + 1]);
+	}
+
+	/*
+	 * ============================================
+	 * INTERNAL CONSTRAINTS
+	 * ============================================
+	 */
+
+	@Override
+	public boolean isConstraintActive(final double time, final double... stateVariables) {
+		if(!isOutOption()) {
+			return false;
+		}
+		final double underlyingLevel = stateVariables[0];
+		return underlyingLevel <= lowerBarrier || underlyingLevel >= upperBarrier;
+	}
+
+	@Override
+	public double getConstrainedValue(final double time, final double... stateVariables) {
+		if(!isOutOption()) {
+			throw new IllegalStateException("Internal constrained value requested for a non knock-out product.");
+		}
+		return 0.0;
+	}
+
+	/*
+	 * ============================================
+	 * MODEL / GRID HELPERS
+	 * ============================================
+	 */
+
+	private void validateBarriersInsideGrid(final FiniteDifferenceEquityModel model) {
+		final double[] spotGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+		final double gridMin = spotGrid[0];
+		final double gridMax = spotGrid[spotGrid.length - 1];
+
+		if(lowerBarrier < gridMin || upperBarrier > gridMax) {
+			throw new IllegalArgumentException(
+					"Both double barriers must lie inside the first state-variable grid domain of the supplied model.");
+		}
+	}
+
+	private SpaceTimeDiscretization getValuationSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
+		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
+
+		if(!exercise.isBermudan()) {
+			return base;
+		}
+
+		final TimeDiscretization refinedTimeDiscretization =
+				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+						base.getTimeDiscretization(),
+						exercise
+						);
+
+		if(base.getNumberOfSpaceGrids() == 1) {
+			return new SpaceTimeDiscretization(
+					base.getSpaceGrid(0),
+					refinedTimeDiscretization,
+					base.getTheta(),
+					new double[] { base.getCenter(0) }
+					);
+		}
+
+		final int numberOfSpaceGrids = base.getNumberOfSpaceGrids();
+		final Grid[] spaceGrids = new Grid[numberOfSpaceGrids];
+		final double[] center = new double[numberOfSpaceGrids];
+
+		for(int i = 0; i < numberOfSpaceGrids; i++) {
+			spaceGrids[i] = base.getSpaceGrid(i);
+			center[i] = base.getCenter(i);
+		}
+
+		return new SpaceTimeDiscretization(
+				spaceGrids,
+				refinedTimeDiscretization,
+				base.getTheta(),
+				center
+				);
+	}
+
+	private FiniteDifferenceEquityModel getEffectiveModelForValuation(final FiniteDifferenceEquityModel model) {
+		final SpaceTimeDiscretization effectiveDiscretization = getValuationSpaceTimeDiscretization(model);
+
+		if(effectiveDiscretization == model.getSpaceTimeDiscretization()) {
+			return model;
+		}
+
+		return model.getCloneWithModifiedSpaceTimeDiscretization(effectiveDiscretization);
+	}
+
+	private int getTotalNumberOfSpacePoints(final SpaceTimeDiscretization discretization) {
+		final int dims = discretization.getNumberOfSpaceGrids();
+		if(dims == 1) {
+			return discretization.getSpaceGrid(0).getGrid().length;
+		}
+		else if(dims == 2) {
+			return discretization.getSpaceGrid(0).getGrid().length
+					* discretization.getSpaceGrid(1).getGrid().length;
+		}
+		else {
+			throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+		}
+	}
+
+	private static double[] getColumn(final double[][] matrix, final int columnIndex) {
+		final double[] column = new double[matrix.length];
+		for(int i = 0; i < matrix.length; i++) {
+			column[i] = matrix[i][columnIndex];
+		}
+		return column;
+	}
+
+	private static int flatten(final int i0, final int i1, final int n0) {
+		return i0 + i1 * n0;
+	}
+
+	private static CallOrPut mapCallOrPut(final double sign) {
+		if(sign == 1.0) {
+			return CallOrPut.CALL;
+		}
+		if(sign == -1.0) {
+			return CallOrPut.PUT;
+		}
+		throw new IllegalArgumentException("Unknown option type.");
+	}
+
+	/*
+	 * ============================================
+	 * GETTERS
+	 * ============================================
+	 */
+
+	public String getUnderlyingName() {
+		return underlyingName;
+	}
+
+	public double getMaturity() {
+		return maturity;
+	}
+
+	public double getStrike() {
+		return strike;
+	}
+
+	public double getLowerBarrier() {
+		return lowerBarrier;
+	}
+
+	public double getUpperBarrier() {
+		return upperBarrier;
+	}
+
+	public CallOrPut getCallOrPut() {
+		return callOrPutSign;
+	}
+
+	public DoubleBarrierType getDoubleBarrierType() {
+		return doubleBarrierType;
+	}
+
+	public Exercise getExercise() {
+		return exercise;
+	}
+
+	/*
+	 * ============================================
+	 * TRACE HOLDERS
+	 * ============================================
+	 */
+
+	private static final class DoubleBarrierTrace1D {
+
+		private final double maturity;
+		private final TimeDiscretization timeDiscretization;
+		private final double[] values;
+
+		private DoubleBarrierTrace1D(
+				final double maturity,
+				final TimeDiscretization timeDiscretization,
+				final double[] values) {
+			this.maturity = maturity;
+			this.timeDiscretization = timeDiscretization;
+			this.values = values;
+		}
+
+		private double getBoundaryValue(final double runningTime) {
+			final double tau = Math.max(0.0, maturity - runningTime);
+			int timeIndex = timeDiscretization.getTimeIndexNearestLessOrEqual(tau);
+
+			if(timeIndex < 0) {
+				timeIndex = 0;
+			}
+			if(timeIndex >= values.length) {
+				timeIndex = values.length - 1;
+			}
+
+			return values[timeIndex];
+		}
+	}
+
+	private static final class DoubleBarrierTrace2D {
+
+		private final double maturity;
+		private final double[] secondGrid;
+		private final TimeDiscretization timeDiscretization;
+		private final double[][] values; // [secondIndex][timeIndex]
+
+		private DoubleBarrierTrace2D(
+				final double maturity,
+				final double[] secondGrid,
+				final TimeDiscretization timeDiscretization,
+				final double[][] values) {
+			this.maturity = maturity;
+			this.secondGrid = secondGrid;
+			this.timeDiscretization = timeDiscretization;
+			this.values = values;
+		}
+
+		private double getBoundaryValue(final double runningTime, final double secondState) {
+			final double tau = Math.max(0.0, maturity - runningTime);
+			int timeIndex = timeDiscretization.getTimeIndexNearestLessOrEqual(tau);
+
+			if(timeIndex < 0) {
+				timeIndex = 0;
+			}
+			if(timeIndex >= values[0].length) {
+				timeIndex = values[0].length - 1;
+			}
+
+			if(secondGrid.length == 1) {
+				return values[0][timeIndex];
+			}
+
+			final int exactIndex = findExactGridIndex(secondGrid, secondState);
+			if(exactIndex >= 0) {
+				return values[exactIndex][timeIndex];
+			}
+
+			if(secondState <= secondGrid[0]) {
+				return values[0][timeIndex];
+			}
+			if(secondState >= secondGrid[secondGrid.length - 1]) {
+				return values[secondGrid.length - 1][timeIndex];
+			}
+
+			int upper = 1;
+			while(upper < secondGrid.length && secondGrid[upper] < secondState) {
+				upper++;
+			}
+			final int lower = upper - 1;
+
+			final double xL = secondGrid[lower];
+			final double xU = secondGrid[upper];
+
+			final double vL = values[lower][timeIndex];
+			final double vU = values[upper][timeIndex];
+
+			final double weight = (secondState - xL) / (xU - xL);
+			return (1.0 - weight) * vL + weight * vU;
+		}
+
+		private int findExactGridIndex(final double[] grid, final double x) {
+			for(int i = 0; i < grid.length; i++) {
+				if(Math.abs(grid[i] - x) <= GRID_TOLERANCE) {
+					return i;
+				}
+			}
+			return -1;
+		}
+	}
+
+	/*
+	 * ============================================
+	 * 1D PRE-HIT MODEL WRAPPER
+	 * ============================================
+	 */
+
+	private static final class DoubleBarrierPreHitModel1D
+	implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
+
+		private final FiniteDifferenceEquityModel delegate;
+		private final SpaceTimeDiscretization discretization;
+		private final DoubleBarrierTrace1D lowerTrace;
+		private final DoubleBarrierTrace1D upperTrace;
+
+		private DoubleBarrierPreHitModel1D(
+				final FiniteDifferenceEquityModel delegate,
+				final SpaceTimeDiscretization discretization,
+				final DoubleBarrierTrace1D lowerTrace,
+				final DoubleBarrierTrace1D upperTrace) {
+			this.delegate = delegate;
+			this.discretization = discretization;
+			this.lowerTrace = lowerTrace;
+			this.upperTrace = upperTrace;
+		}
+
+		@Override
+		public DiscountCurve getRiskFreeCurve() {
+			return delegate.getRiskFreeCurve();
+		}
+
+		@Override
+		public DiscountCurve getDividendYieldCurve() {
+			return delegate.getDividendYieldCurve();
+		}
+
+		@Override
+		public SpaceTimeDiscretization getSpaceTimeDiscretization() {
+			return discretization;
+		}
+
+		@Override
+		public double[] getDrift(final double time, final double... stateVariables) {
+			return delegate.getDrift(time, stateVariables);
+		}
+
+		@Override
+		public double[][] getFactorLoading(final double time, final double... stateVariables) {
+			return delegate.getFactorLoading(time, stateVariables);
+		}
+
+		@Override
+		public double[] getInitialValue() {
+			return delegate.getInitialValue();
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			final BoundaryCondition[] base =
+					delegate.getBoundaryConditionsAtLowerBoundary(product, time, stateVariables);
+
+			final BoundaryCondition[] result =
+					base != null ? base.clone() : new BoundaryCondition[] { StandardBoundaryCondition.none() };
+
+			result[0] = StandardBoundaryCondition.dirichlet(lowerTrace.getBoundaryValue(time));
+			return result;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			final BoundaryCondition[] base =
+					delegate.getBoundaryConditionsAtUpperBoundary(product, time, stateVariables);
+
+			final BoundaryCondition[] result =
+					base != null ? base.clone() : new BoundaryCondition[] { StandardBoundaryCondition.none() };
+
+			result[0] = StandardBoundaryCondition.dirichlet(upperTrace.getBoundaryValue(time));
+			return result;
+		}
+
+		@Override
+		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+
+			final FiniteDifferenceEquityModel clonedDelegate =
+					delegate.getCloneWithModifiedSpaceTimeDiscretization(newSpaceTimeDiscretization);
+
+			return new DoubleBarrierPreHitModel1D(
+					clonedDelegate,
+					newSpaceTimeDiscretization,
+					lowerTrace,
+					upperTrace
+					);
+		}
+	}
+
+	/*
+	 * ============================================
+	 * 2D PRE-HIT MODEL WRAPPER
+	 * ============================================
+	 */
+
+	private static final class DoubleBarrierPreHitHestonModel
+	extends FDMHestonModel
+	implements FiniteDifferenceBoundary {
+
+		private final FDMHestonModel baseModel;
+		private final SpaceTimeDiscretization discretization;
+		private final DoubleBarrierTrace2D lowerTrace;
+		private final DoubleBarrierTrace2D upperTrace;
+
+		private DoubleBarrierPreHitHestonModel(
+				final FDMHestonModel baseModel,
+				final SpaceTimeDiscretization discretization,
+				final DoubleBarrierTrace2D lowerTrace,
+				final DoubleBarrierTrace2D upperTrace) {
+
+			super(
+					baseModel.getInitialValue()[0],
+					baseModel.getInitialValue()[1],
+					baseModel.getRiskFreeCurve(),
+					baseModel.getDividendYieldCurve(),
+					baseModel.getKappa(),
+					baseModel.getThetaV(),
+					baseModel.getSigma(),
+					baseModel.getRho(),
+					discretization
+					);
+
+			this.baseModel = baseModel;
+			this.discretization = discretization;
+			this.lowerTrace = lowerTrace;
+			this.upperTrace = upperTrace;
+		}
+
+		@Override
+		public SpaceTimeDiscretization getSpaceTimeDiscretization() {
+			return discretization;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			final BoundaryCondition[] base =
+					baseModel.getBoundaryConditionsAtLowerBoundary(product, time, stateVariables);
+
+			final BoundaryCondition[] result = base.clone();
+
+			final double secondState = stateVariables.length > 1 ? stateVariables[1] : getInitialValue()[1];
+
+			/*
+			 * First state variable = spot boundary at lower barrier.
+			 * Second state variable boundary stays whatever the original Heston model/product boundary provides.
+			 */
+			result[0] = StandardBoundaryCondition.dirichlet(
+					lowerTrace.getBoundaryValue(time, secondState)
+					);
+
+			return result;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			final BoundaryCondition[] base =
+					baseModel.getBoundaryConditionsAtUpperBoundary(product, time, stateVariables);
+
+			final BoundaryCondition[] result = base.clone();
+
+			final double secondState = stateVariables.length > 1 ? stateVariables[1] : getInitialValue()[1];
+
+			/*
+			 * First state variable = spot boundary at upper barrier.
+			 * Second state variable boundary stays whatever the original Heston model/product boundary provides.
+			 */
+			result[0] = StandardBoundaryCondition.dirichlet(
+					upperTrace.getBoundaryValue(time, secondState)
+					);
+
+			return result;
+		}
+
+		@Override
+		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+
+			final FDMHestonModel clonedBaseModel = new FDMHestonModel(
+					baseModel.getInitialValue()[0],
+					baseModel.getInitialValue()[1],
+					baseModel.getRiskFreeCurve(),
+					baseModel.getDividendYieldCurve(),
+					baseModel.getKappa(),
+					baseModel.getThetaV(),
+					baseModel.getSigma(),
+					baseModel.getRho(),
+					newSpaceTimeDiscretization
+					);
+
+			return new DoubleBarrierPreHitHestonModel(
+					clonedBaseModel,
+					newSpaceTimeDiscretization,
+					lowerTrace,
+					upperTrace
+					);
+		}
+
+	}
+
+	private static final class DoubleBarrierPreHitSabrModel
+	extends FDMSabrModel
+	implements FiniteDifferenceBoundary {
+
+		private final FDMSabrModel baseModel;
+		private final SpaceTimeDiscretization discretization;
+		private final DoubleBarrierTrace2D lowerTrace;
+		private final DoubleBarrierTrace2D upperTrace;
+
+		private DoubleBarrierPreHitSabrModel(
+				final FDMSabrModel baseModel,
+				final SpaceTimeDiscretization discretization,
+				final DoubleBarrierTrace2D lowerTrace,
+				final DoubleBarrierTrace2D upperTrace) {
+
+			super(
+					baseModel.getInitialSpot(),
+					baseModel.getInitialAlpha(),
+					baseModel.getRiskFreeCurve(),
+					baseModel.getDividendYieldCurve(),
+					baseModel.getBeta(),
+					baseModel.getNu(),
+					baseModel.getRho(),
+					discretization
+					);
+
+			this.baseModel = baseModel;
+			this.discretization = discretization;
+			this.lowerTrace = lowerTrace;
+			this.upperTrace = upperTrace;
+		}
+
+		@Override
+		public SpaceTimeDiscretization getSpaceTimeDiscretization() {
+			return discretization;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			final BoundaryCondition[] base =
+					baseModel.getBoundaryConditionsAtLowerBoundary(product, time, stateVariables);
+
+			final BoundaryCondition[] result = base.clone();
+
+			final double secondState = stateVariables.length > 1 ? stateVariables[1] : getInitialValue()[1];
+
+			/*
+			 * First state variable = spot boundary at lower barrier.
+			 * Second state variable boundary stays whatever the original SABR model/product boundary provides.
+			 */
+			result[0] = StandardBoundaryCondition.dirichlet(
+					lowerTrace.getBoundaryValue(time, secondState)
+					);
+
+			return result;
+		}
+
+		@Override
+		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+				final FiniteDifferenceProduct product,
+				final double time,
+				final double... stateVariables) {
+
+			final BoundaryCondition[] base =
+					baseModel.getBoundaryConditionsAtUpperBoundary(product, time, stateVariables);
+
+			final BoundaryCondition[] result = base.clone();
+
+			final double secondState = stateVariables.length > 1 ? stateVariables[1] : getInitialValue()[1];
+
+			/*
+			 * First state variable = spot boundary at upper barrier.
+			 * Second state variable boundary stays whatever the original SABR model/product boundary provides.
+			 */
+			result[0] = StandardBoundaryCondition.dirichlet(
+					upperTrace.getBoundaryValue(time, secondState)
+					);
+
+			return result;
+		}
+
+		@Override
+		public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
+				final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+
+			final FDMSabrModel clonedBaseModel = new FDMSabrModel(
+					baseModel.getInitialSpot(),
+					baseModel.getInitialAlpha(),
+					baseModel.getRiskFreeCurve(),
+					baseModel.getDividendYieldCurve(),
+					baseModel.getBeta(),
+					baseModel.getNu(),
+					baseModel.getRho(),
+					newSpaceTimeDiscretization
+					);
+
+			return new DoubleBarrierPreHitSabrModel(
+					clonedBaseModel,
+					newSpaceTimeDiscretization,
+					lowerTrace,
+					upperTrace
+					);
+		}
+	}
 }

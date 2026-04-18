@@ -1,12 +1,20 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import java.util.function.DoubleBinaryOperator;
+import java.util.function.DoubleUnaryOperator;
+
+import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
+import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
+import net.finmath.finitedifference.solvers.adi.AbstractADI2D;
 import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.DoubleBarrierType;
+import net.finmath.time.TimeDiscretization;
 
 /**
  * Finite-difference valuation of a continuously monitored double-barrier cash binary option.
@@ -22,320 +30,481 @@ import net.finmath.modelling.products.DoubleBarrierType;
  * </ul>
  *
  * <p>
- * Current implementation policy:
+ * Exercise semantics implemented here:
  * </p>
  * <ul>
- *   <li>cash payoff only,</li>
- *   <li>European only,</li>
- *   <li>direct one-state pricing through internal state constraints,</li>
- *   <li>barrier activation semantics are enforced through the constrained value outside the alive band.</li>
+ *   <li>European: payoff is determined at maturity as usual,</li>
+ *   <li>Bermudan/American: the holder may take the current binary intrinsic value
+ *       (cash-or-zero depending on the current barrier state) at an allowed exercise time.</li>
  * </ul>
- * 
+ *
+ * <p>
+ * This means:
+ * </p>
+ * <ul>
+ *   <li>KNOCK_OUT: inside the alive band the immediate exercise payoff is {@code cashPayoff},</li>
+ *   <li>KNOCK_IN: outside the alive band the immediate exercise payoff is {@code cashPayoff},</li>
+ *   <li>KIKO: below the lower barrier the immediate exercise payoff is {@code cashPayoff},</li>
+ *   <li>KOKI: above the upper barrier the immediate exercise payoff is {@code cashPayoff}.</li>
+ * </ul>
+ *
+ * <p>
+ * The implementation remains a direct one-state constrained PDE.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierBinaryOption implements
-        FiniteDifferenceProduct,
-        FiniteDifferenceInternalStateConstraint {
+		FiniteDifferenceProduct,
+		FiniteDifferenceInternalStateConstraint {
 
-    private final String underlyingName;
-    private final double maturity;
-    private final double cashPayoff;
-    private final double lowerBarrier;
-    private final double upperBarrier;
-    private final DoubleBarrierType doubleBarrierType;
-    private final Exercise exercise;
+	private final String underlyingName;
+	private final double maturity;
+	private final double cashPayoff;
+	private final double lowerBarrier;
+	private final double upperBarrier;
+	private final DoubleBarrierType doubleBarrierType;
+	private final Exercise exercise;
 
-    public DoubleBarrierBinaryOption(
-            final String underlyingName,
-            final double maturity,
-            final double cashPayoff,
-            final double lowerBarrier,
-            final double upperBarrier,
-            final DoubleBarrierType doubleBarrierType,
-            final Exercise exercise) {
+	public DoubleBarrierBinaryOption(
+			final String underlyingName,
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise) {
 
-        if(doubleBarrierType == null) {
-            throw new IllegalArgumentException("Double barrier type must not be null.");
-        }
-        if(exercise == null) {
-            throw new IllegalArgumentException("Exercise must not be null.");
-        }
-        if(!exercise.isEuropean()) {
-            throw new IllegalArgumentException("DoubleBarrierBinaryOption currently supports only European exercise.");
-        }
-        if(maturity < 0.0) {
-            throw new IllegalArgumentException("Maturity must be non-negative.");
-        }
-        if(cashPayoff < 0.0) {
-            throw new IllegalArgumentException("Cash payoff must be non-negative.");
-        }
-        if(lowerBarrier <= 0.0 || upperBarrier <= 0.0) {
-            throw new IllegalArgumentException("Barriers must be positive.");
-        }
-        if(lowerBarrier >= upperBarrier) {
-            throw new IllegalArgumentException("lowerBarrier must be < upperBarrier.");
-        }
+		if(doubleBarrierType == null) {
+			throw new IllegalArgumentException("Double barrier type must not be null.");
+		}
+		if(exercise == null) {
+			throw new IllegalArgumentException("Exercise must not be null.");
+		}
+		if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+			throw new IllegalArgumentException(
+					"DoubleBarrierBinaryOption currently supports only European, Bermudan, and American exercise.");
+		}
+		if(maturity < 0.0) {
+			throw new IllegalArgumentException("Maturity must be non-negative.");
+		}
+		if(cashPayoff < 0.0) {
+			throw new IllegalArgumentException("Cash payoff must be non-negative.");
+		}
+		if(lowerBarrier <= 0.0 || upperBarrier <= 0.0) {
+			throw new IllegalArgumentException("Barriers must be positive.");
+		}
+		if(lowerBarrier >= upperBarrier) {
+			throw new IllegalArgumentException("lowerBarrier must be < upperBarrier.");
+		}
 
-        this.underlyingName = underlyingName;
-        this.maturity = maturity;
-        this.cashPayoff = cashPayoff;
-        this.lowerBarrier = lowerBarrier;
-        this.upperBarrier = upperBarrier;
-        this.doubleBarrierType = doubleBarrierType;
-        this.exercise = exercise;
-    }
+		this.underlyingName = underlyingName;
+		this.maturity = maturity;
+		this.cashPayoff = cashPayoff;
+		this.lowerBarrier = lowerBarrier;
+		this.upperBarrier = upperBarrier;
+		this.doubleBarrierType = doubleBarrierType;
+		this.exercise = exercise;
+	}
 
-    public DoubleBarrierBinaryOption(
-            final String underlyingName,
-            final double maturity,
-            final double cashPayoff,
-            final double lowerBarrier,
-            final double upperBarrier,
-            final DoubleBarrierType doubleBarrierType) {
-        this(
-                underlyingName,
-                maturity,
-                cashPayoff,
-                lowerBarrier,
-                upperBarrier,
-                doubleBarrierType,
-                new EuropeanExercise(maturity)
-        );
-    }
+	public DoubleBarrierBinaryOption(
+			final String underlyingName,
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType) {
+		this(
+				underlyingName,
+				maturity,
+				cashPayoff,
+				lowerBarrier,
+				upperBarrier,
+				doubleBarrierType,
+				new EuropeanExercise(maturity)
+		);
+	}
 
-    public DoubleBarrierBinaryOption(
-            final double maturity,
-            final double cashPayoff,
-            final double lowerBarrier,
-            final double upperBarrier,
-            final DoubleBarrierType doubleBarrierType) {
-        this(
-                null,
-                maturity,
-                cashPayoff,
-                lowerBarrier,
-                upperBarrier,
-                doubleBarrierType,
-                new EuropeanExercise(maturity)
-        );
-    }
+	public DoubleBarrierBinaryOption(
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType) {
+		this(
+				null,
+				maturity,
+				cashPayoff,
+				lowerBarrier,
+				upperBarrier,
+				doubleBarrierType,
+				new EuropeanExercise(maturity)
+		);
+	}
 
-    @Override
-    public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
-        final double[][] values = getValues(model);
+	public DoubleBarrierBinaryOption(
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise) {
+		this(
+				null,
+				maturity,
+				cashPayoff,
+				lowerBarrier,
+				upperBarrier,
+				doubleBarrierType,
+				exercise
+		);
+	}
 
-        final SpaceTimeDiscretization valuationDiscretization = model.getSpaceTimeDiscretization();
-        final double tau = maturity - evaluationTime;
-        final int timeIndex = valuationDiscretization.getTimeDiscretization()
-                .getTimeIndexNearestLessOrEqual(tau);
+	@Override
+	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
+		final double[][] values = getValues(model);
 
-        final double[] column = new double[values.length];
-        for(int i = 0; i < values.length; i++) {
-            column[i] = values[i][timeIndex];
-        }
-        return column;
-    }
+		final SpaceTimeDiscretization valuationDiscretization = getValuationSpaceTimeDiscretization(model);
+		final double tau = maturity - evaluationTime;
+		final int timeIndex = valuationDiscretization.getTimeDiscretization()
+				.getTimeIndexNearestLessOrEqual(tau);
 
-    @Override
-    public double[][] getValues(final FiniteDifferenceEquityModel model) {
-        validateProductConfiguration(model);
+		final double[] column = new double[values.length];
+		for(int i = 0; i < values.length; i++) {
+			column[i] = values[i][timeIndex];
+		}
+		return column;
+	}
 
-        if(cashPayoff == 0.0) {
-            return buildZeroValueSurface(model);
-        }
+	@Override
+	public double[][] getValues(final FiniteDifferenceEquityModel model) {
+		validateProductConfiguration(model);
 
-        final FDMSolver solver = FDMSolverFactory.createSolver(
-                model,
-                this,
-                model.getSpaceTimeDiscretization(),
-                exercise
-        );
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
+		final SpaceTimeDiscretization valuationDiscretization = effectiveModel.getSpaceTimeDiscretization();
 
-        final boolean isOneDimensional = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1;
+		if(cashPayoff == 0.0) {
+			return buildZeroValueSurface(valuationDiscretization);
+		}
 
-        if(isOneDimensional) {
-            final double[] terminalValues =
-                    buildCellAveragedTerminalValues(model.getSpaceTimeDiscretization());
+		final int dims = valuationDiscretization.getNumberOfSpaceGrids();
 
-            return solver.getValues(maturity, terminalValues);
-        }
+		if(dims == 1) {
+			return getValues1D(effectiveModel, valuationDiscretization);
+		}
+		else if(dims == 2) {
+			return getValues2D(effectiveModel, valuationDiscretization);
+		}
+		else {
+			throw new IllegalArgumentException("DoubleBarrierBinaryOption currently supports only 1D and 2D models.");
+		}
+	}
 
-        return solver.getValues(maturity, this::pointwiseTerminalPayoff);
-    }
+	private double[][] getValues1D(
+			final FiniteDifferenceEquityModel model,
+			final SpaceTimeDiscretization valuationDiscretization) {
 
-    private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
-        if(model == null) {
-            throw new IllegalArgumentException("Model must not be null.");
-        }
-        if(!exercise.isEuropean()) {
-            throw new IllegalArgumentException("DoubleBarrierBinaryOption currently supports only European exercise.");
-        }
+		final FDMSolver solver = new FDMThetaMethod1D(
+				model,
+				this,
+				valuationDiscretization,
+				exercise
+		);
 
-        final double[] spotGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-        final double gridMin = spotGrid[0];
-        final double gridMax = spotGrid[spotGrid.length - 1];
+		final double[] terminalValues = buildCellAveragedTerminalValues(valuationDiscretization);
 
-        if(lowerBarrier < gridMin || upperBarrier > gridMax) {
-            throw new IllegalArgumentException(
-                    "Both double barriers must lie inside the first state-variable grid domain of the supplied model.");
-        }
-    }
+		if(exercise.isEuropean()) {
+			return solver.getValues(maturity, terminalValues);
+		}
 
-    private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
-        final int numberOfSpacePoints =
-                model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid().length;
-        final int numberOfTimePoints =
-                model.getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps() + 1;
+		return solver.getValues(
+				maturity,
+				terminalValues,
+				this::pointwiseExercisePayoff
+		);
+	}
 
-        final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
-        for(int i = 0; i < numberOfSpacePoints; i++) {
-            for(int j = 0; j < numberOfTimePoints; j++) {
-                zeroValues[i][j] = 0.0;
-            }
-        }
-        return zeroValues;
-    }
+	private double[][] getValues2D(
+			final FiniteDifferenceEquityModel model,
+			final SpaceTimeDiscretization valuationDiscretization) {
 
-    private double[] buildCellAveragedTerminalValues(final SpaceTimeDiscretization discretization) {
-        final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
-        final double[] terminalValues = new double[sGrid.length];
+		final FDMSolver solver = FDMSolverFactory.createSolver(
+				model,
+				this,
+				valuationDiscretization,
+				exercise
+		);
 
-        for(int i = 0; i < sGrid.length; i++) {
-            final double leftEdge = getLeftDualCellEdge(sGrid, i);
-            final double rightEdge = getRightDualCellEdge(sGrid, i);
-            terminalValues[i] = cellAveragedTerminalPayoff(leftEdge, rightEdge);
-        }
+		final DoubleBinaryOperator terminalPayoff2D =
+				(assetValue, secondState) -> pointwiseTerminalPayoff(assetValue);
 
-        return terminalValues;
-    }
+		if(exercise.isEuropean()) {
+			return solver.getValues(maturity, terminalPayoff2D);
+		}
 
-    private double cellAveragedTerminalPayoff(final double leftEdge, final double rightEdge) {
-        if(!(leftEdge < rightEdge)) {
-            throw new IllegalArgumentException("Require leftEdge < rightEdge.");
-        }
+		if(!(solver instanceof AbstractADI2D)) {
+			throw new IllegalArgumentException(
+					"Two-dimensional Bermudan/American double-barrier binary pricing requires an ADI solver.");
+		}
 
-        final double cellLength = rightEdge - leftEdge;
+		return ((AbstractADI2D)solver).getValues(
+				maturity,
+				terminalPayoff2D,
+				(runningTime, assetValue, secondState) -> pointwiseExercisePayoff(assetValue)
+		);
+	}
 
-        final double belowLowerLength = Math.max(0.0, Math.min(rightEdge, lowerBarrier) - leftEdge);
-        final double aboveUpperLength = Math.max(0.0, rightEdge - Math.max(leftEdge, upperBarrier));
-        final double insideBandLength = Math.max(0.0, Math.min(rightEdge, upperBarrier) - Math.max(leftEdge, lowerBarrier));
+	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
+		if(model == null) {
+			throw new IllegalArgumentException("Model must not be null.");
+		}
 
-        switch(doubleBarrierType) {
-        case KNOCK_OUT:
-            return cashPayoff * insideBandLength / cellLength;
+		final SpaceTimeDiscretization valuationDiscretization = getValuationSpaceTimeDiscretization(model);
+		final int dims = valuationDiscretization.getNumberOfSpaceGrids();
 
-        case KNOCK_IN:
-            return cashPayoff * (belowLowerLength + aboveUpperLength) / cellLength;
+		if(dims != 1 && dims != 2) {
+			throw new IllegalArgumentException("DoubleBarrierBinaryOption currently supports only 1D and 2D models.");
+		}
 
-        case KIKO:
-            return cashPayoff * belowLowerLength / cellLength;
+		final double[] spotGrid = valuationDiscretization.getSpaceGrid(0).getGrid();
+		final double gridMin = spotGrid[0];
+		final double gridMax = spotGrid[spotGrid.length - 1];
 
-        case KOKI:
-            return cashPayoff * aboveUpperLength / cellLength;
+		if(lowerBarrier < gridMin || upperBarrier > gridMax) {
+			throw new IllegalArgumentException(
+					"Both double barriers must lie inside the first state-variable grid domain of the supplied model.");
+		}
+	}
 
-        default:
-            throw new IllegalArgumentException("Unsupported double barrier type.");
-        }
-    }
+	private double[][] buildZeroValueSurface(final SpaceTimeDiscretization discretization) {
+		final int numberOfSpacePoints = getTotalNumberOfSpacePoints(discretization);
+		final int numberOfTimePoints = discretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 
-    private double pointwiseTerminalPayoff(final double assetValue) {
-        switch(doubleBarrierType) {
-        case KNOCK_OUT:
-            return isInsideBarrierBand(assetValue) ? cashPayoff : 0.0;
+		final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
+		for(int i = 0; i < numberOfSpacePoints; i++) {
+			for(int j = 0; j < numberOfTimePoints; j++) {
+				zeroValues[i][j] = 0.0;
+			}
+		}
+		return zeroValues;
+	}
 
-        case KNOCK_IN:
-            return isInsideBarrierBand(assetValue) ? 0.0 : cashPayoff;
+	private double[] buildCellAveragedTerminalValues(final SpaceTimeDiscretization discretization) {
+		final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
+		final double[] terminalValues = new double[sGrid.length];
 
-        case KIKO:
-            return assetValue <= lowerBarrier ? cashPayoff : 0.0;
+		for(int i = 0; i < sGrid.length; i++) {
+			final double leftEdge = getLeftDualCellEdge(sGrid, i);
+			final double rightEdge = getRightDualCellEdge(sGrid, i);
+			terminalValues[i] = cellAveragedTerminalPayoff(leftEdge, rightEdge);
+		}
 
-        case KOKI:
-            return assetValue >= upperBarrier ? cashPayoff : 0.0;
+		return terminalValues;
+	}
 
-        default:
-            throw new IllegalArgumentException("Unsupported double barrier type.");
-        }
-    }
+	private double cellAveragedTerminalPayoff(final double leftEdge, final double rightEdge) {
+		if(!(leftEdge < rightEdge)) {
+			throw new IllegalArgumentException("Require leftEdge < rightEdge.");
+		}
 
-    private double getLeftDualCellEdge(final double[] grid, final int i) {
-        if(i == 0) {
-            return grid[0];
-        }
-        return 0.5 * (grid[i - 1] + grid[i]);
-    }
+		final double cellLength = rightEdge - leftEdge;
 
-    private double getRightDualCellEdge(final double[] grid, final int i) {
-        if(i == grid.length - 1) {
-            return grid[grid.length - 1];
-        }
-        return 0.5 * (grid[i] + grid[i + 1]);
-    }
+		final double belowLowerLength = Math.max(0.0, Math.min(rightEdge, lowerBarrier) - leftEdge);
+		final double aboveUpperLength = Math.max(0.0, rightEdge - Math.max(leftEdge, upperBarrier));
+		final double insideBandLength = Math.max(0.0, Math.min(rightEdge, upperBarrier) - Math.max(leftEdge, lowerBarrier));
 
-    private boolean isInsideBarrierBand(final double assetValue) {
-        return assetValue > lowerBarrier && assetValue < upperBarrier;
-    }
+		switch(doubleBarrierType) {
+		case KNOCK_OUT:
+			return cashPayoff * insideBandLength / cellLength;
 
-    private boolean isBelowLowerBarrier(final double assetValue) {
-        return assetValue <= lowerBarrier;
-    }
+		case KNOCK_IN:
+			return cashPayoff * (belowLowerLength + aboveUpperLength) / cellLength;
 
-    private boolean isAboveUpperBarrier(final double assetValue) {
-        return assetValue >= upperBarrier;
-    }
+		case KIKO:
+			return cashPayoff * belowLowerLength / cellLength;
 
-    @Override
-    public boolean isConstraintActive(final double time, final double... stateVariables) {
-        final double underlyingLevel = stateVariables[0];
-        return isBelowLowerBarrier(underlyingLevel) || isAboveUpperBarrier(underlyingLevel);
-    }
+		case KOKI:
+			return cashPayoff * aboveUpperLength / cellLength;
 
-    @Override
-    public double getConstrainedValue(final double time, final double... stateVariables) {
-        final double underlyingLevel = stateVariables[0];
+		default:
+			throw new IllegalArgumentException("Unsupported double barrier type.");
+		}
+	}
 
-        switch(doubleBarrierType) {
-        case KNOCK_OUT:
-            return 0.0;
+	private double pointwiseTerminalPayoff(final double assetValue) {
+		switch(doubleBarrierType) {
+		case KNOCK_OUT:
+			return isInsideBarrierBand(assetValue) ? cashPayoff : 0.0;
 
-        case KNOCK_IN:
-            return cashPayoff;
+		case KNOCK_IN:
+			return isInsideBarrierBand(assetValue) ? 0.0 : cashPayoff;
 
-        case KIKO:
-            return isBelowLowerBarrier(underlyingLevel) ? cashPayoff : 0.0;
+		case KIKO:
+			return assetValue <= lowerBarrier ? cashPayoff : 0.0;
 
-        case KOKI:
-            return isAboveUpperBarrier(underlyingLevel) ? cashPayoff : 0.0;
+		case KOKI:
+			return assetValue >= upperBarrier ? cashPayoff : 0.0;
 
-        default:
-            throw new IllegalArgumentException("Unsupported double barrier type.");
-        }
-    }
+		default:
+			throw new IllegalArgumentException("Unsupported double barrier type.");
+		}
+	}
 
-    public String getUnderlyingName() {
-        return underlyingName;
-    }
+	/**
+	 * Immediate-exercise payoff under the current binary state.
+	 *
+	 * <p>
+	 * For this product, the natural exercise value is the current binary intrinsic value.
+	 * That matches the terminal state classification.
+	 * </p>
+	 */
+	private double pointwiseExercisePayoff(final double assetValue) {
+		return pointwiseTerminalPayoff(assetValue);
+	}
 
-    public double getMaturity() {
-        return maturity;
-    }
+	private double getLeftDualCellEdge(final double[] grid, final int i) {
+		if(i == 0) {
+			return grid[0];
+		}
+		return 0.5 * (grid[i - 1] + grid[i]);
+	}
 
-    public double getCashPayoff() {
-        return cashPayoff;
-    }
+	private double getRightDualCellEdge(final double[] grid, final int i) {
+		if(i == grid.length - 1) {
+			return grid[grid.length - 1];
+		}
+		return 0.5 * (grid[i] + grid[i + 1]);
+	}
 
-    public double getLowerBarrier() {
-        return lowerBarrier;
-    }
+	private boolean isInsideBarrierBand(final double assetValue) {
+		return assetValue > lowerBarrier && assetValue < upperBarrier;
+	}
 
-    public double getUpperBarrier() {
-        return upperBarrier;
-    }
+	private boolean isBelowLowerBarrier(final double assetValue) {
+		return assetValue <= lowerBarrier;
+	}
 
-    public DoubleBarrierType getDoubleBarrierType() {
-        return doubleBarrierType;
-    }
+	private boolean isAboveUpperBarrier(final double assetValue) {
+		return assetValue >= upperBarrier;
+	}
 
-    public Exercise getExercise() {
-        return exercise;
-    }
+	@Override
+	public boolean isConstraintActive(final double time, final double... stateVariables) {
+		final double underlyingLevel = stateVariables[0];
+		return isBelowLowerBarrier(underlyingLevel) || isAboveUpperBarrier(underlyingLevel);
+	}
+
+	@Override
+	public double getConstrainedValue(final double time, final double... stateVariables) {
+		final double underlyingLevel = stateVariables[0];
+
+		switch(doubleBarrierType) {
+		case KNOCK_OUT:
+			return 0.0;
+
+		case KNOCK_IN:
+			return cashPayoff;
+
+		case KIKO:
+			return isBelowLowerBarrier(underlyingLevel) ? cashPayoff : 0.0;
+
+		case KOKI:
+			return isAboveUpperBarrier(underlyingLevel) ? cashPayoff : 0.0;
+
+		default:
+			throw new IllegalArgumentException("Unsupported double barrier type.");
+		}
+	}
+
+	private SpaceTimeDiscretization getValuationSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
+		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
+
+		if(!exercise.isBermudan()) {
+			return base;
+		}
+
+		final TimeDiscretization refinedTimeDiscretization =
+				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+						base.getTimeDiscretization(),
+						exercise
+				);
+
+		if(base.getNumberOfSpaceGrids() == 1) {
+			return new SpaceTimeDiscretization(
+					base.getSpaceGrid(0),
+					refinedTimeDiscretization,
+					base.getTheta(),
+					new double[] { base.getCenter(0) }
+			);
+		}
+
+		final int numberOfSpaceGrids = base.getNumberOfSpaceGrids();
+		final Grid[] spaceGrids = new Grid[numberOfSpaceGrids];
+		final double[] center = new double[numberOfSpaceGrids];
+
+		for(int i = 0; i < numberOfSpaceGrids; i++) {
+			spaceGrids[i] = base.getSpaceGrid(i);
+			center[i] = base.getCenter(i);
+		}
+
+		return new SpaceTimeDiscretization(
+				spaceGrids,
+				refinedTimeDiscretization,
+				base.getTheta(),
+				center
+		);
+	}
+
+	private FiniteDifferenceEquityModel getEffectiveModelForValuation(final FiniteDifferenceEquityModel model) {
+		final SpaceTimeDiscretization effectiveDiscretization = getValuationSpaceTimeDiscretization(model);
+
+		if(effectiveDiscretization == model.getSpaceTimeDiscretization()) {
+			return model;
+		}
+
+		return model.getCloneWithModifiedSpaceTimeDiscretization(effectiveDiscretization);
+	}
+
+	private int getTotalNumberOfSpacePoints(final SpaceTimeDiscretization discretization) {
+		final int dims = discretization.getNumberOfSpaceGrids();
+
+		if(dims == 1) {
+			return discretization.getSpaceGrid(0).getGrid().length;
+		}
+		else if(dims == 2) {
+			return discretization.getSpaceGrid(0).getGrid().length
+					* discretization.getSpaceGrid(1).getGrid().length;
+		}
+		else {
+			throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+		}
+	}
+
+	public String getUnderlyingName() {
+		return underlyingName;
+	}
+
+	public double getMaturity() {
+		return maturity;
+	}
+
+	public double getCashPayoff() {
+		return cashPayoff;
+	}
+
+	public double getLowerBarrier() {
+		return lowerBarrier;
+	}
+
+	public double getUpperBarrier() {
+		return upperBarrier;
+	}
+
+	public DoubleBarrierType getDoubleBarrierType() {
+		return doubleBarrierType;
+	}
+
+	public Exercise getExercise() {
+		return exercise;
+	}
 }
