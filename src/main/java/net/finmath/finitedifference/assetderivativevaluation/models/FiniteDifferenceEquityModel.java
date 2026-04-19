@@ -1,5 +1,7 @@
 package net.finmath.finitedifference.assetderivativevaluation.models;
 
+import java.util.Optional;
+
 import net.finmath.finitedifference.FiniteDifferenceModel;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -100,6 +102,59 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
 	 * @return The factor loading matrix.
 	 */
 	double[][] getFactorLoading(double time, double... stateVariables);
+
+	/**
+	 * Returns the optional jump component of the infinitesimal generator.
+	 *
+	 * <p>
+	 * The default implementation returns {@link Optional#empty()}, corresponding to a
+	 * purely diffusive model.
+	 * </p>
+	 *
+	 * <p>
+	 * If present, the returned {@link JumpComponent} provides the data needed to
+	 * assemble the non-local jump part of the generator. The local coefficients
+	 * returned by {@link #getDrift(double, double...)} and
+	 * {@link #getFactorLoading(double, double...)} keep their current meaning and
+	 * should remain consistent with the PDE state variables used by the finite-difference
+	 * discretization.
+	 * </p>
+	 *
+	 * <p>
+	 * In particular, under the stock-coordinate convention intended for jump models in
+	 * this framework, {@link #getDrift(double, double...)} should continue to return the
+	 * drift of the local first-order term (for example {@code (r-q)S} when the first
+	 * state variable is the spot), while the jump component defines the non-local
+	 * operator in compensated form.
+	 * </p>
+	 *
+	 * <p>
+	 * For a one-dimensional spot variable {@code S}, the jump contribution is understood
+	 * in the form
+	 * </p>
+	 *
+	 * <pre>
+	 * integral [ f(S exp(y)) - f(S) - S (exp(y) - 1) f'(S) ] nu(dy),
+	 * </pre>
+	 *
+	 * <p>
+	 * where the compensation term is included inside the integral and is therefore not
+	 * absorbed into {@link #getDrift(double, double...)}.
+	 * </p>
+	 *
+	 * <p>
+	 * The interpretation of the jump data must be consistent with the chosen PDE state
+	 * variables. If the PDE is formulated in coordinates other than spot, the jump
+	 * component must still describe the jump part of the generator in a way that is
+	 * coherent with those coordinates.
+	 * </p>
+	 *
+	 * @return An {@link Optional} containing the jump component of the infinitesimal
+	 *         generator, or {@link Optional#empty()} if the model has no jump part.
+	 */
+	default Optional<JumpComponent> getJumpComponent() {
+	    return Optional.empty();
+	}
 
 	/**
 	 * Returns a clone of this model with a modified space-time discretization.
