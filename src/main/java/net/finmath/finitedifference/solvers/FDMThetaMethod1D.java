@@ -1,5 +1,6 @@
 package net.finmath.finitedifference.solvers;
 
+import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
@@ -19,12 +20,18 @@ import net.finmath.modelling.Exercise;
  * <ul>
  *   <li>pointwise terminal payoff initialization,</li>
  *   <li>direct terminal-vector initialization,</li>
- *   <li>direct terminal-vector initialization with separate pointwise exercise payoff.</li>
+ *   <li>direct terminal-vector initialization with separate pointwise exercise payoff,</li>
+ *   <li>direct terminal-vector initialization with a continuous time-dependent obstacle.</li>
  * </ul>
  *
  * <p>
- * The last case is useful for Bermudan and American digitals, where the maturity
+ * The third case is useful for Bermudan and American digitals, where the maturity
  * layer should be cell-averaged, while early-exercise projection should remain pointwise.
+ * </p>
+ *
+ * <p>
+ * The fourth case is useful for shout-style problems, where the solution is constrained
+ * by a time- and state-dependent continuation floor V &gt;= V*(t,x) at every time step.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -68,7 +75,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 			terminalValues[i] = valueAtMaturity.applyAsDouble(xGrid[i]);
 		}
 
-		return getValuesInternal(time, terminalValues, valueAtMaturity);
+		return getValuesInternal(time, terminalValues, valueAtMaturity, null);
 	}
 
 	@Override
@@ -83,7 +90,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 	@Override
 	public double[][] getValues(final double time, final double[] terminalValues) {
-		return getValuesInternal(time, terminalValues, null);
+		return getValuesInternal(time, terminalValues, null, null);
 	}
 
 	@Override
@@ -101,7 +108,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final double time,
 			final double[] terminalValues,
 			final DoubleUnaryOperator exerciseValue) {
-		return getValuesInternal(time, terminalValues, exerciseValue);
+		return getValuesInternal(time, terminalValues, exerciseValue, null);
 	}
 
 	@Override
@@ -112,6 +119,23 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final DoubleUnaryOperator exerciseValue) {
 
 		final double[][] values = getValues(time, terminalValues, exerciseValue);
+		return extractTimeSlice(values, time, evaluationTime);
+	}
+
+	public double[][] getValues(
+			final double time,
+			final double[] terminalValues,
+			final DoubleBinaryOperator continuousObstacleValue) {
+		return getValuesInternal(time, terminalValues, null, continuousObstacleValue);
+	}
+
+	public double[] getValue(
+			final double evaluationTime,
+			final double time,
+			final double[] terminalValues,
+			final DoubleBinaryOperator continuousObstacleValue) {
+
+		final double[][] values = getValues(time, terminalValues, continuousObstacleValue);
 		return extractTimeSlice(values, time, evaluationTime);
 	}
 
@@ -133,7 +157,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 	private double[][] getValuesInternal(
 			final double time,
 			final double[] terminalValues,
-			final DoubleUnaryOperator exerciseValue) {
+			final DoubleUnaryOperator exerciseValue,
+			final DoubleBinaryOperator continuousObstacleValue) {
 
 		final double[] xGrid = spaceTimeDiscretization.getSpaceGrid(0).getGrid();
 		final int nX = xGrid.length;
@@ -144,7 +169,13 @@ public class FDMThetaMethod1D implements FDMSolver {
 		if(terminalValues.length != nX) {
 			throw new IllegalArgumentException("terminalValues length does not match spatial grid length.");
 		}
-		if((exercise.isBermudan() || exercise.isAmerican()) && exerciseValue == null) {
+		if(exerciseValue != null && continuousObstacleValue != null) {
+			throw new IllegalArgumentException(
+					"Provide either a discrete exercise payoff or a continuous obstacle, not both.");
+		}
+		if((exercise.isBermudan() || exercise.isAmerican())
+				&& exerciseValue == null
+				&& continuousObstacleValue == null) {
 			throw new IllegalArgumentException(
 					"Non-European exercise requires a pointwise exercise payoff function.");
 		}
@@ -223,7 +254,29 @@ public class FDMThetaMethod1D implements FDMSolver {
 					FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
 
 			final double[] nextU;
-			if(exercise.isAmerican() && isExerciseDate) {
+
+			if(continuousObstacleValue != null) {
+				final double[] obstacle = buildContinuousObstacleVector(
+						xGrid,
+						boundaryTime,
+						continuousObstacleValue,
+						lowerCondition,
+						upperCondition
+				);
+
+				nextU = ProjectedTridiagonalSOR.solve(
+						lhs,
+						rhs,
+						obstacle,
+						u,
+						1.2,
+						500,
+						1E-10);
+
+				reimposeInternalConstraints(nextU, xGrid, boundaryTime);
+				reimposeBoundaryValues(nextU, lowerCondition, upperCondition);
+			}
+			else if(exercise.isAmerican() && isExerciseDate) {
 
 				final double[] obstacle = buildObstacleVector(
 						xGrid,
@@ -293,6 +346,33 @@ public class FDMThetaMethod1D implements FDMSolver {
 				obstacle[i] = exerciseValue.applyAsDouble(xGrid[i]);
 			}
 		}
+		return obstacle;
+	}
+
+	private double[] buildContinuousObstacleVector(
+			final double[] xGrid,
+			final double boundaryTime,
+			final DoubleBinaryOperator continuousObstacleValue,
+			final BoundaryCondition lowerCondition,
+			final BoundaryCondition upperCondition) {
+
+		final double[] obstacle = new double[xGrid.length];
+
+		for(int i = 0; i < xGrid.length; i++) {
+			if(i == 0 && lowerCondition.isDirichlet()) {
+				obstacle[i] = lowerCondition.getValue();
+			}
+			else if(i == xGrid.length - 1 && upperCondition.isDirichlet()) {
+				obstacle[i] = upperCondition.getValue();
+			}
+			else if(isInternalConstraintActive(boundaryTime, xGrid[i])) {
+				obstacle[i] = getInternalConstrainedValue(boundaryTime, xGrid[i]);
+			}
+			else {
+				obstacle[i] = continuousObstacleValue.applyAsDouble(boundaryTime, xGrid[i]);
+			}
+		}
+
 		return obstacle;
 	}
 

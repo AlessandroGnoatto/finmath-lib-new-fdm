@@ -115,10 +115,44 @@ public abstract class AbstractADI2D implements FDMSolver {
 				(runningTime, x0, x1) -> valueAtMaturity.applyAsDouble(x0, x1));
 	}
 
+	public double[][] getValuesWithContinuousObstacle(
+			final double time,
+			final DoubleBinaryOperator valueAtMaturity,
+			final DoubleTernaryOperator continuousObstacleValue) {
+		return getValuesInternal(time, valueAtMaturity, null, continuousObstacleValue);
+	}
+
+	public double[] getValueWithContinuousObstacle(
+			final double evaluationTime,
+			final double time,
+			final DoubleBinaryOperator valueAtMaturity,
+			final DoubleTernaryOperator continuousObstacleValue) {
+
+		final RealMatrix values = new Array2DRowRealMatrix(
+				getValuesWithContinuousObstacle(time, valueAtMaturity, continuousObstacleValue)
+		);
+		final double tau = time - evaluationTime;
+		final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
+		return values.getColumn(timeIndex);
+	}
+
 	public double[][] getValues(
 			final double time,
 			final DoubleBinaryOperator valueAtMaturity,
 			final DoubleTernaryOperator exerciseValue) {
+		return getValuesInternal(time, valueAtMaturity, exerciseValue, null);
+	}
+
+	private double[][] getValuesInternal(
+			final double time,
+			final DoubleBinaryOperator valueAtMaturity,
+			final DoubleTernaryOperator exerciseValue,
+			final DoubleTernaryOperator continuousObstacleValue) {
+
+		if(exerciseValue != null && continuousObstacleValue != null) {
+			throw new IllegalArgumentException(
+					"Provide either a discrete exercise obstacle or a continuous obstacle, not both.");
+		}
 
 		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
@@ -149,7 +183,12 @@ public abstract class AbstractADI2D implements FDMSolver {
 			applyInternalConstraints(runningTimeNext, u);
 			applyOuterBoundaries(runningTimeNext, u);
 
-			applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, exerciseValue);
+			if(continuousObstacleValue != null) {
+				applyContinuousObstacleIfNeeded(runningTimeNext, u, continuousObstacleValue);
+			}
+			else {
+				applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, exerciseValue);
+			}
 
 			applyInternalConstraints(runningTimeNext, u);
 			applyOuterBoundaries(runningTimeNext, u);
@@ -474,7 +513,7 @@ public abstract class AbstractADI2D implements FDMSolver {
 		final boolean isExerciseAllowed =
 				FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau, exercise);
 
-		if(!isExerciseAllowed) {
+		if(!isExerciseAllowed || exerciseValue == null) {
 			return;
 		}
 
@@ -487,6 +526,33 @@ public abstract class AbstractADI2D implements FDMSolver {
 				final int k = flatten(i, j);
 				final double payoff = exerciseValue.applyAsDouble(runningTime, x0Grid[i], x1Grid[j]);
 				u[k] = Math.max(u[k], payoff);
+			}
+		}
+	}
+
+	protected void applyContinuousObstacleIfNeeded(
+			final double runningTime,
+			final double[] u,
+			final DoubleTernaryOperator continuousObstacleValue) {
+
+		if(continuousObstacleValue == null) {
+			return;
+		}
+
+		for(int j = 1; j < n1 - 1; j++) {
+			for(int i = 1; i < n0 - 1; i++) {
+				if(isInternalConstraintActive(runningTime, x0Grid[i], x1Grid[j])) {
+					continue;
+				}
+
+				final int k = flatten(i, j);
+				final double obstacle = continuousObstacleValue.applyAsDouble(
+						runningTime,
+						x0Grid[i],
+						x1Grid[j]
+				);
+
+				u[k] = Math.max(u[k], obstacle);
 			}
 		}
 	}
