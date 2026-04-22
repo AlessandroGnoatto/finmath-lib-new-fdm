@@ -9,35 +9,80 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Specialized 3D ADI solver for arithmetic Asian options under a lifted SABR state
- * (S, alpha, I), where
+ * Specialized three-dimensional ADI solver for arithmetic Asian options under a lifted SABR
+ * state <i>(S,\alpha,I)</i>.
  *
- *   dS_t     = mu_S dt     + diffusion terms,
- *   dalpha_t = mu_alpha dt + diffusion terms,
- *   dI_t     = S_t dt.
+ * <p>
+ * The lifted formulation augments the SABR state variables spot <i>S</i> and volatility
+ * factor <i>\alpha</i> by the running integral
+ * </p>
  *
- * In time-to-maturity tau = T - t, the backward pricing PDE is split as
+ * <p>
+ * <i>I_t = \int_0^t S_u \, du</i>,
+ * </p>
  *
- *   u_tau = A0 u + A1 u + A2 u + A3 u
+ * <p>
+ * so that an arithmetic-average payoff can be represented as a terminal payoff in the
+ * three-dimensional state vector <i>(S_t,\alpha_t,I_t)</i>. The dynamics are of the form
+ * </p>
  *
- * with
+ * <p>
+ * <i>dS_t = \mu_S dt + diffusion terms</i>,
+ * </p>
  *
- *   A0: discount term and mixed derivative terms (treated explicitly)
- *   A1: S-direction drift and diffusion (treated implicitly)
- *   A2: alpha-direction drift and diffusion (treated implicitly)
- *   A3: I-direction transport S * u_I (treated with a specialized implicit upwind solve)
+ * <p>
+ * <i>d\alpha_t = \mu_{\alpha} dt + diffusion terms</i>,
+ * </p>
  *
- * There is:
- * - no diffusion in the I direction
- * - no mixed derivative involving I
+ * <p>
+ * <i>dI_t = S_t dt</i>.
+ * </p>
  *
- * The I direction is pure transport. In tau-time, the correct upwind
- * discretization is forward in I.
+ * <p>
+ * In time-to-maturity coordinates <i>\tau = T - t</i>, the backward pricing PDE is split as
+ * </p>
+ *
+ * <p>
+ * <i>u_{\tau} = A_0 u + A_1 u + A_2 u + A_3 u</i>,
+ * </p>
+ *
+ * <p>
+ * where
+ * </p>
+ * <ul>
+ *   <li><i>A_0</i> contains discounting and mixed-derivative terms and is treated explicitly,</li>
+ *   <li><i>A_1</i> contains the <i>S</i>-direction drift and diffusion and is treated implicitly,</li>
+ *   <li><i>A_2</i> contains the <i>\alpha</i>-direction drift and diffusion and is treated implicitly,</li>
+ *   <li><i>A_3</i> is the transport term <i>S u_I</i> and is treated by a specialized implicit upwind solve.</li>
+ * </ul>
+ *
+ * <p>
+ * There is no diffusion in the integral direction and no mixed derivative involving
+ * <i>I</i>. Hence the <i>I</i>-direction is a pure transport direction. In
+ * <i>\tau</i>-time, the consistent upwind discretization is forward in <i>I</i>.
+ * </p>
+ *
+ * <p>
+ * Relative to the generic {@link AbstractADI3D} implementation, this class specializes
+ * the third-direction transport operator and the corresponding implicit line solve while
+ * leaving the first and second implicit line solves aligned with the standard
+ * three-dimensional SABR discretization.
+ * </p>
+ *
+ * @author Alessandro Gnoatto
  */
 public class FDMAsianSabrADI3D extends AbstractADI3D {
 
 	private final ADI3DStencilBuilder stencilBuilder;
 
+	/**
+	 * Creates the lifted three-dimensional ADI solver for arithmetic Asian pricing under SABR.
+	 *
+	 * @param model The finite-difference model.
+	 * @param product The product to be valued.
+	 * @param spaceTimeDiscretization The space-time discretization.
+	 * @param exercise The exercise specification.
+	 */
 	public FDMAsianSabrADI3D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -48,14 +93,19 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
 	}
 
 	/**
-	 * Explicit application of A3 u = S * u_I
-	 * using forward upwinding in I:
+	 * Applies the explicit transport operator {@code A3 u = S u_I}.
 	 *
-	 *   u_I(S_i, alpha_j, I_k) ~ (u_{i,j,k+1} - u_{i,j,k}) / (I_{k+1} - I_k)
+	 * <p>
+	 * The derivative in the integral direction is approximated by forward upwinding:
+	 * </p>
 	 *
-	 * for k = 0,...,n2-2.
+	 * <p>
+	 * <i>u_I(S_i,\alpha_j,I_k) \approx (u_{i,j,k+1} - u_{i,j,k}) / (I_{k+1} - I_k)</i>.
+	 * </p>
 	 *
-	 * The top I-row k = n2 - 1 is handled via the upper I boundary.
+	 * @param u Current solution vector.
+	 * @param time Current running time.
+	 * @return Explicit contribution of {@code A3}.
 	 */
 	@Override
 	protected double[] applyA3Explicit(final double[] u, final double time) {
@@ -78,6 +128,14 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
 		return out;
 	}
 
+	/**
+	 * Solves the implicit systems in the first spatial direction.
+	 *
+	 * @param rhs Right-hand side vector.
+	 * @param time Current running time.
+	 * @param dt Time-step size.
+	 * @return Updated solution vector.
+	 */
 	@Override
 	protected double[] solveFirstDirectionLines(
 			final double[] rhs,
@@ -115,6 +173,14 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
 		return out;
 	}
 
+	/**
+	 * Solves the implicit systems in the second spatial direction.
+	 *
+	 * @param rhs Right-hand side vector.
+	 * @param time Current running time.
+	 * @param dt Time-step size.
+	 * @return Updated solution vector.
+	 */
 	@Override
 	protected double[] solveSecondDirectionLines(
 			final double[] rhs,
@@ -152,6 +218,26 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
 		return out;
 	}
 
+	/**
+	 * Solves the implicit systems in the integral direction.
+	 *
+	 * <p>
+	 * For fixed <i>(S,\alpha)</i>, the third-direction transport discretization is
+	 * </p>
+	 *
+	 * <p>
+	 * <i>(1 + \lambda_k) v_k - \lambda_k v_{k+1} = rhs_k</i>,
+	 * </p>
+	 *
+	 * <p>
+	 * where <i>\lambda_k = \theta \Delta \tau S / (I_{k+1} - I_k)</i>.
+	 * </p>
+	 *
+	 * @param rhs Right-hand side vector.
+	 * @param time Current running time.
+	 * @param dt Time-step size.
+	 * @return Updated solution vector.
+	 */
 	@Override
 	protected double[] solveThirdDirectionLines(
 			final double[] rhs,

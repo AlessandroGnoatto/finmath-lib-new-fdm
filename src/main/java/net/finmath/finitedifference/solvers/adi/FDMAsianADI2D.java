@@ -8,31 +8,83 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Specialized ADI solver for arithmetic Asian options in lifted state (S, I),
- * where
+ * Specialized ADI solver for arithmetic Asian options in the lifted state
+ * <i>(S,I)</i>.
  *
- *   dS_t = mu_S dt + sigma(S,t) dW_t,
- *   dI_t = S_t dt.
+ * <p>
+ * The lifted formulation augments the spot process <i>S</i> by the running integral
+ * </p>
  *
- * In time-to-maturity tau = T - t, the backward pricing PDE is
+ * <p>
+ * <i>I_t = \int_0^t S_u \, du</i>,
+ * </p>
  *
- *   u_tau = A0 u + A1 u + A2 u
+ * <p>
+ * so that an arithmetic-average payoff can be represented as a terminal payoff in the
+ * two-dimensional state variables <i>(S_t,I_t)</i>. The state dynamics are
+ * </p>
  *
+ * <p>
+ * <i>dS_t = \mu_S dt + \sigma(S_t,t) dW_t</i>,
+ * </p>
+ *
+ * <p>
+ * <i>dI_t = S_t dt</i>.
+ * </p>
+ *
+ * <p>
+ * In time-to-maturity coordinates <i>\tau = T - t</i>, the backward pricing PDE is
+ * written as
+ * </p>
+ *
+ * <p>
+ * <i>u_{\tau} = A_0 u + A_1 u + A_2 u</i>,
+ * </p>
+ *
+ * <p>
  * with
+ * </p>
  *
- *   A0 u = -r u
- *   A1 u = mu_S u_S + 0.5 a_SS u_SS
- *   A2 u = S u_I
+ * <p>
+ * <i>A_0 u = -r u</i>,
+ * </p>
  *
- * There is:
- * - no diffusion in the I direction
- * - no mixed derivative
+ * <p>
+ * <i>A_1 u = \mu_S u_S + \frac{1}{2} a_{SS} u_{SS}</i>,
+ * </p>
  *
- * The I direction is pure transport. In tau-time, the correct upwind
- * discretization is forward in I.
+ * <p>
+ * <i>A_2 u = S u_I</i>.
+ * </p>
+ *
+ * <p>
+ * Hence there is no mixed derivative and no diffusion in the integral direction.
+ * The second state direction is a pure transport direction. In <i>\tau</i>-time,
+ * transport is propagated toward increasing <i>I</i>, so the consistent upwind
+ * discretization is forward in the <i>I</i> direction.
+ * </p>
+ *
+ * <p>
+ * Relative to the generic {@link AbstractADI2D} implementation, this class therefore:
+ * </p>
+ * <ul>
+ *   <li>uses only discounting in the explicit {@code A0} part,</li>
+ *   <li>uses a forward-upwind discretization for {@code A2},</li>
+ *   <li>solves the second-direction implicit systems with the corresponding transport stencil.</li>
+ * </ul>
+ *
+ * @author Alessandro Gnoatto
  */
 public class FDMAsianADI2D extends AbstractADI2D {
 
+	/**
+	 * Creates the lifted two-dimensional ADI solver for arithmetic Asian products.
+	 *
+	 * @param model The finite-difference model.
+	 * @param product The product to be valued.
+	 * @param spaceTimeDiscretization The space-time discretization.
+	 * @param exercise The exercise specification.
+	 */
 	public FDMAsianADI2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -41,6 +93,18 @@ public class FDMAsianADI2D extends AbstractADI2D {
 		super(model, product, spaceTimeDiscretization, exercise);
 	}
 
+	/**
+	 * Applies the explicit operator part {@code A0}.
+	 *
+	 * <p>
+	 * For the lifted arithmetic Asian PDE, {@code A0} contains only the discounting term
+	 * <i>-r u</i>.
+	 * </p>
+	 *
+	 * @param u Current solution vector.
+	 * @param time Current running time.
+	 * @return Explicit contribution of {@code A0}.
+	 */
 	@Override
 	protected double[] applyA0Explicit(final double[] u, final double time) {
 		final double[] out = new double[n];
@@ -59,14 +123,24 @@ public class FDMAsianADI2D extends AbstractADI2D {
 	}
 
 	/**
-	 * Explicit application of A2 u = S * u_I
-	 * using forward upwinding in I:
+	 * Applies the explicit transport operator {@code A2 u = S u_I}.
 	 *
-	 *   u_I(S_i, I_j) ~ (u_{i,j+1} - u_{i,j}) / (I_{j+1} - I_j)
+	 * <p>
+	 * The derivative in the integral direction is approximated by forward upwinding:
+	 * </p>
 	 *
-	 * for j = 0,...,n1-2.
+	 * <p>
+	 * <i>u_I(S_i,I_j) \approx (u_{i,j+1} - u_{i,j}) / (I_{j+1} - I_j)</i>.
+	 * </p>
 	 *
-	 * The top row j = n1 - 1 is handled via the upper Dirichlet boundary.
+	 * <p>
+	 * This is the appropriate upwind choice in time-to-maturity coordinates for the
+	 * transport equation induced by <i>dI_t = S_t dt</i>.
+	 * </p>
+	 *
+	 * @param u Current solution vector.
+	 * @param time Current running time.
+	 * @return Explicit contribution of {@code A2}.
 	 */
 	@Override
 	protected double[] applyA2Explicit(final double[] u, final double time) {
@@ -86,6 +160,33 @@ public class FDMAsianADI2D extends AbstractADI2D {
 		return out;
 	}
 
+	/**
+	 * Solves the implicit systems in the integral direction.
+	 *
+	 * <p>
+	 * For each fixed spot index, the second-direction system corresponds to the transport
+	 * discretization
+	 * </p>
+	 *
+	 * <p>
+	 * <i>(1 + \lambda_j) v_j - \lambda_j v_{j+1} = rhs_j</i>,
+	 * </p>
+	 *
+	 * <p>
+	 * where <i>\lambda_j = \theta \Delta \tau S / (I_{j+1} - I_j)</i>.
+	 * </p>
+	 *
+	 * <p>
+	 * The upper integral boundary is the inflow side and is imposed if it is Dirichlet.
+	 * The lower integral boundary is overwritten only when an explicit Dirichlet condition
+	 * is provided.
+	 * </p>
+	 *
+	 * @param rhs Right-hand side vector.
+	 * @param time Current running time.
+	 * @param dt Time-step size.
+	 * @return Updated solution vector.
+	 */
 	@Override
 	protected double[] solveSecondDirectionLines(
 			final double[] rhs,

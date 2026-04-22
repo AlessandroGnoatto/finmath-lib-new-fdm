@@ -19,40 +19,88 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Generic two-dimensional alternating direction implicit finite difference solver.
+ * Generic two-dimensional alternating direction implicit finite-difference solver.
  *
  * <p>
- * The solver works on two state variables and applies a stabilized Douglas-type
- * ADI splitting. The operator is split into:
+ * The solver acts on a two-dimensional state vector
+ * <i>(x_0,x_1)</i> and computes an approximation of the value function
+ * <i>V(t,x_0,x_1)</i> associated with a parabolic pricing equation of the form
+ * </p>
+ *
+ * <p>
+ * <i>
+ * \frac{\partial V}{\partial t}
+ * + \mathcal{A}_0 V
+ * + \mathcal{A}_1 V
+ * + \mathcal{A}_2 V
+ * = 0,
+ * </i>
+ * </p>
+ *
+ * <p>
+ * where the operator is split into:
  * </p>
  * <ul>
- *   <li>{@code A0}: mixed derivative term plus discount term, treated explicitly,</li>
- *   <li>{@code A1}: first-direction drift and diffusion terms, treated implicitly,</li>
- *   <li>{@code A2}: second-direction drift and diffusion terms, treated implicitly.</li>
+ *   <li><i>\mathcal{A}_0</i>: mixed derivative term together with discounting, treated explicitly,</li>
+ *   <li><i>\mathcal{A}_1</i>: first-direction drift and diffusion terms, treated implicitly,</li>
+ *   <li><i>\mathcal{A}_2</i>: second-direction drift and diffusion terms, treated implicitly.</li>
  * </ul>
  *
  * <p>
- * The flattening convention is
+ * The time stepping uses a stabilized Douglas-type ADI splitting. For a time step
+ * <i>\Delta t</i>, the algorithm first forms an explicit predictor and then performs
+ * successive implicit solves along the two spatial directions. To improve numerical
+ * stability, the implementation applies two half Douglas steps. This yields a scheme
+ * which is efficient for two-dimensional problems since each implicit stage reduces to
+ * a collection of tridiagonal linear systems along grid lines.
+ * </p>
+ *
+ * <p>
+ * The flattening convention for a grid function is
  * </p>
  * <pre>
  * k = i0 + i1 * n0
  * </pre>
  * <p>
- * where {@code i0} is the index in the first spatial direction.
+ * where <i>i0</i> is the index in the first spatial direction and <i>i1</i> is the
+ * index in the second spatial direction. Hence the first state direction is stored as
+ * the fastest varying index.
  * </p>
+ *
+ * <p>
+ * The solver supports:
+ * </p>
+ * <ul>
+ *   <li>terminal conditions depending on one or two state variables,</li>
+ *   <li>discrete exercise obstacles for Bermudan or American-style problems,</li>
+ *   <li>continuous obstacles applied after each backward step,</li>
+ *   <li>internal state constraints supplied by the product,</li>
+ *   <li>Dirichlet boundary extraction from the model boundary conditions.</li>
+ * </ul>
  *
  * @author Alessandro Gnoatto
  */
 public abstract class AbstractADI2D implements FDMSolver {
 
 	/**
-	 * This interface is needed for payoff depending explicitly
-	 * on the time dimension. An Example is given by the Asian option
-	 * where at early exercise we pre-multiply the integral of the stock
-	 * not with the maturity T, but only with current time t.
+	 * Functional interface for payoffs or obstacles depending on time and two state variables.
+	 *
+	 * <p>
+	 * The three arguments are interpreted as running time and the two spatial coordinates.
+	 * This is useful for early-exercise values depending explicitly on time.
+	 * </p>
 	 */
 	@FunctionalInterface
 	public interface DoubleTernaryOperator {
+
+		/**
+		 * Evaluates the function.
+		 *
+		 * @param x0 First argument.
+		 * @param x1 Second argument.
+		 * @param x2 Third argument.
+		 * @return Function value.
+		 */
 		double applyAsDouble(double x0, double x1, double x2);
 	}
 
@@ -72,6 +120,14 @@ public abstract class AbstractADI2D implements FDMSolver {
 
 	protected final ADI2DStencilBuilder stencilBuilder;
 
+	/**
+	 * Creates the ADI solver.
+	 *
+	 * @param model The finite-difference model.
+	 * @param product The product to be valued.
+	 * @param spaceTimeDiscretization The space-time discretization.
+	 * @param exercise The exercise specification.
+	 */
 	protected AbstractADI2D(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -100,6 +156,13 @@ public abstract class AbstractADI2D implements FDMSolver {
 		this.stencilBuilder = new ADI2DStencilBuilder(model, x0Grid, x1Grid);
 	}
 
+	/**
+	 * Returns the full value surface for a terminal payoff depending on the first state variable.
+	 *
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @return Value surface indexed by flattened space index and time index.
+	 */
 	@Override
 	public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 		return getValues(
@@ -108,6 +171,13 @@ public abstract class AbstractADI2D implements FDMSolver {
 				(runningTime, x0, x1) -> valueAtMaturity.applyAsDouble(x0));
 	}
 
+	/**
+	 * Returns the full value surface for a two-dimensional terminal payoff.
+	 *
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @return Value surface indexed by flattened space index and time index.
+	 */
 	public double[][] getValues(final double time, final DoubleBinaryOperator valueAtMaturity) {
 		return getValues(
 				time,
@@ -115,6 +185,14 @@ public abstract class AbstractADI2D implements FDMSolver {
 				(runningTime, x0, x1) -> valueAtMaturity.applyAsDouble(x0, x1));
 	}
 
+	/**
+	 * Returns the full value surface under a continuous obstacle.
+	 *
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @param continuousObstacleValue Continuous obstacle value.
+	 * @return Value surface indexed by flattened space index and time index.
+	 */
 	public double[][] getValuesWithContinuousObstacle(
 			final double time,
 			final DoubleBinaryOperator valueAtMaturity,
@@ -122,6 +200,15 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return getValuesInternal(time, valueAtMaturity, null, continuousObstacleValue);
 	}
 
+	/**
+	 * Returns the values at a given evaluation time under a continuous obstacle.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @param continuousObstacleValue Continuous obstacle value.
+	 * @return Value vector on the flattened space grid.
+	 */
 	public double[] getValueWithContinuousObstacle(
 			final double evaluationTime,
 			final double time,
@@ -136,6 +223,14 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
+	/**
+	 * Returns the full value surface under a discrete exercise obstacle.
+	 *
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @param exerciseValue Exercise payoff.
+	 * @return Value surface indexed by flattened space index and time index.
+	 */
 	public double[][] getValues(
 			final double time,
 			final DoubleBinaryOperator valueAtMaturity,
@@ -201,6 +296,14 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return solutionSurface.getData();
 	}
 
+	/**
+	 * Returns the values at the specified evaluation time for a one-dimensional terminal payoff.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @return Value vector on the flattened space grid.
+	 */
 	@Override
 	public double[] getValue(
 			final double evaluationTime,
@@ -213,6 +316,14 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
+	/**
+	 * Returns the values at the specified evaluation time for a two-dimensional terminal payoff.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @return Value vector on the flattened space grid.
+	 */
 	public double[] getValue(
 			final double evaluationTime,
 			final double time,
@@ -224,6 +335,15 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
+	/**
+	 * Returns the values at the specified evaluation time under a discrete exercise obstacle.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param time Maturity time.
+	 * @param valueAtMaturity Terminal payoff.
+	 * @param exerciseValue Exercise payoff.
+	 * @return Value vector on the flattened space grid.
+	 */
 	public double[] getValue(
 			final double evaluationTime,
 			final double time,
@@ -236,6 +356,14 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return values.getColumn(timeIndex);
 	}
 
+	/**
+	 * Performs one stabilized Douglas time step by splitting it into two half steps.
+	 *
+	 * @param u Current solution vector.
+	 * @param currentTime Current running time.
+	 * @param dt Time-step size.
+	 * @return Updated solution vector.
+	 */
 	protected double[] performStableDouglasStep(
 			final double[] u,
 			final double currentTime,
@@ -252,6 +380,14 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return uNext;
 	}
 
+	/**
+	 * Performs one half Douglas step.
+	 *
+	 * @param u Current solution vector.
+	 * @param currentTime Current running time.
+	 * @param dt Time-step size.
+	 * @return Updated solution vector.
+	 */
 	protected double[] performDouglasHalfStep(
 			final double[] u,
 			final double currentTime,
