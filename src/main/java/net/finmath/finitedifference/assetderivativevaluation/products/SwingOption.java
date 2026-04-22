@@ -21,42 +21,66 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * Fixed-strike generalized swing option.
  *
  * <p>
- * The contract is defined by:
- * </p>
- * <ul>
- *   <li>a discrete set of decision times,</li>
- *   <li>local minimum / maximum quantities at each decision time,</li>
- *   <li>global minimum / maximum total quantity constraints,</li>
- *   <li>a fixed strike,</li>
- *   <li>a call/put sign,</li>
- *   <li>a quantity-control mode: bang-bang or discretized continuous control.</li>
- * </ul>
- *
- * <p>
- * Each exercise decision chooses a quantity q and delivers immediate payoff
- * </p>
- * <p>
- * q * max(sign * (S - K), 0).
+ * A swing option is a multiple-exercise contract with volume constraints. At each
+ * decision time <i>t<sub>i</sub></i>, the holder chooses an exercised quantity
+ * <i>q<sub>i</sub></i> subject to local bounds
  * </p>
  *
  * <p>
- * The implementation works by dynamic programming on cumulative-consumption
- * grids. Between decision dates it reuses the existing PDE solvers:
+ * <i>q<sub>i</sub> &isin; [q<sub>i</sub><sup>min</sup>, q<sub>i</sub><sup>max</sup>]</i>,
  * </p>
- * <ul>
- *   <li>1D: Black-Scholes / Bachelier / CEV via {@link FDMThetaMethod1D},</li>
- *   <li>2D: Heston / SABR via the existing ADI stack.</li>
- * </ul>
  *
  * <p>
- * Important note:
- * the full time-surface of a swing contract is path-state dependent because
- * cumulative consumed quantity is an additional state variable that is not part
- * of the model's spatial grid. For that reason, {@link #getValues(FiniteDifferenceEquityModel)}
- * is intentionally unsupported in this v1 implementation. The well-defined API is
- * {@link #getValue(double, FiniteDifferenceEquityModel)} at evaluation time 0.
+ * and global cumulative constraints
  * </p>
- * 
+ *
+ * <p>
+ * <i>Q<sup>min</sup> &le; &sum;<sub>i=0</sub><sup>n-1</sup> q<sub>i</sub> &le; Q<sup>max</sup></i>.
+ * </p>
+ *
+ * <p>
+ * For a fixed strike <i>K</i>, the immediate payoff at decision time <i>t<sub>i</sub></i>
+ * is
+ * </p>
+ *
+ * <p>
+ * <i>q<sub>i</sub> max(&omega;(S(t<sub>i</sub>) - K), 0)</i>,
+ * </p>
+ *
+ * <p>
+ * where <i>&omega; = 1</i> for a call and <i>&omega; = -1</i> for a put.
+ * </p>
+ *
+ * <p>
+ * The valuation is performed by dynamic programming over an auxiliary state variable
+ * representing cumulative consumed quantity
+ * <i>Q<sub>i</sub> = &sum;<sub>k=0</sub><sup>i-1</sup> q<sub>k</sub></i>. Between
+ * decision dates, continuation values are propagated backward by the finite-difference
+ * solver of the underlying model. At each decision date the value is obtained from the
+ * Bellman step
+ * </p>
+ *
+ * <p>
+ * <i>V<sub>i</sub>(S,Q) = sup<sub>q &isin; A(i,Q)</sub>
+ * { q max(&omega;(S-K),0) + C<sub>i</sub>(S,Q+q) }</i>,
+ * </p>
+ *
+ * <p>
+ * where <i>A(i,Q)</i> denotes the admissible set induced by local and global quantity
+ * constraints.
+ * </p>
+ *
+ * <p>
+ * The quantity control may be either bang-bang, where only local extrema are admissible,
+ * or based on a discretized quantity grid. The implementation supports one- and
+ * two-dimensional finite-difference equity models. Since cumulative consumed quantity is
+ * an additional path state not contained in the model space grid, a full value surface
+ * independent of this state is not well defined. Therefore
+ * {@link #getValues(FiniteDifferenceEquityModel)} is intentionally unsupported in this
+ * implementation, while {@link #getValue(double, FiniteDifferenceEquityModel)} is
+ * provided at evaluation time 0.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public class SwingOption implements FiniteDifferenceProduct {
@@ -75,6 +99,21 @@ public class SwingOption implements FiniteDifferenceProduct {
 	private final SwingQuantityMode quantityMode;
 	private final double quantityGridStep;
 
+	/**
+	 * Creates a generalized swing option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param decisionTimes Exercise decision times.
+	 * @param strike Fixed strike.
+	 * @param localMinQuantity Local minimum quantities.
+	 * @param localMaxQuantity Local maximum quantities.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put indicator.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 */
 	public SwingOption(
 			final String underlyingName,
 			final double[] decisionTimes,
@@ -124,6 +163,20 @@ public class SwingOption implements FiniteDifferenceProduct {
 		validateInputs();
 	}
 
+	/**
+	 * Creates a generalized swing option with anonymous underlying.
+	 *
+	 * @param decisionTimes Exercise decision times.
+	 * @param strike Fixed strike.
+	 * @param localMinQuantity Local minimum quantities.
+	 * @param localMaxQuantity Local maximum quantities.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put indicator.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 */
 	public SwingOption(
 			final double[] decisionTimes,
 			final double strike,
@@ -148,6 +201,21 @@ public class SwingOption implements FiniteDifferenceProduct {
 		);
 	}
 
+	/**
+	 * Creates a generalized swing option with time-homogeneous local bounds.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param decisionTimes Exercise decision times.
+	 * @param strike Fixed strike.
+	 * @param localMinQuantity Constant local minimum quantity.
+	 * @param localMaxQuantity Constant local maximum quantity.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put indicator.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 */
 	public SwingOption(
 			final String underlyingName,
 			final double[] decisionTimes,
@@ -173,6 +241,21 @@ public class SwingOption implements FiniteDifferenceProduct {
 		);
 	}
 
+	/**
+	 * Creates a generalized swing option with anonymous underlying and time-homogeneous
+	 * local bounds.
+	 *
+	 * @param decisionTimes Exercise decision times.
+	 * @param strike Fixed strike.
+	 * @param localMinQuantity Constant local minimum quantity.
+	 * @param localMaxQuantity Constant local maximum quantity.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put indicator.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 */
 	public SwingOption(
 			final double[] decisionTimes,
 			final double strike,
@@ -197,13 +280,25 @@ public class SwingOption implements FiniteDifferenceProduct {
 		);
 	}
 
+	/**
+	 * Returns the value at the given evaluation time.
+	 *
+	 * <p>
+	 * In this implementation only evaluation time 0 is supported, since for later
+	 * times the cumulative consumed quantity would have to be supplied explicitly.
+	 * </p>
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param model The finite-difference model.
+	 * @return The value on the model space grid.
+	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 
 		if(Math.abs(evaluationTime) > EPS) {
 			throw new UnsupportedOperationException(
 					"SwingOption v1 supports getValue only at evaluationTime = 0. "
-					+ "For later times, cumulative consumed quantity would need to be supplied explicitly."
+							+ "For later times, cumulative consumed quantity would need to be supplied explicitly."
 			);
 		}
 		if(model == null) {
@@ -272,12 +367,23 @@ public class SwingOption implements FiniteDifferenceProduct {
 		return valueAtTimeZero.get(0);
 	}
 
+	/**
+	 * Returns the full value surface.
+	 *
+	 * <p>
+	 * This operation is intentionally unsupported, since the contract value depends on
+	 * the additional cumulative-quantity state.
+	 * </p>
+	 *
+	 * @param model The finite-difference model.
+	 * @return Never returns normally.
+	 */
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 		throw new UnsupportedOperationException(
 				"SwingOption carries an additional cumulative-quantity state. "
-				+ "A path-state-aware value surface container is required. "
-				+ "Use getValue(0.0, model) in this v1 implementation."
+						+ "A path-state-aware value surface container is required. "
+						+ "Use getValue(0.0, model) in this v1 implementation."
 		);
 	}
 
@@ -322,7 +428,7 @@ public class SwingOption implements FiniteDifferenceProduct {
 				for(int stateIndex = 0; stateIndex < numberOfStates; stateIndex++) {
 					final double candidate =
 							exercisedQuantity * unitIntrinsic[stateIndex]
-							+ (continuation == null ? 0.0 : continuation[stateIndex]);
+									+ (continuation == null ? 0.0 : continuation[stateIndex]);
 
 					if(candidate > valueSlice[stateIndex]) {
 						valueSlice[stateIndex] = candidate;
@@ -547,7 +653,7 @@ public class SwingOption implements FiniteDifferenceProduct {
 
 		final int segmentNumberOfTimeSteps = Math.max(
 				1,
-				(int)Math.round(baseNumberOfTimeSteps * segmentLength / baseLastTime)
+				(int) Math.round(baseNumberOfTimeSteps * segmentLength / baseLastTime)
 		);
 
 		final TimeDiscretization segmentTimeDiscretization = new TimeDiscretizationFromArray(
@@ -729,46 +835,101 @@ public class SwingOption implements FiniteDifferenceProduct {
 		}
 	}
 
+	/**
+	 * Returns the underlying name.
+	 *
+	 * @return The underlying name, possibly {@code null}.
+	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
+	/**
+	 * Returns the decision times.
+	 *
+	 * @return A defensive copy of the decision times.
+	 */
 	public double[] getDecisionTimes() {
 		return decisionTimes.clone();
 	}
 
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity, equal to the last decision time.
+	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
+	/**
+	 * Returns the strike.
+	 *
+	 * @return The fixed strike.
+	 */
 	public double getStrike() {
 		return strike;
 	}
 
+	/**
+	 * Returns the local minimum quantities.
+	 *
+	 * @return A defensive copy of the local minimum quantities.
+	 */
 	public double[] getLocalMinQuantity() {
 		return localMinQuantity.clone();
 	}
 
+	/**
+	 * Returns the local maximum quantities.
+	 *
+	 * @return A defensive copy of the local maximum quantities.
+	 */
 	public double[] getLocalMaxQuantity() {
 		return localMaxQuantity.clone();
 	}
 
+	/**
+	 * Returns the global minimum total quantity.
+	 *
+	 * @return The global minimum total quantity.
+	 */
 	public double getGlobalMinQuantity() {
 		return globalMinQuantity;
 	}
 
+	/**
+	 * Returns the global maximum total quantity.
+	 *
+	 * @return The global maximum total quantity.
+	 */
 	public double getGlobalMaxQuantity() {
 		return globalMaxQuantity;
 	}
 
+	/**
+	 * Returns the call/put indicator.
+	 *
+	 * @return The call/put indicator.
+	 */
 	public CallOrPut getCallOrPut() {
 		return callOrPut;
 	}
 
+	/**
+	 * Returns the quantity control mode.
+	 *
+	 * @return The quantity control mode.
+	 */
 	public SwingQuantityMode getQuantityMode() {
 		return quantityMode;
 	}
 
+	/**
+	 * Returns the quantity grid step.
+	 *
+	 * @return The quantity grid step.
+	 */
 	public double getQuantityGridStep() {
 		return quantityGridStep;
 	}

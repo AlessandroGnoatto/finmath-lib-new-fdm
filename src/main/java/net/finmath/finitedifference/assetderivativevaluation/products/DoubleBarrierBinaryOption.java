@@ -20,43 +20,81 @@ import net.finmath.time.TimeDiscretization;
  * Finite-difference valuation of a continuously monitored double-barrier cash binary option.
  *
  * <p>
+ * The contract is defined by a maturity <i>T</i>, a cash amount <i>C</i>, and two barriers
+ * <i>L &lt; U</i>. Let <i>S(t)</i> denote the underlying and let
+ * </p>
+ *
+ * <p>
+ * <i>&tau;<sub>L</sub> = inf { t in [0,T] : S(t) &le; L }</i>,
+ * </p>
+ *
+ * <p>
+ * <i>&tau;<sub>U</sub> = inf { t in [0,T] : S(t) &ge; U }</i>,
+ * </p>
+ *
+ * <p>
+ * with the alive band given by
+ * </p>
+ *
+ * <p>
+ * <i>L &lt; S(t) &lt; U</i>.
+ * </p>
+ *
+ * <p>
  * Supported barrier styles:
  * </p>
  * <ul>
- *   <li>{@link DoubleBarrierType#KNOCK_OUT}: pays the cash amount if neither barrier is hit,</li>
- *   <li>{@link DoubleBarrierType#KNOCK_IN}: pays the cash amount once either barrier is hit,</li>
- *   <li>{@link DoubleBarrierType#KIKO}: knock-in at the lower barrier, knock-out at the upper barrier,</li>
- *   <li>{@link DoubleBarrierType#KOKI}: knock-out at the lower barrier, knock-in at the upper barrier.</li>
+ *   <li>{@link DoubleBarrierType#KNOCK_OUT}: pays <i>C</i> if neither barrier is hit before maturity,</li>
+ *   <li>{@link DoubleBarrierType#KNOCK_IN}: pays <i>C</i> if either barrier is hit before or at maturity,</li>
+ *   <li>{@link DoubleBarrierType#KIKO}: pays <i>C</i> if the lower barrier is hit first while the upper barrier acts as knock-out,</li>
+ *   <li>{@link DoubleBarrierType#KOKI}: pays <i>C</i> if the upper barrier is hit first while the lower barrier acts as knock-out.</li>
+ * </ul>
+ *
+ * <p>
+ * In indicator notation, the terminal payoff can be written as:
+ * </p>
+ * <ul>
+ *   <li>KNOCK_OUT:
+ *       <i>C 1<sub>{&tau;<sub>L</sub> &gt; T, &tau;<sub>U</sub> &gt; T}</sub></i>,</li>
+ *   <li>KNOCK_IN:
+ *       <i>C 1<sub>{min(&tau;<sub>L</sub>,&tau;<sub>U</sub>) &le; T}</sub></i>,</li>
+ *   <li>KIKO:
+ *       <i>C 1<sub>{&tau;<sub>L</sub> &le; T, &tau;<sub>L</sub> &lt; &tau;<sub>U</sub>}</sub></i>,</li>
+ *   <li>KOKI:
+ *       <i>C 1<sub>{&tau;<sub>U</sub> &le; T, &tau;<sub>U</sub> &lt; &tau;<sub>L</sub>}</sub></i>.</li>
  * </ul>
  *
  * <p>
  * Exercise semantics implemented here:
  * </p>
  * <ul>
- *   <li>European: payoff is determined at maturity as usual,</li>
- *   <li>Bermudan/American: the holder may take the current binary intrinsic value
- *       (cash-or-zero depending on the current barrier state) at an allowed exercise time.</li>
+ *   <li>European: payoff is determined at maturity,</li>
+ *   <li>Bermudan and American: the holder may exercise into the current binary intrinsic value,
+ *       that is, the immediate cash-or-zero value implied by the current barrier state.</li>
  * </ul>
  *
  * <p>
- * This means:
+ * Hence the immediate exercise value is:
  * </p>
  * <ul>
- *   <li>KNOCK_OUT: inside the alive band the immediate exercise payoff is {@code cashPayoff},</li>
- *   <li>KNOCK_IN: outside the alive band the immediate exercise payoff is {@code cashPayoff},</li>
- *   <li>KIKO: below the lower barrier the immediate exercise payoff is {@code cashPayoff},</li>
- *   <li>KOKI: above the upper barrier the immediate exercise payoff is {@code cashPayoff}.</li>
+ *   <li>KNOCK_OUT: <i>C</i> inside the alive band and <i>0</i> outside,</li>
+ *   <li>KNOCK_IN: <i>0</i> inside the alive band and <i>C</i> outside,</li>
+ *   <li>KIKO: <i>C</i> below the lower barrier and <i>0</i> elsewhere,</li>
+ *   <li>KOKI: <i>C</i> above the upper barrier and <i>0</i> elsewhere.</li>
  * </ul>
  *
  * <p>
- * The implementation remains a direct one-state constrained PDE.
+ * The implementation remains a direct one-state constrained PDE. In one dimension the terminal
+ * condition is cell-averaged for improved barrier resolution. In two dimensions the same barrier
+ * logic is applied on the first state variable, while the second state variable is propagated by
+ * the corresponding ADI solver.
  * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierBinaryOption implements
-		FiniteDifferenceProduct,
-		FiniteDifferenceInternalStateConstraint {
+	FiniteDifferenceProduct,
+	FiniteDifferenceInternalStateConstraint {
 
 	private final String underlyingName;
 	private final double maturity;
@@ -66,6 +104,17 @@ public class DoubleBarrierBinaryOption implements
 	private final DoubleBarrierType doubleBarrierType;
 	private final Exercise exercise;
 
+	/**
+	 * Creates a double-barrier cash binary option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 */
 	public DoubleBarrierBinaryOption(
 			final String underlyingName,
 			final double maturity,
@@ -107,6 +156,16 @@ public class DoubleBarrierBinaryOption implements
 		this.exercise = exercise;
 	}
 
+	/**
+	 * Creates a European double-barrier cash binary option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 */
 	public DoubleBarrierBinaryOption(
 			final String underlyingName,
 			final double maturity,
@@ -125,6 +184,15 @@ public class DoubleBarrierBinaryOption implements
 		);
 	}
 
+	/**
+	 * Creates a European double-barrier cash binary option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 */
 	public DoubleBarrierBinaryOption(
 			final double maturity,
 			final double cashPayoff,
@@ -142,6 +210,16 @@ public class DoubleBarrierBinaryOption implements
 		);
 	}
 
+	/**
+	 * Creates a double-barrier cash binary option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 */
 	public DoubleBarrierBinaryOption(
 			final double maturity,
 			final double cashPayoff,
@@ -160,6 +238,13 @@ public class DoubleBarrierBinaryOption implements
 		);
 	}
 
+	/**
+	 * Returns the values at the specified evaluation time on the model space grid.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param model The finite-difference model.
+	 * @return The value vector at the requested evaluation time.
+	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
@@ -176,6 +261,12 @@ public class DoubleBarrierBinaryOption implements
 		return column;
 	}
 
+	/**
+	 * Returns the full value surface.
+	 *
+	 * @param model The finite-difference model.
+	 * @return The value surface indexed by space point and time index.
+	 */
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 		validateProductConfiguration(model);
@@ -247,7 +338,7 @@ public class DoubleBarrierBinaryOption implements
 					"Two-dimensional Bermudan/American double-barrier binary pricing requires an ADI solver.");
 		}
 
-		return ((AbstractADI2D)solver).getValues(
+		return ((AbstractADI2D) solver).getValues(
 				maturity,
 				terminalPayoff2D,
 				(runningTime, assetValue, secondState) -> pointwiseExercisePayoff(assetValue)
@@ -351,12 +442,15 @@ public class DoubleBarrierBinaryOption implements
 	}
 
 	/**
-	 * Immediate-exercise payoff under the current binary state.
+	 * Returns the immediate exercise payoff under the current binary state.
 	 *
 	 * <p>
 	 * For this product, the natural exercise value is the current binary intrinsic value.
-	 * That matches the terminal state classification.
+	 * This matches the terminal state classification.
 	 * </p>
+	 *
+	 * @param assetValue Current underlying level.
+	 * @return The immediate exercise payoff.
 	 */
 	private double pointwiseExercisePayoff(final double assetValue) {
 		return pointwiseTerminalPayoff(assetValue);
@@ -388,12 +482,26 @@ public class DoubleBarrierBinaryOption implements
 		return assetValue >= upperBarrier;
 	}
 
+	/**
+	 * Returns whether the internal constrained regime is active.
+	 *
+	 * @param time Evaluation time.
+	 * @param stateVariables State variables.
+	 * @return {@code true} if the underlying is outside the alive band.
+	 */
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
 		final double underlyingLevel = stateVariables[0];
 		return isBelowLowerBarrier(underlyingLevel) || isAboveUpperBarrier(underlyingLevel);
 	}
 
+	/**
+	 * Returns the constrained value in the barrier region.
+	 *
+	 * @param time Evaluation time.
+	 * @param stateVariables State variables.
+	 * @return The constrained value.
+	 */
 	@Override
 	public double getConstrainedValue(final double time, final double... stateVariables) {
 		final double underlyingLevel = stateVariables[0];
@@ -480,30 +588,65 @@ public class DoubleBarrierBinaryOption implements
 		}
 	}
 
+	/**
+	 * Returns the underlying name.
+	 *
+	 * @return The underlying name, possibly {@code null}.
+	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity.
+	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
+	/**
+	 * Returns the cash payoff.
+	 *
+	 * @return The cash payoff.
+	 */
 	public double getCashPayoff() {
 		return cashPayoff;
 	}
 
+	/**
+	 * Returns the lower barrier.
+	 *
+	 * @return The lower barrier.
+	 */
 	public double getLowerBarrier() {
 		return lowerBarrier;
 	}
 
+	/**
+	 * Returns the upper barrier.
+	 *
+	 * @return The upper barrier.
+	 */
 	public double getUpperBarrier() {
 		return upperBarrier;
 	}
 
+	/**
+	 * Returns the double-barrier type.
+	 *
+	 * @return The double-barrier type.
+	 */
 	public DoubleBarrierType getDoubleBarrierType() {
 		return doubleBarrierType;
 	}
 
+	/**
+	 * Returns the exercise specification.
+	 *
+	 * @return The exercise specification.
+	 */
 	public Exercise getExercise() {
 		return exercise;
 	}

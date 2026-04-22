@@ -29,34 +29,79 @@ import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
  * Finite-difference valuation of a continuously monitored vanilla double-barrier option.
  *
  * <p>
- * This version supports:
+ * The product is defined by a strike <i>K</i>, lower and upper barriers
+ * <i>L &lt; U</i>, maturity <i>T</i>, and a call/put sign. Let <i>S(t)</i> denote the
+ * underlying. The alive region is the open band
+ * </p>
+ *
+ * <p>
+ * <i>L &lt; S(t) &lt; U</i>.
+ * </p>
+ *
+ * <p>
+ * For a knock-out contract, the option survives only as long as the path remains inside
+ * the band. For a knock-in contract, the option becomes active once the path hits either
+ * barrier. Writing
+ * </p>
+ *
+ * <p>
+ * <i>&tau; = inf { t in [0,T] : S(t) &le; L or S(t) &ge; U }</i>,
+ * </p>
+ *
+ * <p>
+ * the corresponding payoffs are
+ * </p>
+ *
+ * <p>
+ * <i>V(T) = 1_{&tau; &gt; T} max(&omega;(S(T)-K),0)</i> for knock-out,
+ * </p>
+ *
+ * <p>
+ * <i>V(T) = 1_{&tau; &le; T} max(&omega;(S(T)-K),0)</i> for knock-in,
+ * </p>
+ *
+ * <p>
+ * where <i>&omega; = 1</i> for a call and <i>&omega; = -1</i> for a put.
+ * </p>
+ *
+ * <p>
+ * This implementation supports:
  * </p>
  * <ul>
- *   <li>vanilla call / put,</li>
+ *   <li>vanilla call / put payoffs,</li>
  *   <li>{@link DoubleBarrierType#KNOCK_OUT} and {@link DoubleBarrierType#KNOCK_IN},</li>
  *   <li>European, Bermudan, and American exercise,</li>
- *   <li>direct knock-out pricing through internal-state constraints,</li>
- *   <li>direct knock-in pricing without parity:
- *       activated vanilla branch + pre-hit band PDE branch,</li>
- *   <li>1D models and 2D Heston / SABR models.</li>
+ *   <li>one-dimensional models,</li>
+ *   <li>two-dimensional Heston and SABR models.</li>
  * </ul>
  *
  * <p>
- * Knock-in pricing logic:
+ * The knock-out case is priced directly by imposing an internal-state constraint outside
+ * the alive band. The knock-in case is priced directly without parity decomposition:
  * </p>
  * <ul>
- *   <li>outside the alive band: the option is already activated and equals the corresponding vanilla value,</li>
- *   <li>inside the alive band: solve a pre-hit PDE on the band with time-dependent Dirichlet
- *       boundaries equal to the activated vanilla value at the barriers,</li>
- *   <li>for Bermudan / American exercise, the obstacle is applied only in the activated vanilla branch,
- *       not in the pre-hit branch.</li>
+ *   <li>outside the alive band, the option is already activated and equals the
+ *       corresponding vanilla value,</li>
+ *   <li>inside the alive band, a pre-hit PDE is solved on the band
+ *       <i>(L,U)</i> with time-dependent Dirichlet boundary data taken from the activated
+ *       vanilla branch at the two barriers,</li>
+ *   <li>for Bermudan and American exercise, the obstacle is applied only in the activated
+ *       vanilla branch, while the pre-hit branch remains a pure continuation problem up to
+ *       barrier activation.</li>
  * </ul>
+ *
+ * <p>
+ * In the one-dimensional case this leads to a PDE on the truncated spatial interval
+ * <i>(L,U)</i>. In the two-dimensional case the same idea is applied while preserving the
+ * second state-variable grid and imposing barrier traces that depend on time and on the
+ * second state variable.
+ * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierOption implements
-FiniteDifferenceProduct,
-FiniteDifferenceInternalStateConstraint {
+		FiniteDifferenceProduct,
+		FiniteDifferenceInternalStateConstraint {
 
 	private enum PricingMode {
 		DIRECT_OUT,
@@ -75,6 +120,18 @@ FiniteDifferenceInternalStateConstraint {
 	private final DoubleBarrierType doubleBarrierType;
 	private final Exercise exercise;
 
+	/**
+	 * Creates a double-barrier option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 */
 	public DoubleBarrierOption(
 			final String underlyingName,
 			final double maturity,
@@ -124,6 +181,17 @@ FiniteDifferenceInternalStateConstraint {
 		this.exercise = exercise;
 	}
 
+	/**
+	 * Creates a European double-barrier option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 */
 	public DoubleBarrierOption(
 			final String underlyingName,
 			final double maturity,
@@ -141,9 +209,19 @@ FiniteDifferenceInternalStateConstraint {
 				callOrPutSign,
 				doubleBarrierType,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a European double-barrier option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 */
 	public DoubleBarrierOption(
 			final double maturity,
 			final double strike,
@@ -160,9 +238,19 @@ FiniteDifferenceInternalStateConstraint {
 				callOrPutSign,
 				doubleBarrierType,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a European double-barrier option using a numeric call/put sign.
+	 *
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+	 * @param doubleBarrierType Double-barrier type.
+	 */
 	public DoubleBarrierOption(
 			final double maturity,
 			final double strike,
@@ -179,9 +267,21 @@ FiniteDifferenceInternalStateConstraint {
 				mapCallOrPut(callOrPutSign),
 				doubleBarrierType,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a double-barrier option using a numeric call/put sign.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 */
 	public DoubleBarrierOption(
 			final String underlyingName,
 			final double maturity,
@@ -200,9 +300,20 @@ FiniteDifferenceInternalStateConstraint {
 				mapCallOrPut(callOrPutSign),
 				doubleBarrierType,
 				exercise
-				);
+		);
 	}
 
+	/**
+	 * Creates a double-barrier option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 */
 	public DoubleBarrierOption(
 			final double maturity,
 			final double strike,
@@ -220,9 +331,16 @@ FiniteDifferenceInternalStateConstraint {
 				callOrPutSign,
 				doubleBarrierType,
 				exercise
-				);
+		);
 	}
 
+	/**
+	 * Returns the values at the specified evaluation time on the model space grid.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param model The finite-difference model.
+	 * @return The value vector at the requested evaluation time.
+	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
@@ -239,6 +357,12 @@ FiniteDifferenceInternalStateConstraint {
 		return column;
 	}
 
+	/**
+	 * Returns the full value surface.
+	 *
+	 * @param model The finite-difference model.
+	 * @return The value surface indexed by space point and time index.
+	 */
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 		validateProductConfiguration(model);
@@ -336,7 +460,7 @@ FiniteDifferenceInternalStateConstraint {
 				this,
 				valuationDiscretization,
 				exercise
-				);
+		);
 
 		final boolean isOneDimensional = valuationDiscretization.getNumberOfSpaceGrids() == 1;
 
@@ -351,7 +475,7 @@ FiniteDifferenceInternalStateConstraint {
 					maturity,
 					terminalValues,
 					this::pointwisePayoffForDirectOutPricing
-					);
+			);
 		}
 
 		return solver.getValues(maturity, this::pointwisePayoffForDirectOutPricing);
@@ -381,12 +505,12 @@ FiniteDifferenceInternalStateConstraint {
 				activatedModel,
 				activatedValues,
 				lowerBarrier
-				);
+		);
 		final DoubleBarrierTrace1D upperTrace = extractActivatedBoundaryTrace1D(
 				activatedModel,
 				activatedValues,
 				upperBarrier
-				);
+		);
 
 		/*
 		 * Step 3: solve pre-hit PDE on the alive band only.
@@ -395,14 +519,14 @@ FiniteDifferenceInternalStateConstraint {
 				effectiveModel,
 				lowerTrace,
 				upperTrace
-				);
+		);
 
 		final FDMSolver preHitSolver = new FDMThetaMethod1D(
 				preHitModel,
 				this,
 				preHitModel.getSpaceTimeDiscretization(),
 				new EuropeanExercise(maturity)
-				);
+		);
 
 		final double[] zeroTerminal = buildZeroTerminalValues(preHitModel.getSpaceTimeDiscretization());
 		final double[][] preHitValues = preHitSolver.getValues(maturity, zeroTerminal);
@@ -416,7 +540,7 @@ FiniteDifferenceInternalStateConstraint {
 				activatedValues,
 				preHitModel,
 				preHitValues
-				);
+		);
 	}
 
 	/*
@@ -443,12 +567,12 @@ FiniteDifferenceInternalStateConstraint {
 				activatedModel,
 				activatedValues,
 				lowerBarrier
-				);
+		);
 		final DoubleBarrierTrace2D upperTrace = extractActivatedBoundaryTrace2D(
 				activatedModel,
 				activatedValues,
 				upperBarrier
-				);
+		);
 
 		/*
 		 * Step 3: solve pre-hit PDE on the alive band using ordinary 2D ADI,
@@ -458,14 +582,14 @@ FiniteDifferenceInternalStateConstraint {
 				effectiveModel,
 				lowerTrace,
 				upperTrace
-				);
+		);
 
 		final FDMSolver preHitSolver = FDMSolverFactory.createSolver(
 				preHitModel,
 				this,
 				preHitModel.getSpaceTimeDiscretization(),
 				new EuropeanExercise(maturity)
-				);
+		);
 
 		final double[][] preHitValues = preHitSolver.getValues(maturity, assetValue -> 0.0);
 
@@ -478,7 +602,7 @@ FiniteDifferenceInternalStateConstraint {
 				activatedValues,
 				preHitModel,
 				preHitValues
-				);
+		);
 	}
 
 	/*
@@ -526,7 +650,7 @@ FiniteDifferenceInternalStateConstraint {
 
 		final double sMin = Math.floor(targetMin / deltaS) * deltaS;
 		final double sMax = Math.ceil(targetMax / deltaS) * deltaS;
-		final int numberOfSteps = Math.max(2, (int)Math.round((sMax - sMin) / deltaS));
+		final int numberOfSteps = Math.max(2, (int) Math.round((sMax - sMin) / deltaS));
 
 		final Grid activatedSpotGrid = new UniformGrid(numberOfSteps, sMin, sMax);
 
@@ -536,7 +660,7 @@ FiniteDifferenceInternalStateConstraint {
 					timeDiscretization,
 					thetaValue,
 					new double[] { initialSpot }
-					);
+			);
 			return baseModel.getCloneWithModifiedSpaceTimeDiscretization(activatedDiscretization);
 		}
 		else if(base.getNumberOfSpaceGrids() == 2) {
@@ -546,14 +670,14 @@ FiniteDifferenceInternalStateConstraint {
 					secondGrid.length - 1,
 					secondGrid[0],
 					secondGrid[secondGrid.length - 1]
-					);
+			);
 
 			final SpaceTimeDiscretization activatedDiscretization = new SpaceTimeDiscretization(
 					new Grid[] { activatedSpotGrid, preservedSecondGrid },
 					timeDiscretization,
 					thetaValue,
 					baseModel.getInitialValue()
-					);
+			);
 			return baseModel.getCloneWithModifiedSpaceTimeDiscretization(activatedDiscretization);
 		}
 		else {
@@ -576,7 +700,7 @@ FiniteDifferenceInternalStateConstraint {
 		final double[] originalSpotGrid = base.getSpaceGrid(0).getGrid();
 		final double deltaS = originalSpotGrid[1] - originalSpotGrid[0];
 
-		final int numberOfSteps = Math.max(2, (int)Math.ceil((upperBarrier - lowerBarrier) / deltaS));
+		final int numberOfSteps = Math.max(2, (int) Math.ceil((upperBarrier - lowerBarrier) / deltaS));
 		final Grid preHitSpotGrid = new UniformGrid(numberOfSteps, lowerBarrier, upperBarrier);
 
 		final SpaceTimeDiscretization preHitDiscretization = new SpaceTimeDiscretization(
@@ -584,7 +708,7 @@ FiniteDifferenceInternalStateConstraint {
 				base.getTimeDiscretization(),
 				base.getTheta(),
 				new double[] { baseModel.getInitialValue()[0] }
-				);
+		);
 
 		final FiniteDifferenceEquityModel wrappedBase =
 				baseModel.getCloneWithModifiedSpaceTimeDiscretization(preHitDiscretization);
@@ -594,7 +718,7 @@ FiniteDifferenceInternalStateConstraint {
 				preHitDiscretization,
 				lowerTrace,
 				upperTrace
-				);
+		);
 	}
 
 	private FiniteDifferenceEquityModel createAuxiliaryPreHitModel2D(
@@ -606,7 +730,7 @@ FiniteDifferenceInternalStateConstraint {
 		final double[] originalSpotGrid = base.getSpaceGrid(0).getGrid();
 		final double deltaS = originalSpotGrid[1] - originalSpotGrid[0];
 
-		final int numberOfSpotSteps = Math.max(2, (int)Math.ceil((upperBarrier - lowerBarrier) / deltaS));
+		final int numberOfSpotSteps = Math.max(2, (int) Math.ceil((upperBarrier - lowerBarrier) / deltaS));
 		final Grid preHitSpotGrid = new UniformGrid(numberOfSpotSteps, lowerBarrier, upperBarrier);
 
 		final double[] secondGrid = base.getSpaceGrid(1).getGrid();
@@ -614,14 +738,14 @@ FiniteDifferenceInternalStateConstraint {
 				secondGrid.length - 1,
 				secondGrid[0],
 				secondGrid[secondGrid.length - 1]
-				);
+		);
 
 		final SpaceTimeDiscretization preHitDiscretization = new SpaceTimeDiscretization(
 				new Grid[] { preHitSpotGrid, preservedSecondGrid },
 				base.getTimeDiscretization(),
 				base.getTheta(),
 				baseModel.getInitialValue()
-				);
+		);
 
 		if(baseModel instanceof FDMHestonModel) {
 			final FDMHestonModel hestonBase = (FDMHestonModel) baseModel;
@@ -630,7 +754,7 @@ FiniteDifferenceInternalStateConstraint {
 					preHitDiscretization,
 					lowerTrace,
 					upperTrace
-					);
+			);
 		}
 		else if(baseModel instanceof FDMSabrModel) {
 			final FDMSabrModel sabrBase = (FDMSabrModel) baseModel;
@@ -639,7 +763,7 @@ FiniteDifferenceInternalStateConstraint {
 					preHitDiscretization,
 					lowerTrace,
 					upperTrace
-					);
+			);
 		}
 		else {
 			throw new IllegalArgumentException(
@@ -670,7 +794,7 @@ FiniteDifferenceInternalStateConstraint {
 					getColumn(activatedValues, timeIndex),
 					InterpolationMethod.LINEAR,
 					ExtrapolationMethod.CONSTANT
-					);
+			);
 			traceValues[timeIndex] = interpolator.getValue(barrier);
 		}
 
@@ -678,7 +802,7 @@ FiniteDifferenceInternalStateConstraint {
 				maturity,
 				disc.getTimeDiscretization(),
 				traceValues
-				);
+		);
 	}
 
 	private DoubleBarrierTrace2D extractActivatedBoundaryTrace2D(
@@ -709,7 +833,7 @@ FiniteDifferenceInternalStateConstraint {
 						slice,
 						InterpolationMethod.LINEAR,
 						ExtrapolationMethod.CONSTANT
-						);
+				);
 
 				traceValues[j][timeIndex] = interpolator.getValue(barrier);
 			}
@@ -720,7 +844,7 @@ FiniteDifferenceInternalStateConstraint {
 				secondGrid,
 				disc.getTimeDiscretization(),
 				traceValues
-				);
+		);
 	}
 
 	/*
@@ -742,13 +866,13 @@ FiniteDifferenceInternalStateConstraint {
 				activatedValues,
 				activatedModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
 				originalGrid
-				);
+		);
 
 		final double[][] preHitOnOriginalGrid = interpolateSurfaceToOriginalGrid1D(
 				preHitValues,
 				preHitModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
 				originalGrid
-				);
+		);
 
 		final int numberOfColumns = activatedOnOriginalGrid[0].length;
 		final double[][] result = new double[originalGrid.length][numberOfColumns];
@@ -778,13 +902,13 @@ FiniteDifferenceInternalStateConstraint {
 				activatedValues,
 				activatedModel.getSpaceTimeDiscretization(),
 				originalDiscretization
-				);
+		);
 
 		final double[][] preHitOnOriginalGrid = interpolateSurfaceToOriginalGrid2DAlongFirstState(
 				preHitValues,
 				preHitModel.getSpaceTimeDiscretization(),
 				originalDiscretization
-				);
+		);
 
 		final double[] x0 = originalDiscretization.getSpaceGrid(0).getGrid();
 		final double[] x1 = originalDiscretization.getSpaceGrid(1).getGrid();
@@ -827,7 +951,7 @@ FiniteDifferenceInternalStateConstraint {
 					getColumn(valuesOnAuxiliaryGrid, timeIndex),
 					InterpolationMethod.LINEAR,
 					ExtrapolationMethod.CONSTANT
-					);
+			);
 
 			for(int i = 0; i < originalGrid.length; i++) {
 				interpolatedValues[i][timeIndex] = interpolator.getValue(originalGrid[i]);
@@ -879,7 +1003,7 @@ FiniteDifferenceInternalStateConstraint {
 						auxiliarySlice,
 						InterpolationMethod.LINEAR,
 						ExtrapolationMethod.CONSTANT
-						);
+				);
 
 				for(int i = 0; i < originalN0; i++) {
 					interpolatedValues[flatten(i, j, originalN0)][timeIndex] =
@@ -1020,6 +1144,13 @@ FiniteDifferenceInternalStateConstraint {
 	 * ============================================
 	 */
 
+	/**
+	 * Returns whether the internal knock-out constraint is active.
+	 *
+	 * @param time Evaluation time.
+	 * @param stateVariables State variables.
+	 * @return {@code true} if the state is outside the alive band.
+	 */
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
 		if(!isOutOption()) {
@@ -1029,6 +1160,13 @@ FiniteDifferenceInternalStateConstraint {
 		return underlyingLevel <= lowerBarrier || underlyingLevel >= upperBarrier;
 	}
 
+	/**
+	 * Returns the constrained value in the knocked-out region.
+	 *
+	 * @param time Evaluation time.
+	 * @param stateVariables State variables.
+	 * @return The constrained value.
+	 */
 	@Override
 	public double getConstrainedValue(final double time, final double... stateVariables) {
 		if(!isOutOption()) {
@@ -1065,7 +1203,7 @@ FiniteDifferenceInternalStateConstraint {
 				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
 						base.getTimeDiscretization(),
 						exercise
-						);
+				);
 
 		if(base.getNumberOfSpaceGrids() == 1) {
 			return new SpaceTimeDiscretization(
@@ -1073,7 +1211,7 @@ FiniteDifferenceInternalStateConstraint {
 					refinedTimeDiscretization,
 					base.getTheta(),
 					new double[] { base.getCenter(0) }
-					);
+			);
 		}
 
 		final int numberOfSpaceGrids = base.getNumberOfSpaceGrids();
@@ -1090,7 +1228,7 @@ FiniteDifferenceInternalStateConstraint {
 				refinedTimeDiscretization,
 				base.getTheta(),
 				center
-				);
+		);
 	}
 
 	private FiniteDifferenceEquityModel getEffectiveModelForValuation(final FiniteDifferenceEquityModel model) {
@@ -1145,34 +1283,74 @@ FiniteDifferenceInternalStateConstraint {
 	 * ============================================
 	 */
 
+	/**
+	 * Returns the underlying name.
+	 *
+	 * @return The underlying name, possibly {@code null}.
+	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity.
+	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
+	/**
+	 * Returns the strike.
+	 *
+	 * @return The strike.
+	 */
 	public double getStrike() {
 		return strike;
 	}
 
+	/**
+	 * Returns the lower barrier.
+	 *
+	 * @return The lower barrier.
+	 */
 	public double getLowerBarrier() {
 		return lowerBarrier;
 	}
 
+	/**
+	 * Returns the upper barrier.
+	 *
+	 * @return The upper barrier.
+	 */
 	public double getUpperBarrier() {
 		return upperBarrier;
 	}
 
+	/**
+	 * Returns the call/put sign.
+	 *
+	 * @return The call/put sign.
+	 */
 	public CallOrPut getCallOrPut() {
 		return callOrPutSign;
 	}
 
+	/**
+	 * Returns the double-barrier type.
+	 *
+	 * @return The double-barrier type.
+	 */
 	public DoubleBarrierType getDoubleBarrierType() {
 		return doubleBarrierType;
 	}
 
+	/**
+	 * Returns the exercise specification.
+	 *
+	 * @return The exercise specification.
+	 */
 	public Exercise getExercise() {
 		return exercise;
 	}
@@ -1291,7 +1469,7 @@ FiniteDifferenceInternalStateConstraint {
 	 */
 
 	private static final class DoubleBarrierPreHitModel1D
-	implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
+			implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
 		private final FiniteDifferenceEquityModel delegate;
 		private final SpaceTimeDiscretization discretization;
@@ -1383,7 +1561,7 @@ FiniteDifferenceInternalStateConstraint {
 					newSpaceTimeDiscretization,
 					lowerTrace,
 					upperTrace
-					);
+			);
 		}
 	}
 
@@ -1394,8 +1572,8 @@ FiniteDifferenceInternalStateConstraint {
 	 */
 
 	private static final class DoubleBarrierPreHitHestonModel
-	extends FDMHestonModel
-	implements FiniteDifferenceBoundary {
+			extends FDMHestonModel
+			implements FiniteDifferenceBoundary {
 
 		private final FDMHestonModel baseModel;
 		private final SpaceTimeDiscretization discretization;
@@ -1418,7 +1596,7 @@ FiniteDifferenceInternalStateConstraint {
 					baseModel.getSigma(),
 					baseModel.getRho(),
 					discretization
-					);
+			);
 
 			this.baseModel = baseModel;
 			this.discretization = discretization;
@@ -1450,7 +1628,7 @@ FiniteDifferenceInternalStateConstraint {
 			 */
 			result[0] = StandardBoundaryCondition.dirichlet(
 					lowerTrace.getBoundaryValue(time, secondState)
-					);
+			);
 
 			return result;
 		}
@@ -1474,7 +1652,7 @@ FiniteDifferenceInternalStateConstraint {
 			 */
 			result[0] = StandardBoundaryCondition.dirichlet(
 					upperTrace.getBoundaryValue(time, secondState)
-					);
+			);
 
 			return result;
 		}
@@ -1493,21 +1671,21 @@ FiniteDifferenceInternalStateConstraint {
 					baseModel.getSigma(),
 					baseModel.getRho(),
 					newSpaceTimeDiscretization
-					);
+			);
 
 			return new DoubleBarrierPreHitHestonModel(
 					clonedBaseModel,
 					newSpaceTimeDiscretization,
 					lowerTrace,
 					upperTrace
-					);
+			);
 		}
 
 	}
 
 	private static final class DoubleBarrierPreHitSabrModel
-	extends FDMSabrModel
-	implements FiniteDifferenceBoundary {
+			extends FDMSabrModel
+			implements FiniteDifferenceBoundary {
 
 		private final FDMSabrModel baseModel;
 		private final SpaceTimeDiscretization discretization;
@@ -1529,7 +1707,7 @@ FiniteDifferenceInternalStateConstraint {
 					baseModel.getNu(),
 					baseModel.getRho(),
 					discretization
-					);
+			);
 
 			this.baseModel = baseModel;
 			this.discretization = discretization;
@@ -1561,7 +1739,7 @@ FiniteDifferenceInternalStateConstraint {
 			 */
 			result[0] = StandardBoundaryCondition.dirichlet(
 					lowerTrace.getBoundaryValue(time, secondState)
-					);
+			);
 
 			return result;
 		}
@@ -1585,7 +1763,7 @@ FiniteDifferenceInternalStateConstraint {
 			 */
 			result[0] = StandardBoundaryCondition.dirichlet(
 					upperTrace.getBoundaryValue(time, secondState)
-					);
+			);
 
 			return result;
 		}
@@ -1603,14 +1781,14 @@ FiniteDifferenceInternalStateConstraint {
 					baseModel.getNu(),
 					baseModel.getRho(),
 					newSpaceTimeDiscretization
-					);
+			);
 
 			return new DoubleBarrierPreHitSabrModel(
 					clonedBaseModel,
 					newSpaceTimeDiscretization,
 					lowerTrace,
 					upperTrace
-					);
+			);
 		}
 	}
 }

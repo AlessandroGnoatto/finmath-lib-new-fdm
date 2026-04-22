@@ -26,36 +26,55 @@ import net.finmath.finitedifference.solvers.adi.BarrierPDEMode;
 import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
 
 /**
- * Finite-difference valuation of a single-barrier cash touch product.
+ * Finite-difference valuation of a single-barrier cash touch option.
  *
  * <p>
- * Supported in this version:
+ * The product pays a fixed cash amount <i>N</i> depending on whether a barrier event occurs during
+ * the life of the contract. Let <i>T</i> denote the maturity, <i>B</i> the barrier and
+ * <i>S</i>(<i>t</i>) the underlying level.
  * </p>
- * <ul>
- *   <li>cash payoff only,</li>
- *   <li>European only,</li>
- *   <li>one-dimensional models only,</li>
- *   <li>expiry-settled one-touch / no-touch,</li>
- *   <li>at-hit settlement for one-touch only.</li>
- * </ul>
+ *
+ * <pre>
+ * tau_B = inf { t in [0,T] : S(t) &lt;= B }    for a down barrier,
+ * tau_B = inf { t in [0,T] : S(t) &gt;= B }    for an up barrier.
+ *
+ * One-touch at expiry:  V(T) = N 1_{tau_B &lt;= T}
+ * No-touch at expiry:   V(T) = N 1_{tau_B &gt; T}
+ * One-touch at hit:     V(tau_B) = N
+ * </pre>
+ *
+ * <p>
+ * For expiry settlement, the post-hit state carries the discounted cash amount maturing at
+ * <i>T</i>. In other words, once the barrier has been activated, the continuation value is the
+ * deterministic cash value implied by the model discount curve.
+ * </p>
  *
  * <p>
  * Barrier-type semantics:
  * </p>
  * <ul>
- *   <li>{@link BarrierType#DOWN_IN} and {@link BarrierType#UP_IN}: one-touch,</li>
- *   <li>{@link BarrierType#DOWN_OUT} and {@link BarrierType#UP_OUT}: no-touch.</li>
+ *   <li>{@link BarrierType#DOWN_IN} and {@link BarrierType#UP_IN} represent one-touch products,</li>
+ *   <li>{@link BarrierType#DOWN_OUT} and {@link BarrierType#UP_OUT} represent no-touch products.</li>
  * </ul>
  *
  * <p>
  * Settlement semantics:
  * </p>
  * <ul>
- *   <li>{@link TouchSettlementTiming#AT_EXPIRY}: payoff is determined by hit/no-hit over the option life
- *       and paid at maturity,</li>
- *   <li>{@link TouchSettlementTiming#AT_HIT}: payoff is made immediately when the barrier is first hit;
- *       currently supported only for one-touch.</li>
+ *   <li>{@link TouchSettlementTiming#AT_EXPIRY}: the hit / no-hit event is monitored over the full
+ *       option life and the payoff is settled at maturity,</li>
+ *   <li>{@link TouchSettlementTiming#AT_HIT}: the cash amount is paid immediately when the barrier
+ *       is hit for the first time; this is currently supported only for one-touch products.</li>
  * </ul>
+ *
+ * <p>
+ * The implementation supports European exercise only. Knock-out products are priced directly by
+ * imposing the inactive value in the knocked-out region. One-dimensional knock-in products are
+ * priced by a two-state finite-difference scheme. Two-dimensional knock-in products are handled by
+ * solving a pre-hit PDE with an analytically specified activated boundary trace.
+ * </p>
+ *
+ * @author Alessandro Gnoatto
  */
 public class TouchOption implements
 	FiniteDifferenceProduct,
@@ -79,6 +98,17 @@ public class TouchOption implements
 	private final TouchSettlementTiming settlementTiming;
 	private final Exercise exercise;
 
+	/**
+	 * Creates a touch option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 * @param settlementTiming Settlement timing.
+	 * @param exercise Exercise specification.
+	 */
 	public TouchOption(
 			final String underlyingName,
 			final double maturity,
@@ -122,6 +152,16 @@ public class TouchOption implements
 		this.exercise = exercise;
 	}
 
+	/**
+	 * Creates a touch option with European exercise at maturity.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 * @param settlementTiming Settlement timing.
+	 */
 	public TouchOption(
 			final String underlyingName,
 			final double maturity,
@@ -137,9 +177,19 @@ public class TouchOption implements
 				payoffAmount,
 				settlementTiming,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates an expiry-settled touch option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 * @param exercise Exercise specification.
+	 */
 	public TouchOption(
 			final String underlyingName,
 			final double maturity,
@@ -155,9 +205,18 @@ public class TouchOption implements
 				payoffAmount,
 				TouchSettlementTiming.AT_EXPIRY,
 				exercise
-				);
+		);
 	}
 
+	/**
+	 * Creates an expiry-settled touch option with European exercise at maturity.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 */
 	public TouchOption(
 			final String underlyingName,
 			final double maturity,
@@ -172,9 +231,18 @@ public class TouchOption implements
 				payoffAmount,
 				TouchSettlementTiming.AT_EXPIRY,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a touch option with anonymous underlying and European exercise at maturity.
+	 *
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 * @param settlementTiming Settlement timing.
+	 */
 	public TouchOption(
 			final double maturity,
 			final double barrierValue,
@@ -189,9 +257,17 @@ public class TouchOption implements
 				payoffAmount,
 				settlementTiming,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates an expiry-settled touch option with anonymous underlying and European exercise at maturity.
+	 *
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 */
 	public TouchOption(
 			final double maturity,
 			final double barrierValue,
@@ -205,9 +281,19 @@ public class TouchOption implements
 				payoffAmount,
 				TouchSettlementTiming.AT_EXPIRY,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a one-touch option settled at expiry.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type. Must be {@link BarrierType#DOWN_IN} or {@link BarrierType#UP_IN}.
+	 * @param payoffAmount Cash payoff amount.
+	 * @return A one-touch option settled at expiry.
+	 */
 	public static TouchOption oneTouchAtExpiry(
 			final String underlyingName,
 			final double maturity,
@@ -227,9 +313,18 @@ public class TouchOption implements
 				payoffAmount,
 				TouchSettlementTiming.AT_EXPIRY,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a one-touch option settled at expiry.
+	 *
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type. Must be {@link BarrierType#DOWN_IN} or {@link BarrierType#UP_IN}.
+	 * @param payoffAmount Cash payoff amount.
+	 * @return A one-touch option settled at expiry.
+	 */
 	public static TouchOption oneTouchAtExpiry(
 			final double maturity,
 			final double barrierValue,
@@ -238,6 +333,16 @@ public class TouchOption implements
 		return oneTouchAtExpiry(null, maturity, barrierValue, barrierType, payoffAmount);
 	}
 
+	/**
+	 * Creates a one-touch option settled at first hit.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type. Must be {@link BarrierType#DOWN_IN} or {@link BarrierType#UP_IN}.
+	 * @param payoffAmount Cash payoff amount.
+	 * @return A one-touch option settled at first hit.
+	 */
 	public static TouchOption oneTouchAtHit(
 			final String underlyingName,
 			final double maturity,
@@ -257,9 +362,18 @@ public class TouchOption implements
 				payoffAmount,
 				TouchSettlementTiming.AT_HIT,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a one-touch option settled at first hit.
+	 *
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type. Must be {@link BarrierType#DOWN_IN} or {@link BarrierType#UP_IN}.
+	 * @param payoffAmount Cash payoff amount.
+	 * @return A one-touch option settled at first hit.
+	 */
 	public static TouchOption oneTouchAtHit(
 			final double maturity,
 			final double barrierValue,
@@ -268,6 +382,16 @@ public class TouchOption implements
 		return oneTouchAtHit(null, maturity, barrierValue, barrierType, payoffAmount);
 	}
 
+	/**
+	 * Creates a no-touch option settled at expiry.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type. Must be {@link BarrierType#DOWN_OUT} or {@link BarrierType#UP_OUT}.
+	 * @param payoffAmount Cash payoff amount.
+	 * @return A no-touch option settled at expiry.
+	 */
 	public static TouchOption noTouchAtExpiry(
 			final String underlyingName,
 			final double maturity,
@@ -287,9 +411,18 @@ public class TouchOption implements
 				payoffAmount,
 				TouchSettlementTiming.AT_EXPIRY,
 				new EuropeanExercise(maturity)
-				);
+		);
 	}
 
+	/**
+	 * Creates a no-touch option settled at expiry.
+	 *
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type. Must be {@link BarrierType#DOWN_OUT} or {@link BarrierType#UP_OUT}.
+	 * @param payoffAmount Cash payoff amount.
+	 * @return A no-touch option settled at expiry.
+	 */
 	public static TouchOption noTouchAtExpiry(
 			final double maturity,
 			final double barrierValue,
@@ -298,6 +431,13 @@ public class TouchOption implements
 		return noTouchAtExpiry(null, maturity, barrierValue, barrierType, payoffAmount);
 	}
 
+	/**
+	 * Returns the option values at the specified evaluation time on the model space grid.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param model The finite-difference model.
+	 * @return The values on the model space grid at the requested evaluation time.
+	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
@@ -314,6 +454,12 @@ public class TouchOption implements
 		return column;
 	}
 
+	/**
+	 * Returns the full value surface on the model discretization.
+	 *
+	 * @param model The finite-difference model.
+	 * @return The value surface indexed by space point and time index.
+	 */
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 
@@ -407,7 +553,7 @@ public class TouchOption implements
 				this,
 				model.getSpaceTimeDiscretization(),
 				exercise
-				);
+		);
 
 		if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1) {
 			final double[] terminalValues =
@@ -435,18 +581,18 @@ public class TouchOption implements
 				exercise,
 				createActiveBoundaryProvider(knockInModel),
 				createActivationPolicy()
-				);
+		);
 
 		final double[][] knockInValuesOnAuxiliaryGrid = solver.getValues(
 				maturity,
 				buildActiveTerminalValues(knockInModel.getSpaceTimeDiscretization())
-				);
+		);
 
 		return interpolateSurfaceToOriginalGrid1D(
 				knockInValuesOnAuxiliaryGrid,
 				knockInModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
 				model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid()
-				);
+		);
 	}
 
 	private double[][] priceInOptionDirectly2D(final FiniteDifferenceEquityModel model) {
@@ -476,7 +622,7 @@ public class TouchOption implements
 						new EuropeanExercise(maturity),
 						BarrierPDEMode.IN_PRE_HIT,
 						preHitSpecification
-						);
+				);
 
 		final double[][] preHitValues =
 				preHitSolver.getValues(maturity, assetValue -> getInactiveValueAtMaturity());
@@ -485,7 +631,7 @@ public class TouchOption implements
 				model,
 				preHitModel,
 				preHitValues
-				);
+		);
 	}
 
 	private TwoStateActiveBoundaryProvider createActiveBoundaryProvider(final FiniteDifferenceEquityModel model) {
@@ -602,7 +748,7 @@ public class TouchOption implements
 					getColumn(valuesOnAuxiliaryGrid, timeIndex),
 					InterpolationMethod.LINEAR,
 					ExtrapolationMethod.CONSTANT
-					);
+			);
 
 			for(int i = 0; i < originalGrid.length; i++) {
 				interpolatedValues[i][timeIndex] = interpolator.getValue(originalGrid[i]);
@@ -656,7 +802,7 @@ public class TouchOption implements
 						auxiliarySlice,
 						InterpolationMethod.LINEAR,
 						ExtrapolationMethod.CONSTANT
-						);
+				);
 
 				for(int i = 0; i < originalN0; i++) {
 					final int k = flatten(i, j, originalN0);
@@ -708,7 +854,7 @@ public class TouchOption implements
 				timeDiscretization,
 				thetaValue,
 				new double[] { initialValue }
-				);
+		);
 
 		return originalModel.getCloneWithModifiedSpaceTimeDiscretization(knockInDiscretization);
 	}
@@ -729,14 +875,14 @@ public class TouchOption implements
 		if(barrierType == BarrierType.DOWN_IN) {
 			spotMin = barrierValue;
 			numberOfSpotSteps =
-					(int)Math.ceil((originalSpotGrid[originalSpotGrid.length - 1] - barrierValue) / deltaS);
+					(int) Math.ceil((originalSpotGrid[originalSpotGrid.length - 1] - barrierValue) / deltaS);
 			spotMax = barrierValue + numberOfSpotSteps * deltaS;
 			barrierSpotIndex = 0;
 		}
 		else if(barrierType == BarrierType.UP_IN) {
 			spotMax = barrierValue;
 			numberOfSpotSteps =
-					(int)Math.ceil((barrierValue - originalSpotGrid[0]) / deltaS);
+					(int) Math.ceil((barrierValue - originalSpotGrid[0]) / deltaS);
 			spotMin = barrierValue - numberOfSpotSteps * deltaS;
 			barrierSpotIndex = numberOfSpotSteps;
 		}
@@ -752,7 +898,7 @@ public class TouchOption implements
 				spotMax,
 				numberOfSpotSteps,
 				trace
-				);
+		);
 	}
 
 	private FiniteDifferenceEquityModel createAuxiliaryPreHitModel2D(
@@ -766,13 +912,13 @@ public class TouchOption implements
 				preHitSpecification.getNumberOfSpotSteps(),
 				preHitSpecification.getSpotMin(),
 				preHitSpecification.getSpotMax()
-				);
+		);
 
 		final Grid preservedSecondGrid = new UniformGrid(
 				secondGrid.length - 1,
 				secondGrid[0],
 				secondGrid[secondGrid.length - 1]
-				);
+		);
 
 		final SpaceTimeDiscretization preHitDiscretization =
 				new SpaceTimeDiscretization(
@@ -780,7 +926,7 @@ public class TouchOption implements
 						base.getTimeDiscretization(),
 						base.getTheta(),
 						model.getInitialValue()
-						);
+				);
 
 		return model.getCloneWithModifiedSpaceTimeDiscretization(preHitDiscretization);
 	}
@@ -809,7 +955,7 @@ public class TouchOption implements
 				secondGrid,
 				timeDiscretization,
 				traceValues
-				);
+		);
 	}
 
 	private double getActivatedValueForTau(
@@ -887,7 +1033,7 @@ public class TouchOption implements
 						preHitValues,
 						preHitModel.getSpaceTimeDiscretization(),
 						originalDiscretization
-						);
+				);
 
 		final double[] x0 = originalDiscretization.getSpaceGrid(0).getGrid();
 		final double[] x1 = originalDiscretization.getSpaceGrid(1).getGrid();
@@ -902,12 +1048,12 @@ public class TouchOption implements
 						? x0[i] <= barrierValue
 						: x0[i] >= barrierValue;
 
-						final int k = flatten(i, j, x0.length);
-						final double[][] source = alreadyHit ? activatedOnOriginalGrid : preHitOnOriginalGrid;
+				final int k = flatten(i, j, x0.length);
+				final double[][] source = alreadyHit ? activatedOnOriginalGrid : preHitOnOriginalGrid;
 
-						for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
-							result[k][timeIndex] = source[k][timeIndex];
-						}
+				for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+					result[k][timeIndex] = source[k][timeIndex];
+				}
 			}
 		}
 
@@ -989,6 +1135,13 @@ public class TouchOption implements
 		}
 	}
 
+	/**
+	 * Returns whether the internal knock-out constraint is active at the given state.
+	 *
+	 * @param time Evaluation time.
+	 * @param stateVariables State variables.
+	 * @return {@code true} if the state is knocked out, {@code false} otherwise.
+	 */
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
 		if(!isOutOption()) {
@@ -1007,6 +1160,13 @@ public class TouchOption implements
 		}
 	}
 
+	/**
+	 * Returns the constrained value in the inactive region.
+	 *
+	 * @param time Evaluation time.
+	 * @param stateVariables State variables.
+	 * @return The constrained value.
+	 */
 	@Override
 	public double getConstrainedValue(final double time, final double... stateVariables) {
 		if(!isOutOption()) {
@@ -1016,44 +1176,84 @@ public class TouchOption implements
 		return 0.0;
 	}
 
+	/**
+	 * Returns the underlying name.
+	 *
+	 * @return The underlying name, possibly {@code null}.
+	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity.
+	 */
 	@Override
 	public double getMaturity() {
 		return maturity;
 	}
 
+	/**
+	 * Returns the barrier level.
+	 *
+	 * @return The barrier level.
+	 */
 	@Override
 	public double getBarrierValue() {
 		return barrierValue;
 	}
 
+	/**
+	 * Returns the barrier type.
+	 *
+	 * @return The barrier type.
+	 */
 	@Override
 	public BarrierType getBarrierType() {
 		return barrierType;
 	}
 
+	/**
+	 * Returns the cash payoff amount.
+	 *
+	 * @return The cash payoff amount.
+	 */
 	public double getPayoffAmount() {
 		return payoffAmount;
 	}
 
+	/**
+	 * Returns the settlement timing.
+	 *
+	 * @return The settlement timing.
+	 */
 	public TouchSettlementTiming getSettlementTiming() {
 		return settlementTiming;
 	}
 
+	/**
+	 * Returns the exercise specification.
+	 *
+	 * @return The exercise specification.
+	 */
 	public Exercise getExercise() {
 		return exercise;
 	}
 
+	/**
+	 * Returns the inactive-state value at maturity.
+	 *
+	 * @return The inactive-state value at maturity.
+	 */
 	@Override
 	public double getInactiveValueAtMaturity() {
 		return 0.0;
 	}
 
 	private static final class DiscountedCashAtExpiryActiveBoundaryProvider
-	implements TwoStateActiveBoundaryProvider {
+			implements TwoStateActiveBoundaryProvider {
 
 		private static final double EPSILON = 1E-10;
 
@@ -1101,7 +1301,7 @@ public class TouchOption implements
 	}
 
 	private static final class ImmediateCashActiveBoundaryProvider
-	implements TwoStateActiveBoundaryProvider {
+			implements TwoStateActiveBoundaryProvider {
 
 		private final double payoffAmount;
 

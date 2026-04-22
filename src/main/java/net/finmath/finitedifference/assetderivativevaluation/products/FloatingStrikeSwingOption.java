@@ -22,42 +22,76 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * Floating-strike fixed-maturity swing option.
  *
  * <p>
- * v2 semantics:
- * </p>
- * <ul>
- *   <li>discrete decision dates,</li>
- *   <li>discrete strike-fixing dates with weights,</li>
- *   <li>local and global quantity constraints,</li>
- *   <li>bang-bang or discretized quantity-grid control,</li>
- *   <li>fix-then-exercise ordering when a fixing and a decision coincide,</li>
- *   <li>same underlying used both for payoff spot and strike fixing.</li>
- * </ul>
- *
- * <p>
- * The strike accumulator evolves on fixing dates by
- * </p>
- * <p>
- * A_new = A_old + w * S
+ * This product combines the volume-control features of a swing option with a floating strike
+ * determined by a weighted fixing average of the underlying. Let
+ * <i>t_0, \ldots, t_{n-1}</i> denote the decision dates and
+ * <i>u_0, \ldots, u_{m-1}</i> the fixing dates with associated non-negative weights
+ * <i>w_0, \ldots, w_{m-1}</i>. At each decision date the holder chooses an exercised quantity
+ * <i>q_i</i> subject to local bounds
  * </p>
  *
  * <p>
- * and the effective strike used at a decision date is
- * </p>
- * <p>
- * K(A) = strikeShift + strikeScale * A / cumulativeFixingWeight.
+ * <i>q_i \in [q_i^{min}, q_i^{max}]</i>,
  * </p>
  *
  * <p>
- * The class reuses the existing 1D and 2D PDE stack by treating cumulative quantity
- * and strike accumulator as extra discrete contract states.
+ * and global cumulative bounds
  * </p>
  *
  * <p>
- * As with SwingOption v1, {@link #getValues(FiniteDifferenceEquityModel)} is intentionally
- * unsupported because the contract state also depends on cumulative consumed quantity
- * and strike accumulator.
+ * <i>Q^{min} \le \sum_{i=0}^{n-1} q_i \le Q^{max}</i>.
  * </p>
- * 
+ *
+ * <p>
+ * The strike is built from an accumulator process
+ * </p>
+ *
+ * <p>
+ * <i>A_{new} = A_{old} + w S</i>,
+ * </p>
+ *
+ * <p>
+ * updated on fixing dates, and the effective strike used at a decision date is
+ * </p>
+ *
+ * <p>
+ * <i>K(A) = strikeShift + strikeScale \cdot A / W</i>,
+ * </p>
+ *
+ * <p>
+ * where <i>W</i> is the cumulative fixing weight available at that decision date. The immediate
+ * exercise payoff at a decision time is therefore
+ * </p>
+ *
+ * <p>
+ * <i>q \max(\omega (S - K(A)), 0)</i>,
+ * </p>
+ *
+ * <p>
+ * where <i>\omega = 1</i> for a call and <i>\omega = -1</i> for a put.
+ * </p>
+ *
+ * <p>
+ * The valuation is carried out by dynamic programming on two additional discrete contract states:
+ * cumulative consumed quantity and strike accumulator. Between event dates, continuation values are
+ * propagated backward with the existing one- or two-dimensional finite-difference solver of the
+ * supplied model. On fixing dates, the accumulator state is shifted according to the fixing rule.
+ * On decision dates, the Bellman optimization is applied over the admissible exercised quantities.
+ * </p>
+ *
+ * <p>
+ * If a fixing date and a decision date coincide, the convention
+ * {@link SwingStrikeFixingConvention#FIX_THEN_EXERCISE} is applied, that is, the strike is first
+ * updated using the fixing at that date and only then used in the exercise payoff.
+ * </p>
+ *
+ * <p>
+ * As in the fixed-strike swing implementation, a full state-independent surface
+ * {@link #getValues(FiniteDifferenceEquityModel)} is not well defined because the contract value
+ * depends on the additional cumulative-quantity and accumulator states. Hence this implementation
+ * exposes {@link #getValue(double, FiniteDifferenceEquityModel)} at evaluation time 0 only.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
@@ -86,6 +120,26 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 	private final double quantityGridStep;
 	private final SwingStrikeFixingConvention fixingConvention;
 
+	/**
+	 * Creates a floating-strike swing option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param decisionTimes Exercise decision times.
+	 * @param fixingTimes Strike-fixing times.
+	 * @param fixingWeights Strike-fixing weights.
+	 * @param strikeShift Additive strike shift.
+	 * @param strikeScale Multiplicative strike scale.
+	 * @param accumulatorGrid Grid for the strike accumulator state.
+	 * @param localMinQuantity Local minimum quantities.
+	 * @param localMaxQuantity Local maximum quantities.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put flag.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 * @param fixingConvention Strike-fixing convention.
+	 */
 	public FloatingStrikeSwingOption(
 			final String underlyingName,
 			final double[] decisionTimes,
@@ -160,6 +214,25 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 		validateInputs();
 	}
 
+	/**
+	 * Creates a floating-strike swing option with anonymous underlying.
+	 *
+	 * @param decisionTimes Exercise decision times.
+	 * @param fixingTimes Strike-fixing times.
+	 * @param fixingWeights Strike-fixing weights.
+	 * @param strikeShift Additive strike shift.
+	 * @param strikeScale Multiplicative strike scale.
+	 * @param accumulatorGrid Grid for the strike accumulator state.
+	 * @param localMinQuantity Local minimum quantities.
+	 * @param localMaxQuantity Local maximum quantities.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put flag.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 * @param fixingConvention Strike-fixing convention.
+	 */
 	public FloatingStrikeSwingOption(
 			final double[] decisionTimes,
 			final double[] fixingTimes,
@@ -194,6 +267,26 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 		);
 	}
 
+	/**
+	 * Creates a floating-strike swing option with time-homogeneous local quantity bounds.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param decisionTimes Exercise decision times.
+	 * @param fixingTimes Strike-fixing times.
+	 * @param fixingWeights Strike-fixing weights.
+	 * @param strikeShift Additive strike shift.
+	 * @param strikeScale Multiplicative strike scale.
+	 * @param accumulatorGrid Grid for the strike accumulator state.
+	 * @param localMinQuantity Constant local minimum quantity.
+	 * @param localMaxQuantity Constant local maximum quantity.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put flag.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 * @param fixingConvention Strike-fixing convention.
+	 */
 	public FloatingStrikeSwingOption(
 			final String underlyingName,
 			final double[] decisionTimes,
@@ -229,6 +322,26 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 		);
 	}
 
+	/**
+	 * Creates a floating-strike swing option with anonymous underlying and time-homogeneous
+	 * local quantity bounds.
+	 *
+	 * @param decisionTimes Exercise decision times.
+	 * @param fixingTimes Strike-fixing times.
+	 * @param fixingWeights Strike-fixing weights.
+	 * @param strikeShift Additive strike shift.
+	 * @param strikeScale Multiplicative strike scale.
+	 * @param accumulatorGrid Grid for the strike accumulator state.
+	 * @param localMinQuantity Constant local minimum quantity.
+	 * @param localMaxQuantity Constant local maximum quantity.
+	 * @param globalMinQuantity Global minimum total quantity.
+	 * @param globalMaxQuantity Global maximum total quantity.
+	 * @param callOrPut Call/put flag.
+	 * @param quantityMode Quantity control mode.
+	 * @param quantityGridStep Quantity discretization step for
+	 * {@link SwingQuantityMode#DISCRETE_QUANTITY_GRID}.
+	 * @param fixingConvention Strike-fixing convention.
+	 */
 	public FloatingStrikeSwingOption(
 			final double[] decisionTimes,
 			final double[] fixingTimes,
@@ -263,6 +376,18 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 		);
 	}
 
+	/**
+	 * Returns the value at the given evaluation time.
+	 *
+	 * <p>
+	 * In this implementation only evaluation time 0 is supported, since the additional contract
+	 * states must otherwise be supplied explicitly.
+	 * </p>
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param model The finite-difference model.
+	 * @return The value on the model space grid.
+	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 
@@ -343,12 +468,23 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 		return interpolateAccumulatorPlaneSlice(nextEventValuePlanes.get(0), 0.0);
 	}
 
+	/**
+	 * Returns the full value surface.
+	 *
+	 * <p>
+	 * This operation is intentionally unsupported, since the contract value depends on additional
+	 * discrete states.
+	 * </p>
+	 *
+	 * @param model The finite-difference model.
+	 * @return Never returns normally.
+	 */
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 		throw new UnsupportedOperationException(
 				"FloatingStrikeSwingOption carries additional discrete states "
-				+ "(cumulative quantity and strike accumulator). "
-				+ "Use getValue(0.0, model) in this v2 implementation."
+						+ "(cumulative quantity and strike accumulator). "
+						+ "Use getValue(0.0, model) in this v2 implementation."
 		);
 	}
 
@@ -827,7 +963,7 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 
 		final int segmentNumberOfTimeSteps = Math.max(
 				1,
-				(int)Math.round(baseNumberOfTimeSteps * segmentLength / baseLastTime)
+				(int) Math.round(baseNumberOfTimeSteps * segmentLength / baseLastTime)
 		);
 
 		final TimeDiscretization segmentTimeDiscretization = new TimeDiscretizationFromArray(
@@ -1048,66 +1184,146 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 		}
 	}
 
+	/**
+	 * Returns the underlying name.
+	 *
+	 * @return The underlying name, possibly {@code null}.
+	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
+	/**
+	 * Returns the decision times.
+	 *
+	 * @return A defensive copy of the decision times.
+	 */
 	public double[] getDecisionTimes() {
 		return decisionTimes.clone();
 	}
 
+	/**
+	 * Returns the fixing times.
+	 *
+	 * @return A defensive copy of the fixing times.
+	 */
 	public double[] getFixingTimes() {
 		return fixingTimes.clone();
 	}
 
+	/**
+	 * Returns the fixing weights.
+	 *
+	 * @return A defensive copy of the fixing weights.
+	 */
 	public double[] getFixingWeights() {
 		return fixingWeights.clone();
 	}
 
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity.
+	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
+	/**
+	 * Returns the additive strike shift.
+	 *
+	 * @return The additive strike shift.
+	 */
 	public double getStrikeShift() {
 		return strikeShift;
 	}
 
+	/**
+	 * Returns the multiplicative strike scale.
+	 *
+	 * @return The multiplicative strike scale.
+	 */
 	public double getStrikeScale() {
 		return strikeScale;
 	}
 
+	/**
+	 * Returns the accumulator grid.
+	 *
+	 * @return A defensive copy of the accumulator grid.
+	 */
 	public double[] getAccumulatorGrid() {
 		return accumulatorGrid.clone();
 	}
 
+	/**
+	 * Returns the local minimum quantities.
+	 *
+	 * @return A defensive copy of the local minimum quantities.
+	 */
 	public double[] getLocalMinQuantity() {
 		return localMinQuantity.clone();
 	}
 
+	/**
+	 * Returns the local maximum quantities.
+	 *
+	 * @return A defensive copy of the local maximum quantities.
+	 */
 	public double[] getLocalMaxQuantity() {
 		return localMaxQuantity.clone();
 	}
 
+	/**
+	 * Returns the global minimum total quantity.
+	 *
+	 * @return The global minimum total quantity.
+	 */
 	public double getGlobalMinQuantity() {
 		return globalMinQuantity;
 	}
 
+	/**
+	 * Returns the global maximum total quantity.
+	 *
+	 * @return The global maximum total quantity.
+	 */
 	public double getGlobalMaxQuantity() {
 		return globalMaxQuantity;
 	}
 
+	/**
+	 * Returns the call/put flag.
+	 *
+	 * @return The call/put flag.
+	 */
 	public CallOrPut getCallOrPut() {
 		return callOrPut;
 	}
 
+	/**
+	 * Returns the quantity control mode.
+	 *
+	 * @return The quantity control mode.
+	 */
 	public SwingQuantityMode getQuantityMode() {
 		return quantityMode;
 	}
 
+	/**
+	 * Returns the quantity grid step.
+	 *
+	 * @return The quantity grid step.
+	 */
 	public double getQuantityGridStep() {
 		return quantityGridStep;
 	}
 
+	/**
+	 * Returns the strike-fixing convention.
+	 *
+	 * @return The strike-fixing convention.
+	 */
 	public SwingStrikeFixingConvention getFixingConvention() {
 		return fixingConvention;
 	}

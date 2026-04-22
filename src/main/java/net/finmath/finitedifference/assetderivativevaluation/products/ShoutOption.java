@@ -13,28 +13,71 @@ import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Implementation of a Shout Option. We adapt, to the present setting, the ideas of
- * H. Windcliff, K.R. Vetzal, P.A. Forsyth, A. Verma, T.F. Coleman, An object-oriented framework for 
- * valuing shout options on high-performance computer architectures. JEDC
- * <p>
- * Locked semantics:
- * </p>
- * <ul>
- *   <li>fixed maturity,</li>
- *   <li>finite total number of shouts,</li>
- *   <li>continuous shout right,</li>
- *   <li>standard reset rule K* = S,</li>
- *   <li>optional constant shout cash adjustment,</li>
- *   <li>no maturity extension,</li>
- *   <li>no yearly counter reset.</li>
- * </ul>
+ * Finite-difference valuation of a shout option.
  *
  * <p>
- * The recursion is performed over planes of used shout count U and slices of fixed
- * strike K. Each slice is a standard PDE solve with a continuous floor coming from
- * the next plane.
+ * A shout option is a path-dependent extension of a vanilla option allowing the holder to
+ * lock in intrinsic value a finite number of times before maturity. In this implementation,
+ * the locked level is represented by a reset strike <i>K</i><sup>*</sup>, and the standard
+ * shout rule
  * </p>
- * 
+ *
+ * <p>
+ * <i>K</i><sup>*</sup> = <i>S</i>
+ * </p>
+ *
+ * <p>
+ * is used at each shout time. The contract considered here has fixed maturity
+ * <i>T</i>, a finite maximum number of shouts, continuous shout right, optional constant
+ * shout cash adjustment, and no maturity extension or yearly counter reset.
+ * </p>
+ *
+ * <p>
+ * For a fixed locked strike <i>K</i>, the terminal payoff is that of a vanilla option,
+ * namely
+ * </p>
+ *
+ * <p>
+ * <i>&Phi;(S(T);K) = max(&omega;(S(T)-K),0)</i>,
+ * </p>
+ *
+ * <p>
+ * where <i>&omega; = 1</i> for a call and <i>&omega; = -1</i> for a put.
+ * </p>
+ *
+ * <p>
+ * Let <i>V</i><sup>(u)</sup>(<i>t,S;K</i>) denote the value when <i>u</i> shouts have already
+ * been used and the current locked strike is <i>K</i>. The shout feature induces the obstacle
+ * recursion
+ * </p>
+ *
+ * <p>
+ * <i>V</i><sup>(u)</sup>(<i>t,S;K</i>) =
+ * max(
+ * continuation,
+ * <i>V</i><sup>(u+1)</sup>(<i>t,S;S</i>) + c
+ * ),
+ * </p>
+ *
+ * <p>
+ * where <i>c</i> is the constant shout cash adjustment. Hence the valuation proceeds
+ * backward over planes indexed by the number of used shouts and, inside each plane,
+ * over slices corresponding to fixed strike values taken from a strike grid.
+ * </p>
+ *
+ * <p>
+ * The implementation adapts to the present framework the ideas of H. Windcliff,
+ * K.R. Vetzal, P.A. Forsyth, A. Verma, T.F. Coleman,
+ * <i>An object-oriented framework for valuing shout options on high-performance computer architectures</i>,
+ * JEDC.
+ * </p>
+ *
+ * <p>
+ * The recursion is performed over planes of used shout count and slices of fixed strike.
+ * Each slice is a standard PDE solve with a continuous obstacle interpolated from the next
+ * shout plane.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public class ShoutOption implements FiniteDifferenceProduct {
@@ -47,6 +90,17 @@ public class ShoutOption implements FiniteDifferenceProduct {
 	private final CallOrPut callOrPut;
 	private final double shoutCashAdjustment;
 
+	/**
+	 * Creates a shout option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param initialStrike Initial strike.
+	 * @param strikeGrid Grid of strikes used for the locked-strike recursion.
+	 * @param maximumNumberOfShouts Maximum number of shouts.
+	 * @param callOrPut Call/put flag.
+	 * @param shoutCashAdjustment Constant cash adjustment added upon shout.
+	 */
 	public ShoutOption(
 			final String underlyingName,
 			final double maturity,
@@ -83,6 +137,15 @@ public class ShoutOption implements FiniteDifferenceProduct {
 		validateStrikeGrid();
 	}
 
+	/**
+	 * Creates a shout option with zero shout cash adjustment.
+	 *
+	 * @param maturity Option maturity.
+	 * @param initialStrike Initial strike.
+	 * @param strikeGrid Grid of strikes used for the locked-strike recursion.
+	 * @param maximumNumberOfShouts Maximum number of shouts.
+	 * @param callOrPut Call/put flag.
+	 */
 	public ShoutOption(
 			final double maturity,
 			final double initialStrike,
@@ -100,6 +163,13 @@ public class ShoutOption implements FiniteDifferenceProduct {
 		);
 	}
 
+	/**
+	 * Returns the value at the specified evaluation time.
+	 *
+	 * @param evaluationTime Evaluation time.
+	 * @param model The finite-difference model.
+	 * @return The value vector on the model space grid.
+	 */
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
@@ -116,6 +186,12 @@ public class ShoutOption implements FiniteDifferenceProduct {
 		return column;
 	}
 
+	/**
+	 * Returns the full value surface.
+	 *
+	 * @param model The finite-difference model.
+	 * @return The value surface indexed by space point and time index.
+	 */
 	@Override
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 		validateModel(model);
@@ -228,7 +304,7 @@ public class ShoutOption implements FiniteDifferenceProduct {
 										runningTime
 								) + shoutCashAdjustment;
 
-				currentPlane[strikeIndex] = ((AbstractADI2D)solver).getValuesWithContinuousObstacle(
+				currentPlane[strikeIndex] = ((AbstractADI2D) solver).getValuesWithContinuousObstacle(
 						maturity,
 						(assetValue, secondState) -> terminalPayoff(assetValue, strike),
 						continuousObstacle
@@ -563,34 +639,74 @@ public class ShoutOption implements FiniteDifferenceProduct {
 		}
 	}
 
+	/**
+	 * Returns the underlying name.
+	 *
+	 * @return The underlying name, possibly {@code null}.
+	 */
 	public String getUnderlyingName() {
 		return underlyingName;
 	}
 
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity.
+	 */
 	public double getMaturity() {
 		return maturity;
 	}
 
+	/**
+	 * Returns the initial strike.
+	 *
+	 * @return The initial strike.
+	 */
 	public double getInitialStrike() {
 		return initialStrike;
 	}
 
+	/**
+	 * Returns the strike grid.
+	 *
+	 * @return A defensive copy of the strike grid.
+	 */
 	public double[] getStrikeGrid() {
 		return strikeGrid.clone();
 	}
 
+	/**
+	 * Returns the maximum number of shouts.
+	 *
+	 * @return The maximum number of shouts.
+	 */
 	public int getMaximumNumberOfShouts() {
 		return maximumNumberOfShouts;
 	}
 
+	/**
+	 * Returns the call/put flag.
+	 *
+	 * @return The call/put flag.
+	 */
 	public CallOrPut getCallOrPut() {
 		return callOrPut;
 	}
 
+	/**
+	 * Returns the constant shout cash adjustment.
+	 *
+	 * @return The shout cash adjustment.
+	 */
 	public double getShoutCashAdjustment() {
 		return shoutCashAdjustment;
 	}
 
+	/**
+	 * Returns a string representation.
+	 *
+	 * @return A string representation of the product parameters.
+	 */
 	@Override
 	public String toString() {
 		return "ShoutOption [maturity=" + maturity
