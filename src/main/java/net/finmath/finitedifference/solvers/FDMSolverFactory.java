@@ -7,6 +7,7 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMMultiAssetBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.adi.BarrierPDEMode;
@@ -15,6 +16,7 @@ import net.finmath.finitedifference.solvers.adi.FDMBarrierHestonADI2D;
 import net.finmath.finitedifference.solvers.adi.FDMBarrierSabrADI2D;
 import net.finmath.finitedifference.solvers.adi.FDMBatesADI2D;
 import net.finmath.finitedifference.solvers.adi.FDMHestonADI2D;
+import net.finmath.finitedifference.solvers.adi.FDMMultiAssetBlackScholesADI2D;
 import net.finmath.finitedifference.solvers.adi.FDMSabrADI2D;
 import net.finmath.modelling.Exercise;
 
@@ -38,8 +40,8 @@ import net.finmath.modelling.Exercise;
  * with generator <i>\mathcal{L}</i>, then this factory selects the discretization engine
  * used to approximate the operator <i>\mathcal{L}</i> on the supplied
  * {@link SpaceTimeDiscretization}. For one-dimensional diffusion models this is typically
- * a theta-method solver, while for two-dimensional stochastic-volatility or jump-diffusion
- * models this is typically an ADI-based solver.
+ * a theta-method solver, while for two-dimensional stochastic-volatility or multi-asset
+ * diffusion models this is typically an ADI-based solver.
  * </p>
  *
  * <p>
@@ -48,6 +50,9 @@ import net.finmath.modelling.Exercise;
  * <ul>
  *   <li>one-dimensional jump models &rarr; {@link FDMThetaMethod1DJump},</li>
  *   <li>Black-Scholes, CEV, and Bachelier models &rarr; {@link FDMThetaMethod1D},</li>
+ *   <li>multi-asset Black-Scholes models:
+ *       1D &rarr; {@link FDMThetaMethod1D},
+ *       2D &rarr; {@link FDMMultiAssetBlackScholesADI2D},</li>
  *   <li>Bates models &rarr; {@link FDMBatesADI2D},</li>
  *   <li>Heston models &rarr; {@link FDMHestonADI2D} or
  *       {@link FDMBarrierHestonADI2D},</li>
@@ -74,15 +79,6 @@ public final class FDMSolverFactory {
 		// Utility class
 	}
 
-	/**
-	 * Creates a solver for the given model, product, discretization, and exercise.
-	 *
-	 * @param model The finite-difference model.
-	 * @param product The product to be valued.
-	 * @param spaceTimeDiscretization The space-time discretization.
-	 * @param exercise The exercise specification.
-	 * @return The selected finite-difference solver.
-	 */
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -92,6 +88,14 @@ public final class FDMSolverFactory {
 		if(isOneDimensionalJumpModel(model)) {
 			return new FDMThetaMethod1DJump(
 					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		}
+		else if(model instanceof FDMMultiAssetBlackScholesModel) {
+			return createMultiAssetBlackScholesSolver(
+					(FDMMultiAssetBlackScholesModel) model,
 					product,
 					spaceTimeDiscretization,
 					exercise
@@ -137,18 +141,6 @@ public final class FDMSolverFactory {
 		}
 	}
 
-	/**
-	 * Creates a solver for the given model, product, discretization, exercise, and barrier
-	 * PDE configuration.
-	 *
-	 * @param model The finite-difference model.
-	 * @param product The product to be valued.
-	 * @param spaceTimeDiscretization The space-time discretization.
-	 * @param exercise The exercise specification.
-	 * @param barrierMode The barrier PDE mode.
-	 * @param preHitSpecification The pre-hit barrier specification.
-	 * @return The selected finite-difference solver.
-	 */
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -160,6 +152,19 @@ public final class FDMSolverFactory {
 		if(isOneDimensionalJumpModel(model)) {
 			return new FDMThetaMethod1DJump(
 					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		}
+		else if(model instanceof FDMMultiAssetBlackScholesModel) {
+			if(barrierMode != null) {
+				throw new IllegalArgumentException(
+						"Barrier-specific solver modes are not implemented for MultiAssetBlackScholesModel.");
+			}
+
+			return createMultiAssetBlackScholesSolver(
+					(FDMMultiAssetBlackScholesModel) model,
 					product,
 					spaceTimeDiscretization,
 					exercise
@@ -231,14 +236,6 @@ public final class FDMSolverFactory {
 		}
 	}
 
-	/**
-	 * Creates a solver using the model's own space-time discretization.
-	 *
-	 * @param model The finite-difference model.
-	 * @param product The product to be valued.
-	 * @param exercise The exercise specification.
-	 * @return The selected finite-difference solver.
-	 */
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -246,16 +243,6 @@ public final class FDMSolverFactory {
 		return createSolver(model, product, model.getSpaceTimeDiscretization(), exercise);
 	}
 
-	/**
-	 * Creates a barrier-aware solver using the model's own space-time discretization.
-	 *
-	 * @param model The finite-difference model.
-	 * @param product The product to be valued.
-	 * @param exercise The exercise specification.
-	 * @param barrierMode The barrier PDE mode.
-	 * @param preHitSpecification The pre-hit barrier specification.
-	 * @return The selected finite-difference solver.
-	 */
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
 			final FiniteDifferenceProduct product,
@@ -270,6 +257,36 @@ public final class FDMSolverFactory {
 				barrierMode,
 				preHitSpecification
 		);
+	}
+
+	private static FDMSolver createMultiAssetBlackScholesSolver(
+			final FDMMultiAssetBlackScholesModel model,
+			final FiniteDifferenceProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise) {
+
+		final int dimension = spaceTimeDiscretization.getNumberOfSpaceGrids();
+
+		if(dimension == 1) {
+			return new FDMThetaMethod1D(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		}
+		else if(dimension == 2) {
+			return new FDMMultiAssetBlackScholesADI2D(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		}
+		else {
+			throw new IllegalArgumentException(
+					"MultiAssetBlackScholesModel is currently supported only in dimensions 1 and 2.");
+		}
 	}
 
 	private static boolean isOneDimensionalJumpModel(final FiniteDifferenceEquityModel model) {

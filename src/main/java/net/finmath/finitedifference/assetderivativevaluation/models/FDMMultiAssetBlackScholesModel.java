@@ -8,6 +8,8 @@ import org.apache.commons.math3.linear.CholeskyDecomposition;
 import org.apache.commons.math3.linear.NonPositiveDefiniteMatrixException;
 import org.apache.commons.math3.linear.RealMatrix;
 
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.FDBoundaryFactory;
+import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
@@ -88,7 +90,7 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  *
  * @author Alessandro Gnoatto
  */
-public class MultiAssetBlackScholesModel implements FiniteDifferenceEquityModel {
+public class FDMMultiAssetBlackScholesModel implements FiniteDifferenceEquityModel {
 
 	private static final double TIME_FLOOR = 1E-6;
 	private static final double CORRELATION_TOLERANCE = 1E-10;
@@ -111,7 +113,7 @@ public class MultiAssetBlackScholesModel implements FiniteDifferenceEquityModel 
 	 * @param correlationMatrix Instantaneous correlation matrix.
 	 * @param spaceTimeDiscretization Space-time discretization.
 	 */
-	public MultiAssetBlackScholesModel(
+	public FDMMultiAssetBlackScholesModel(
 			final double[] initialValues,
 			final DiscountCurve riskFreeCurve,
 			final DiscountCurve[] dividendYieldCurves,
@@ -187,7 +189,7 @@ public class MultiAssetBlackScholesModel implements FiniteDifferenceEquityModel 
 	 * @param correlationMatrix Instantaneous correlation matrix.
 	 * @param spaceTimeDiscretization Space-time discretization.
 	 */
-	public MultiAssetBlackScholesModel(
+	public FDMMultiAssetBlackScholesModel(
 			final double[] initialValues,
 			final double riskFreeRate,
 			final double[] dividendYieldRates,
@@ -214,7 +216,7 @@ public class MultiAssetBlackScholesModel implements FiniteDifferenceEquityModel 
 	 * @param correlationMatrix Instantaneous correlation matrix.
 	 * @param spaceTimeDiscretization Space-time discretization.
 	 */
-	public MultiAssetBlackScholesModel(
+	public FDMMultiAssetBlackScholesModel(
 			final double[] initialValues,
 			final DiscountCurve riskFreeCurve,
 			final double[] volatilities,
@@ -336,22 +338,31 @@ public class MultiAssetBlackScholesModel implements FiniteDifferenceEquityModel 
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
-			final double... stateVariables) {
-		return createDefaultBoundaryConditions();
+			final double... riskFactors) {
+
+		final FiniteDifferenceBoundary boundary =
+				FDBoundaryFactory.createBoundary(this, product);
+
+		return boundary.getBoundaryConditionsAtLowerBoundary(product, time, riskFactors);
 	}
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
 			final FiniteDifferenceProduct product,
 			final double time,
-			final double... stateVariables) {
-		return createDefaultBoundaryConditions();
+			final double... riskFactors) {
+
+		final FiniteDifferenceBoundary boundary =
+				FDBoundaryFactory.createBoundary(this, product);
+
+		return boundary.getBoundaryConditionsAtUpperBoundary(product, time, riskFactors);
 	}
+	
 
 	@Override
 	public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
 			final SpaceTimeDiscretization newSpaceTimeDiscretization) {
-		return new MultiAssetBlackScholesModel(
+		return new FDMMultiAssetBlackScholesModel(
 				initialValues,
 				riskFreeCurve,
 				dividendYieldCurves,
@@ -359,17 +370,6 @@ public class MultiAssetBlackScholesModel implements FiniteDifferenceEquityModel 
 				correlationMatrix,
 				newSpaceTimeDiscretization
 		);
-	}
-
-	private BoundaryCondition[] createDefaultBoundaryConditions() {
-		final int numberOfAssets = initialValues.length;
-		final BoundaryCondition[] boundaryConditions = new BoundaryCondition[numberOfAssets];
-
-		for(int i = 0; i < numberOfAssets; i++) {
-			boundaryConditions[i] = StandardBoundaryCondition.none();
-		}
-
-		return boundaryConditions;
 	}
 
 	private void validateStateVariables(final double[] stateVariables) {
