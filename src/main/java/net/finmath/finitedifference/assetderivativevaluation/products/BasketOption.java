@@ -5,58 +5,43 @@ import java.util.Arrays;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
-import net.finmath.modelling.Exercise;
 import net.finmath.modelling.EuropeanExercise;
+import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Finite-difference valuation of a European arithmetic basket option.
+ * Finite-difference valuation of a European linear basket option on two assets.
  *
  * <p>
- * Let {@code S_1, ..., S_n} denote the underlying assets, let
- * {@code w_1, ..., w_n} be the basket weights, let {@code K} be the strike,
- * and let {@code T} be the maturity. The arithmetic basket at maturity is
- * </p>
- *
- * <p>
- * <i>
- * B(T) = \sum_{i=1}^{n} w_i S_i(T).
- * </i>
- * </p>
- *
- * <p>
+ * Let {@code S1} and {@code S2} denote the two underlying assets, let
+ * {@code q1} and {@code q2} be the signed asset quantities, let {@code K} be
+ * the strike, and let {@code \omega \in \{+1,-1\}} denote the call/put sign.
  * The payoff is
  * </p>
  *
  * <p>
  * <i>
- * max(B(T) - K, 0)
+ * \left( \omega \left( q_1 S_1(T) + q_2 S_2(T) - K \right) \right)^{+}.
  * </i>
  * </p>
  *
  * <p>
- * for a call, and
+ * This single class covers a number of important special cases:
+ * </p>
+ * <ul>
+ *   <li>arithmetic basket options, when both quantities are positive,</li>
+ *   <li>spread options, for example with quantities {@code (1,-1)},</li>
+ *   <li>exchange options, for example with quantities {@code (1,-1)} and strike {@code 0}.</li>
+ * </ul>
+ *
+ * <p>
+ * The class is written in a dimension-agnostic style through the quantity vector,
+ * but the current finite-difference implementation supports only the two-asset
+ * case, that is, exactly two quantities and a two-dimensional model state.
  * </p>
  *
  * <p>
- * <i>
- * max(K - B(T), 0)
- * </i>
- * </p>
- *
- * <p>
- * for a put.
- * </p>
- *
- * <p>
- * The class is written in a dimension-agnostic style through the basket-weight
- * vector, but the current finite-difference implementation supports only the
- * two-asset case, that is, a two-dimensional model state and exactly two
- * basket weights.
- * </p>
- *
- * <p>
- * In the present first version, the product is restricted to European exercise.
+ * The current implementation supports only European exercise.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -65,34 +50,34 @@ public class BasketOption implements FiniteDifferenceProduct {
 
 	private final String[] underlyingNames;
 	private final double maturity;
-	private final double[] weights;
+	private final double[] quantities;
 	private final double strike;
 	private final CallOrPut callOrPut;
 	private final Exercise exercise;
 
 	/**
-	 * Creates a European arithmetic basket option.
+	 * Creates a European linear basket option.
 	 *
 	 * @param underlyingNames Names of the underlyings. May be {@code null}. If
 	 *        provided, the array length must match the basket dimension.
 	 * @param maturity Maturity {@code T}.
-	 * @param weights Basket weights.
-	 * @param strike Strike {@code K}.
+	 * @param quantities Signed asset quantities.
+	 * @param strike Real strike {@code K}.
 	 * @param callOrPut Option type.
 	 */
 	public BasketOption(
 			final String[] underlyingNames,
 			final double maturity,
-			final double[] weights,
+			final double[] quantities,
 			final double strike,
 			final CallOrPut callOrPut) {
 
-		if(weights == null || weights.length == 0) {
-			throw new IllegalArgumentException("weights must contain at least one entry.");
+		if(quantities == null || quantities.length == 0) {
+			throw new IllegalArgumentException("quantities must contain at least one entry.");
 		}
-		if(underlyingNames != null && underlyingNames.length != weights.length) {
+		if(underlyingNames != null && underlyingNames.length != quantities.length) {
 			throw new IllegalArgumentException(
-					"underlyingNames must have the same length as weights.");
+					"underlyingNames must have the same length as quantities.");
 		}
 		if(callOrPut == null) {
 			throw new IllegalArgumentException("callOrPut must not be null.");
@@ -100,89 +85,83 @@ public class BasketOption implements FiniteDifferenceProduct {
 		if(maturity < 0.0) {
 			throw new IllegalArgumentException("maturity must be non-negative.");
 		}
-		if(strike < 0.0) {
-			throw new IllegalArgumentException("strike must be non-negative.");
-		}
 
-		boolean hasStrictlyPositiveWeight = false;
-		for(final double weight : weights) {
-			if(weight < 0.0) {
-				throw new IllegalArgumentException(
-						"weights must be non-negative in the current BasketOption implementation.");
-			}
-			if(weight > 0.0) {
-				hasStrictlyPositiveWeight = true;
+		boolean allZero = true;
+		for(final double quantity : quantities) {
+			if(Math.abs(quantity) > 0.0) {
+				allZero = false;
+				break;
 			}
 		}
-		if(!hasStrictlyPositiveWeight) {
-			throw new IllegalArgumentException("At least one basket weight must be strictly positive.");
+		if(allZero) {
+			throw new IllegalArgumentException("At least one quantity must be non-zero.");
 		}
 
 		this.underlyingNames = underlyingNames != null ? underlyingNames.clone() : null;
 		this.maturity = maturity;
-		this.weights = weights.clone();
+		this.quantities = quantities.clone();
 		this.strike = strike;
 		this.callOrPut = callOrPut;
 		this.exercise = new EuropeanExercise(maturity);
 	}
 
 	/**
-	 * Creates a European arithmetic basket option.
+	 * Creates a European linear basket option.
 	 *
 	 * @param maturity Maturity {@code T}.
-	 * @param weights Basket weights.
-	 * @param strike Strike {@code K}.
+	 * @param quantities Signed asset quantities.
+	 * @param strike Real strike {@code K}.
 	 * @param callOrPut Option type.
 	 */
 	public BasketOption(
 			final double maturity,
-			final double[] weights,
+			final double[] quantities,
 			final double strike,
 			final CallOrPut callOrPut) {
-		this(null, maturity, weights, strike, callOrPut);
+		this(null, maturity, quantities, strike, callOrPut);
 	}
 
 	/**
-	 * Creates a European arithmetic basket option.
+	 * Creates a European linear basket option.
 	 *
 	 * @param underlyingNames Names of the underlyings. May be {@code null}. If
 	 *        provided, the array length must match the basket dimension.
 	 * @param maturity Maturity {@code T}.
-	 * @param weights Basket weights.
-	 * @param strike Strike {@code K}.
+	 * @param quantities Signed asset quantities.
+	 * @param strike Real strike {@code K}.
 	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
 	 *        and {@code -1.0} corresponds to a put.
 	 */
 	public BasketOption(
 			final String[] underlyingNames,
 			final double maturity,
-			final double[] weights,
+			final double[] quantities,
 			final double strike,
 			final double callOrPutSign) {
 		this(
 				underlyingNames,
 				maturity,
-				weights,
+				quantities,
 				strike,
 				mapCallOrPut(callOrPutSign)
 		);
 	}
 
 	/**
-	 * Creates a European arithmetic basket option.
+	 * Creates a European linear basket option.
 	 *
 	 * @param maturity Maturity {@code T}.
-	 * @param weights Basket weights.
-	 * @param strike Strike {@code K}.
+	 * @param quantities Signed asset quantities.
+	 * @param strike Real strike {@code K}.
 	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
 	 *        and {@code -1.0} corresponds to a put.
 	 */
 	public BasketOption(
 			final double maturity,
-			final double[] weights,
+			final double[] quantities,
 			final double strike,
 			final double callOrPutSign) {
-		this(null, maturity, weights, strike, mapCallOrPut(callOrPutSign));
+		this(null, maturity, quantities, strike, mapCallOrPut(callOrPutSign));
 	}
 
 	@Override
@@ -209,14 +188,10 @@ public class BasketOption implements FiniteDifferenceProduct {
 	}
 
 	private double terminalPayoff(final double firstAssetValue, final double secondAssetValue) {
-		final double basketValue = weights[0] * firstAssetValue + weights[1] * secondAssetValue;
+		final double basketValue =
+				quantities[0] * firstAssetValue + quantities[1] * secondAssetValue - strike;
 
-		if(callOrPut == CallOrPut.CALL) {
-			return Math.max(basketValue - strike, 0.0);
-		}
-		else {
-			return Math.max(strike - basketValue, 0.0);
-		}
+		return Math.max(callOrPut.toInteger() * basketValue, 0.0);
 	}
 
 	private void validateModel(final FiniteDifferenceEquityModel model) {
@@ -224,7 +199,7 @@ public class BasketOption implements FiniteDifferenceProduct {
 			throw new IllegalArgumentException("model must not be null.");
 		}
 
-		if(weights.length != 2) {
+		if(quantities.length != 2) {
 			throw new IllegalArgumentException(
 					"BasketOption currently supports only the two-asset case.");
 		}
@@ -269,12 +244,12 @@ public class BasketOption implements FiniteDifferenceProduct {
 	}
 
 	/**
-	 * Returns the basket weights.
+	 * Returns the signed asset quantities.
 	 *
-	 * @return The basket weights.
+	 * @return The signed asset quantities.
 	 */
-	public double[] getWeights() {
-		return weights.clone();
+	public double[] getQuantities() {
+		return quantities.clone();
 	}
 
 	/**
@@ -309,7 +284,7 @@ public class BasketOption implements FiniteDifferenceProduct {
 		return "BasketOption [maturity=" + maturity
 				+ ", strike=" + strike
 				+ ", callOrPut=" + callOrPut
-				+ ", weights=" + Arrays.toString(weights)
+				+ ", quantities=" + Arrays.toString(quantities)
 				+ "]";
 	}
 }
