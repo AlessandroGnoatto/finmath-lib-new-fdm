@@ -37,9 +37,11 @@ import net.finmath.modelling.products.CallOrPut;
  * </ul>
  *
  * <p>
- * On lower faces, the option reduces to a one-dimensional signed-quantity option
- * on the remaining asset. On upper faces, the boundary value is chosen according
- * to the sign of the quantity multiplying the boundary asset:
+ * On the lower faces {@code S1 = 0} and {@code S2 = 0}, the option reduces to
+ * a one-dimensional signed-quantity option on the remaining asset. Accordingly,
+ * this boundary class requires both asset grids to start at zero. On upper
+ * faces, the boundary value is chosen according to the sign of the quantity
+ * multiplying the boundary asset:
  * </p>
  * <ul>
  *   <li>if {@code callOrPut.toInteger() * quantityBoundaryAsset > 0}, the option is
@@ -62,6 +64,7 @@ public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 
 	private static final double TIME_FLOOR = 1E-10;
 	private static final double QUANTITY_TOLERANCE = 1E-14;
+	private static final double GRID_TOLERANCE = 1E-12;
 
 	private final FDMMultiAssetBlackScholesModel model;
 
@@ -72,6 +75,15 @@ public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 		if(model.getInitialValue() == null || model.getInitialValue().length != 2) {
 			throw new IllegalArgumentException(
 					"BasketOptionMultiAssetBlackScholesModelBoundary requires a two-dimensional model.");
+		}
+
+		final double[] firstGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+		final double[] secondGrid = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
+
+		if(Math.abs(firstGrid[0]) > GRID_TOLERANCE || Math.abs(secondGrid[0]) > GRID_TOLERANCE) {
+			throw new IllegalArgumentException(
+					"BasketOptionMultiAssetBlackScholesModelBoundary requires both asset grids to start at 0. "
+							+ "The lower-face one-dimensional reduction is exact only at S1 = 0 and S2 = 0.");
 		}
 
 		this.model = model;
@@ -207,12 +219,12 @@ public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 
 	private boolean isAtLowerBoundary(final int dimension, final double value) {
 		final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(dimension).getGrid();
-		return Math.abs(value - grid[0]) <= 1E-12;
+		return Math.abs(value - grid[0]) <= GRID_TOLERANCE;
 	}
 
 	private boolean isAtUpperBoundary(final int dimension, final double value) {
 		final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(dimension).getGrid();
-		return Math.abs(value - grid[grid.length - 1]) <= 1E-12;
+		return Math.abs(value - grid[grid.length - 1]) <= GRID_TOLERANCE;
 	}
 
 	private double getUpperFaceValue(
