@@ -1,58 +1,31 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import net.finmath.finitedifference.FiniteDifferenceProduct;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.modelling.Model;
-import net.finmath.modelling.Product;
 
 /**
- * Interface for products valued by a finite difference equity model.
+ * Interface for products valued by a finite-difference equity model.
+ *
+ * <p>
+ * This interface specializes the generic
+ * {@link net.finmath.finitedifference.FiniteDifferenceProduct} to the case of
+ * equity finite-difference models.
+ * </p>
  *
  * <p>
  * Implementations provide valuation methods compatible with
  * {@link FiniteDifferenceEquityModel}. In addition to the standard
- * {@link Product} interface, this interface exposes methods returning
- * either a single time slice or the full time-space grid of values.
+ * finite-difference product interface, this interface fixes the admissible
+ * model type to {@link FiniteDifferenceEquityModel}.
  * </p>
  *
  * @author Christian Fries
- * @version 1.0
+ * @author Alessandro Gnoatto
  */
-public interface FiniteDifferenceEquityProduct extends Product {
-
-	/**
-	 * Returns the value of the product at a given evaluation time under
-	 * the specified finite difference model.
-	 *
-	 * @param evaluationTime The time at which the value is evaluated (typically 0).
-	 * @param model          The finite difference model used for the valuation.
-	 * @return A one-dimensional array representing the option values
-	 *         at the specified evaluation time.
-	 */
-	double[] getValue(double evaluationTime, FiniteDifferenceEquityModel model);
-
-	/**
-	 * Returns the full time-space grid of values under the specified
-	 * finite difference model.
-	 *
-	 * @param model The finite difference model used for the valuation.
-	 * @return A two-dimensional array representing the option values
-	 *         over the time-space grid.
-	 */
-	double[][] getValues(FiniteDifferenceEquityModel model);
+public interface FiniteDifferenceEquityProduct extends FiniteDifferenceProduct<FiniteDifferenceEquityModel> {
 
 	@Override
-	default Object getValue(final double evaluationTime, final Model model) {
-
-		if(model instanceof FiniteDifferenceEquityModel) {
-			return getValue(evaluationTime, (FiniteDifferenceEquityModel) model);
-		}
-		else {
-			throw new IllegalArgumentException(
-					"The product " + this.getClass()
-					+ " cannot be valued against a model "
-					+ model.getClass() + ". "
-					+ "It requires a model of type "
-					+ FiniteDifferenceEquityModel.class + ".");
-		}
+	default Class<FiniteDifferenceEquityModel> getModelClass() {
+		return FiniteDifferenceEquityModel.class;
 	}
 }
