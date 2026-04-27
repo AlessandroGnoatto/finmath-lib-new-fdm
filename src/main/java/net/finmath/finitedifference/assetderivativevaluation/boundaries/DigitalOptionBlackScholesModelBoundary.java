@@ -2,7 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.Exercise;
@@ -62,7 +62,7 @@ public class DigitalOptionBlackScholesModelBoundary implements FiniteDifferenceB
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 
@@ -105,7 +105,7 @@ public class DigitalOptionBlackScholesModelBoundary implements FiniteDifferenceB
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 

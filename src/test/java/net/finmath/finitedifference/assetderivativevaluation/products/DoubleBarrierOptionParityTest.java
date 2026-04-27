@@ -276,7 +276,7 @@ public class DoubleBarrierOptionParityTest {
     }
 
     private double valueAtSpot(
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             final FDMBlackScholesModel model,
             final double spot) {
 

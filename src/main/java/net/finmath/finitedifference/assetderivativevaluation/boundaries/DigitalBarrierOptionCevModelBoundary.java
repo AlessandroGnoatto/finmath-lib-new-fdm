@@ -2,7 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMCevModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalBarrierOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.BarrierType;
@@ -27,7 +27,7 @@ public class DigitalBarrierOptionCevModelBoundary implements FiniteDifferenceBou
 
     @Override
     public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             double time,
             final double... stateVariables) {
 
@@ -68,7 +68,7 @@ public class DigitalBarrierOptionCevModelBoundary implements FiniteDifferenceBou
 
     @Override
     public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             double time,
             final double... stateVariables) {
 

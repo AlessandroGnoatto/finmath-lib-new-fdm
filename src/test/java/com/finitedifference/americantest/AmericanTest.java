@@ -8,7 +8,7 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FDMBlackScho
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.AmericanOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.EuropeanOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
@@ -73,8 +73,8 @@ public class AmericanTest {
         		spaceTimeDiscretizationUniform);
 		
 		
-		final FiniteDifferenceProduct americanCallOptionYield = new AmericanOption(optionMaturity, optionStrike, CallOrPut.CALL);
-		final FiniteDifferenceProduct americanPutOptionYield = new AmericanOption(optionMaturity, optionStrike, CallOrPut.PUT);
+		final FiniteDifferenceEquityProduct americanCallOptionYield = new AmericanOption(optionMaturity, optionStrike, CallOrPut.CALL);
+		final FiniteDifferenceEquityProduct americanPutOptionYield = new AmericanOption(optionMaturity, optionStrike, CallOrPut.PUT);
 
 		final double[] valueAmericanCallYield = americanCallOptionYield.getValue(0.0, modelAmericanYield);
 		final double[] valueAmericanPutYield = americanPutOptionYield.getValue(0.0, modelAmericanYield);
@@ -87,8 +87,8 @@ public class AmericanTest {
 	        		initialValue, riskFreeRate, volatility,
 	        		spaceTimeDiscretizationUniform);
 		
-		final FiniteDifferenceProduct americanCallOption = new AmericanOption(optionMaturity, optionStrike, CallOrPut.CALL);
-		final FiniteDifferenceProduct americanPutOption = new AmericanOption(optionMaturity, optionStrike, CallOrPut.PUT);
+		final FiniteDifferenceEquityProduct americanCallOption = new AmericanOption(optionMaturity, optionStrike, CallOrPut.CALL);
+		final FiniteDifferenceEquityProduct americanPutOption = new AmericanOption(optionMaturity, optionStrike, CallOrPut.PUT);
 
 		final double[] valueAmericanCall = americanCallOption.getValue(0.0, modelAmerican);
 		final double[] valueAmericanPut = americanPutOption.getValue(0.0, modelAmerican);
@@ -102,8 +102,8 @@ public class AmericanTest {
 		final FiniteDifferenceEquityModel modelEuropean = new FDMBlackScholesModel(
         		initialValue, riskFreeRate, volatility,
         		spaceTimeDiscretizationUniform);
-		final FiniteDifferenceProduct europeanCallOption = new EuropeanOption(optionMaturity, optionStrike, CallOrPut.CALL);
-		final FiniteDifferenceProduct europeanPutOption = new EuropeanOption(optionMaturity, optionStrike, CallOrPut.PUT);
+		final FiniteDifferenceEquityProduct europeanCallOption = new EuropeanOption(optionMaturity, optionStrike, CallOrPut.CALL);
+		final FiniteDifferenceEquityProduct europeanPutOption = new EuropeanOption(optionMaturity, optionStrike, CallOrPut.PUT);
 
 		final double[] valueeuropeanCall = europeanCallOption.getValue(0.0, modelEuropean);
 		final double[] valueeuropeanPut = europeanPutOption.getValue(0.0, modelEuropean);

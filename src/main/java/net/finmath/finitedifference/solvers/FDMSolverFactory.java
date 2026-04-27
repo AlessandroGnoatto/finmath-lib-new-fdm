@@ -8,7 +8,7 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonMod
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMMultiAssetBlackScholesModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.adi.BarrierPDEMode;
 import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
@@ -81,7 +81,7 @@ public final class FDMSolverFactory {
 
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 
@@ -143,7 +143,7 @@ public final class FDMSolverFactory {
 
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise,
 			final BarrierPDEMode barrierMode,
@@ -238,14 +238,14 @@ public final class FDMSolverFactory {
 
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final Exercise exercise) {
 		return createSolver(model, product, model.getSpaceTimeDiscretization(), exercise);
 	}
 
 	public static FDMSolver createSolver(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final Exercise exercise,
 			final BarrierPDEMode barrierMode,
 			final BarrierPreHitSpecification preHitSpecification) {
@@ -261,7 +261,7 @@ public final class FDMSolverFactory {
 
 	private static FDMSolver createMultiAssetBlackScholesSolver(
 			final FDMMultiAssetBlackScholesModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 

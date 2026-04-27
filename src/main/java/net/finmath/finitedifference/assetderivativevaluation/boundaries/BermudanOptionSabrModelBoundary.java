@@ -2,7 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.BermudanOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
@@ -32,7 +32,7 @@ public class BermudanOptionSabrModelBoundary
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 
@@ -65,7 +65,7 @@ public class BermudanOptionSabrModelBoundary
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 

@@ -93,7 +93,7 @@ import net.finmath.time.TimeDiscretization;
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierBinaryOption implements
-	FiniteDifferenceProduct,
+	FiniteDifferenceEquityProduct,
 	FiniteDifferenceInternalStateConstraint {
 
 	private final String underlyingName;

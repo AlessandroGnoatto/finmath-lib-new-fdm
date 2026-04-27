@@ -2,7 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.Exercise;
@@ -48,7 +48,7 @@ public class DigitalOptionSabrModelBoundary implements FiniteDifferenceBoundary 
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 
@@ -93,7 +93,7 @@ public class DigitalOptionSabrModelBoundary implements FiniteDifferenceBoundary 
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 

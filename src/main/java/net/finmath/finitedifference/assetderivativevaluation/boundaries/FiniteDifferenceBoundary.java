@@ -1,6 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 
 /**
@@ -24,7 +24,7 @@ public interface FiniteDifferenceBoundary {
 	 * @return The lower-boundary conditions by dimension.
 	 */
 	BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			FiniteDifferenceProduct product,
+			FiniteDifferenceEquityProduct product,
 			double time,
 			double... stateVariables);
 
@@ -41,7 +41,7 @@ public interface FiniteDifferenceBoundary {
 	 * @return The upper-boundary conditions by dimension.
 	 */
 	BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			FiniteDifferenceProduct product,
+			FiniteDifferenceEquityProduct product,
 			double time,
 			double... stateVariables);
 }

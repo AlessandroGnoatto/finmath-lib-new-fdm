@@ -1,7 +1,7 @@
 package net.finmath.finitedifference.solvers.adi;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.ThomasSolver;
@@ -42,7 +42,7 @@ public class FDMAsianHestonADI3D extends AbstractADI3D {
 
 	public FDMAsianHestonADI3D(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 		super(model, product, spaceTimeDiscretization, exercise);

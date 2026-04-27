@@ -66,7 +66,7 @@ public class BermudanConvergenceTest {
 						spaceTimeDiscretization
 				);
 
-		final FiniteDifferenceProduct americanOption =
+		final FiniteDifferenceEquityProduct americanOption =
 				new AmericanOption(maturity, strike, CallOrPut.PUT);
 
 		final double[] americanValues = americanOption.getValue(0.0, model);
@@ -97,7 +97,7 @@ public class BermudanConvergenceTest {
 				exerciseTimes[i] = maturity * (i + 1.0) / n;
 			}
 
-			final FiniteDifferenceProduct bermudanOption =
+			final FiniteDifferenceEquityProduct bermudanOption =
 					new BermudanOption(exerciseTimes, strike, CallOrPut.PUT);
 
 			final double[] bermudanValues = bermudanOption.getValue(0.0, model);

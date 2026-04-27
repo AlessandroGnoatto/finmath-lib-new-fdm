@@ -8,7 +8,7 @@ import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.JumpComponent;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
@@ -60,7 +60,7 @@ public class FDMThetaMethod1DJump implements FDMSolver {
 	private static final int DEFAULT_QUADRATURE_POINTS_PER_SIDE = 200;
 
 	private final FiniteDifferenceEquityModel model;
-	private final FiniteDifferenceProduct product;
+	private final FiniteDifferenceEquityProduct product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
 	private final int quadraturePointsPerSide;
@@ -80,7 +80,7 @@ public class FDMThetaMethod1DJump implements FDMSolver {
 	 */
 	public FDMThetaMethod1DJump(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 		this(
@@ -109,7 +109,7 @@ public class FDMThetaMethod1DJump implements FDMSolver {
 	 */
 	public FDMThetaMethod1DJump(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise,
 			final int quadraturePointsPerSide) {

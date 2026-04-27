@@ -3,7 +3,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMMultiAssetBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalBasketOption;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalBasketOption.BasketDigitalType;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.functions.AnalyticFormulas;
@@ -68,7 +68,7 @@ public class DigitalBasketOptionMultiAssetBlackScholesModelBoundary implements F
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -172,7 +172,7 @@ public class DigitalBasketOptionMultiAssetBlackScholesModelBoundary implements F
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -288,7 +288,7 @@ public class DigitalBasketOptionMultiAssetBlackScholesModelBoundary implements F
 		return conditions;
 	}
 
-	private DigitalBasketOption validateAndCastProduct(final FiniteDifferenceProduct product) {
+	private DigitalBasketOption validateAndCastProduct(final FiniteDifferenceEquityProduct product) {
 		if(!(product instanceof DigitalBasketOption)) {
 			throw new IllegalArgumentException(
 					"DigitalBasketOptionMultiAssetBlackScholesModelBoundary requires a DigitalBasketOption.");

@@ -1,6 +1,6 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 
 /**
  * Factory interface for creating {@link FiniteDifferenceBoundary}
@@ -16,5 +16,5 @@ public interface FiniteDifferenceBoundaryFactory {
 	 * @param product The finite difference product.
 	 * @return The corresponding boundary implementation.
 	 */
-	FiniteDifferenceBoundary createBoundary(FiniteDifferenceProduct product);
+	FiniteDifferenceBoundary createBoundary(FiniteDifferenceEquityProduct product);
 }

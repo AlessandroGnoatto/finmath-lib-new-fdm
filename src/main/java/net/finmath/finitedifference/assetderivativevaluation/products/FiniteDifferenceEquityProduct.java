@@ -17,7 +17,7 @@ import net.finmath.modelling.Product;
  * @author Christian Fries
  * @version 1.0
  */
-public interface FiniteDifferenceProduct extends Product {
+public interface FiniteDifferenceEquityProduct extends Product {
 
 	/**
 	 * Returns the value of the product at a given evaluation time under

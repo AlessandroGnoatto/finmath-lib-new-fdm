@@ -1,7 +1,7 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.FiniteDifferenceModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 
 /**
  * Factory for creating {@link FiniteDifferenceBoundary} instances.
@@ -44,7 +44,7 @@ public final class FDBoundaryFactory {
 	 */
 	public static FiniteDifferenceBoundary createBoundary(
 			final FiniteDifferenceModel model,
-			final FiniteDifferenceProduct product) {
+			final FiniteDifferenceEquityProduct product) {
 
 		try {
 

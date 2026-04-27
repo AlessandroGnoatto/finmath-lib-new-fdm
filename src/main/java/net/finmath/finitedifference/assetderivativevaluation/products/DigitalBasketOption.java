@@ -67,7 +67,7 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * @author Alessandro Gnoatto
  */
-public class DigitalBasketOption implements FiniteDifferenceProduct {
+public class DigitalBasketOption implements FiniteDifferenceEquityProduct {
 
 	/**
 	 * Type of two-asset digital payoff.

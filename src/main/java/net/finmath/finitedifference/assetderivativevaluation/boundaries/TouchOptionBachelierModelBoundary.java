@@ -1,7 +1,7 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBachelierModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.assetderivativevaluation.products.TouchOption;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
@@ -22,7 +22,7 @@ public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBounda
 
     @Override
     public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             double time,
             final double... stateVariables) {
 
@@ -44,7 +44,7 @@ public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBounda
 
     @Override
     public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             double time,
             final double... stateVariables) {
 

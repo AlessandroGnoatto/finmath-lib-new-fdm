@@ -63,7 +63,7 @@ import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
  * @author Alessandro Gnoatto
  */
 public class DigitalBarrierOption implements
-        FiniteDifferenceProduct,
+        FiniteDifferenceEquityProduct,
         FiniteDifferenceInternalStateConstraint,
         FiniteDifferenceOneDimensionalKnockInProduct {
 

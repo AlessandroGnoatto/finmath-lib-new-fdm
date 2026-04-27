@@ -4,7 +4,7 @@ import java.util.Optional;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBatesModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.JumpComponent;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.modelling.Exercise;
 
 /**
@@ -58,7 +58,7 @@ public class FDMBatesADI2D extends AbstractADI2D {
 	 */
 	public FDMBatesADI2D(
 			final FDMBatesModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final net.finmath.finitedifference.grids.SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 		this(
@@ -82,7 +82,7 @@ public class FDMBatesADI2D extends AbstractADI2D {
 	 */
 	public FDMBatesADI2D(
 			final FDMBatesModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final net.finmath.finitedifference.grids.SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise,
 			final int quadraturePointsPerSide) {

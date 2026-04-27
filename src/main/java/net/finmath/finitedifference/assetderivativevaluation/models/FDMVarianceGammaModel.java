@@ -4,7 +4,7 @@ import java.util.Optional;
 
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FDBoundaryFactory;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.marketdata.model.curves.CurveInterpolation.ExtrapolationMethod;
@@ -503,7 +503,7 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... riskFactors) {
 
@@ -513,7 +513,7 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... riskFactors) {
 

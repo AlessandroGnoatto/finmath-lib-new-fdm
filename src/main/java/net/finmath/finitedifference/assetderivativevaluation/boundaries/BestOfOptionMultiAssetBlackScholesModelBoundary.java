@@ -2,7 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMMultiAssetBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.BestOfOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.functions.AnalyticFormulas;
@@ -83,7 +83,7 @@ public class BestOfOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -136,7 +136,7 @@ public class BestOfOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -181,7 +181,7 @@ public class BestOfOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 		return conditions;
 	}
 
-	private BestOfOption validateAndCastProduct(final FiniteDifferenceProduct product) {
+	private BestOfOption validateAndCastProduct(final FiniteDifferenceEquityProduct product) {
 		if(!(product instanceof BestOfOption)) {
 			throw new IllegalArgumentException(
 					"BestOfOptionMultiAssetBlackScholesModelBoundary requires a BestOfOption.");

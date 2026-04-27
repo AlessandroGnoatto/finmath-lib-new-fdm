@@ -46,7 +46,7 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * @author Alessandro Gnoatto
  */
-public class BasketOption implements FiniteDifferenceProduct {
+public class BasketOption implements FiniteDifferenceEquityProduct {
 
 	private final String[] underlyingNames;
 	private final double maturity;

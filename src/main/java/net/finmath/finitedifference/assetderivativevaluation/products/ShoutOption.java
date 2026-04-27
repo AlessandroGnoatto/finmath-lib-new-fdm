@@ -80,7 +80,7 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * @author Alessandro Gnoatto
  */
-public class ShoutOption implements FiniteDifferenceProduct {
+public class ShoutOption implements FiniteDifferenceEquityProduct {
 
 	private final String underlyingName;
 	private final double maturity;
@@ -228,7 +228,7 @@ public class ShoutOption implements FiniteDifferenceProduct {
 			for(int strikeIndex = 0; strikeIndex < strikeGrid.length; strikeIndex++) {
 				final double strike = strikeGrid[strikeIndex];
 
-				final FiniteDifferenceProduct sliceProduct = createVanillaSliceProduct(strike);
+				final FiniteDifferenceEquityProduct sliceProduct = createVanillaSliceProduct(strike);
 				final double[] terminalValues = buildPointwiseTerminalValues(xGrid, strike);
 
 				final FDMThetaMethod1D solver = new FDMThetaMethod1D(
@@ -279,7 +279,7 @@ public class ShoutOption implements FiniteDifferenceProduct {
 			for(int strikeIndex = 0; strikeIndex < strikeGrid.length; strikeIndex++) {
 				final double strike = strikeGrid[strikeIndex];
 
-				final FiniteDifferenceProduct sliceProduct = createVanillaSliceProduct(strike);
+				final FiniteDifferenceEquityProduct sliceProduct = createVanillaSliceProduct(strike);
 				final FDMSolver solver = FDMSolverFactory.createSolver(
 						model,
 						sliceProduct,
@@ -337,7 +337,7 @@ public class ShoutOption implements FiniteDifferenceProduct {
 		return plane;
 	}
 
-	private FiniteDifferenceProduct createVanillaSliceProduct(final double strike) {
+	private FiniteDifferenceEquityProduct createVanillaSliceProduct(final double strike) {
 		return new EuropeanOption(underlyingName, maturity, strike, callOrPut);
 	}
 

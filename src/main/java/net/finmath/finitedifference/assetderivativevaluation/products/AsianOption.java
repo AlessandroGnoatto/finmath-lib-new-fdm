@@ -58,7 +58,7 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * @author Alessandro Gnoatto
  */
-public class AsianOption implements FiniteDifferenceProduct {
+public class AsianOption implements FiniteDifferenceEquityProduct {
 
 	private static final double TIME_EPSILON_FOR_EXERCISE = 1E-12;
 
@@ -479,7 +479,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -532,7 +532,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -670,7 +670,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -723,7 +723,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -863,7 +863,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -916,7 +916,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -1067,7 +1067,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -1121,7 +1121,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -1285,7 +1285,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 
@@ -1353,7 +1353,7 @@ public class AsianOption implements FiniteDifferenceProduct {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				double time,
 				final double... stateVariables) {
 

@@ -48,7 +48,7 @@ import net.finmath.time.TimeDiscretization;
  * @author Alessandro Gnoatto
  */
 public class BarrierOption implements
-        FiniteDifferenceProduct,
+        FiniteDifferenceEquityProduct,
         FiniteDifferenceInternalStateConstraint,
         FiniteDifferenceOneDimensionalKnockInProduct {
 
@@ -405,7 +405,7 @@ public class BarrierOption implements
         final FiniteDifferenceEquityModel activatedModel =
                 createAuxiliaryActivatedModel2D(effectiveBarrierModel);
 
-        final FiniteDifferenceProduct activatedProduct = createActivatedVanillaProduct();
+        final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
 
         final FDMSolver activatedSolver =
                 createSolver(
@@ -452,7 +452,7 @@ public class BarrierOption implements
         return solver.getValues(maturity, this::pointwiseImmediateExercisePayoff);
     }
 
-    private FiniteDifferenceProduct createActivatedVanillaProduct() {
+    private FiniteDifferenceEquityProduct createActivatedVanillaProduct() {
         if(exercise.isEuropean()) {
             return new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
         }
@@ -854,7 +854,7 @@ public class BarrierOption implements
 
     private FDMSolver createSolver(
             final FiniteDifferenceEquityModel model,
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             final SpaceTimeDiscretization discretization,
             final Exercise exerciseSpecification) {
         return FDMSolverFactory.createSolver(model, product, discretization, exerciseSpecification);

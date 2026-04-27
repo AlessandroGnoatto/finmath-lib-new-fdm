@@ -94,7 +94,7 @@ import net.finmath.time.TimeDiscretizationFromArray;
  *
  * @author Alessandro Gnoatto
  */
-public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
+public class FloatingStrikeSwingOption implements FiniteDifferenceEquityProduct {
 
 	private static final double EPS = 1.0E-12;
 
@@ -638,7 +638,7 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceProduct {
 		final FiniteDifferenceEquityModel segmentModel =
 				model.getCloneWithModifiedSpaceTimeDiscretization(segmentDiscretization);
 
-		final FiniteDifferenceProduct proxyProduct =
+		final FiniteDifferenceEquityProduct proxyProduct =
 				new EuropeanOption(underlyingName, segmentLength, strikeShift, callOrPut);
 
 		final int dimensions = segmentDiscretization.getNumberOfSpaceGrids();

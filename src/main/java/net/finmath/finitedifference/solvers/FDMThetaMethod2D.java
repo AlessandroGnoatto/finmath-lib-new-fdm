@@ -13,7 +13,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -73,7 +73,7 @@ public class FDMThetaMethod2D implements FDMSolver {
 	private static final double PSOR_TOLERANCE = 1E-10;
 
 	private final FiniteDifferenceEquityModel model;
-	private final FiniteDifferenceProduct product;
+	private final FiniteDifferenceEquityProduct product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
 
@@ -90,7 +90,7 @@ public class FDMThetaMethod2D implements FDMSolver {
 	 */
 	public FDMThetaMethod2D(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 		this.model = model;

@@ -77,7 +77,7 @@ import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
  * @author Alessandro Gnoatto
  */
 public class TouchOption implements
-	FiniteDifferenceProduct,
+	FiniteDifferenceEquityProduct,
 	FiniteDifferenceInternalStateConstraint,
 	FiniteDifferenceOneDimensionalKnockInProduct {
 

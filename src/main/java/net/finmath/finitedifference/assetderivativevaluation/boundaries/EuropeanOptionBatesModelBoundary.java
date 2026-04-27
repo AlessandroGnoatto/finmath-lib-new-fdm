@@ -2,7 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMBatesModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.EuropeanOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
@@ -43,7 +43,7 @@ public class EuropeanOptionBatesModelBoundary implements FiniteDifferenceBoundar
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 
@@ -65,7 +65,7 @@ public class EuropeanOptionBatesModelBoundary implements FiniteDifferenceBoundar
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			double time,
 			final double... stateVariables) {
 

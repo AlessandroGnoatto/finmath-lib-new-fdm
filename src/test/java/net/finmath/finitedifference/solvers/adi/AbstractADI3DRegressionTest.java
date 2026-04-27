@@ -8,7 +8,7 @@ import java.util.function.DoubleUnaryOperator;
 import org.junit.Test;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
@@ -65,7 +65,7 @@ public class AbstractADI3DRegressionTest {
 				new double[] { 0.5, 0.5, 0.5 });
 
 		final FiniteDifferenceEquityModel model = new ZeroOperator3DModel(spaceTimeDiscretization);
-		final FiniteDifferenceProduct product = new DummyProduct();
+		final FiniteDifferenceEquityProduct product = new DummyProduct();
 
 		final AbstractADI3D solver = new IdentityLineSolveADI3D(
 				model,
@@ -96,7 +96,7 @@ public class AbstractADI3DRegressionTest {
 
 		private IdentityLineSolveADI3D(
 				final FiniteDifferenceEquityModel model,
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final SpaceTimeDiscretization spaceTimeDiscretization,
 				final EuropeanExercise exercise) {
 			super(model, product, spaceTimeDiscretization, exercise);
@@ -127,7 +127,7 @@ public class AbstractADI3DRegressionTest {
 		}
 	}
 
-	private static final class DummyProduct implements FiniteDifferenceProduct {
+	private static final class DummyProduct implements FiniteDifferenceEquityProduct {
 
 		@Override
 		public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
@@ -189,7 +189,7 @@ public class AbstractADI3DRegressionTest {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 			return new BoundaryCondition[] {
@@ -201,7 +201,7 @@ public class AbstractADI3DRegressionTest {
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 			return new BoundaryCondition[] {

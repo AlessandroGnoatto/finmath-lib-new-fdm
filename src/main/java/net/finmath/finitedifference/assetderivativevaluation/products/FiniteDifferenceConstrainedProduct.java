@@ -1,7 +1,7 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
 /**
- * Marker-style extension of {@link FiniteDifferenceProduct} for products that may
+ * Marker-style extension of {@link FiniteDifferenceEquityProduct} for products that may
  * impose internal state constraints.
  *
  * <p>
@@ -12,5 +12,5 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
  * @author Alessandro Gnoatto
  */
 public interface FiniteDifferenceConstrainedProduct
-		extends FiniteDifferenceProduct, FiniteDifferenceInternalStateConstraint {
+		extends FiniteDifferenceEquityProduct, FiniteDifferenceInternalStateConstraint {
 }

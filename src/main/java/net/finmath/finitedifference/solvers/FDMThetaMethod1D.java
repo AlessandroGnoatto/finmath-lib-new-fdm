@@ -6,7 +6,7 @@ import java.util.function.DoubleUnaryOperator;
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
@@ -42,7 +42,7 @@ import net.finmath.modelling.Exercise;
 public class FDMThetaMethod1D implements FDMSolver {
 
 	private final FiniteDifferenceEquityModel model;
-	private final FiniteDifferenceProduct product;
+	private final FiniteDifferenceEquityProduct product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
 
@@ -56,7 +56,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 	 */
 	public FDMThetaMethod1D(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 		this.model = model;

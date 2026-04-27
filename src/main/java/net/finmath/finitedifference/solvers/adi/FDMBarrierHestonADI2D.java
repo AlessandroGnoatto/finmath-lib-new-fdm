@@ -7,7 +7,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.ThomasSolver;
 import net.finmath.finitedifference.solvers.TridiagonalMatrix;
@@ -54,7 +54,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
      */
     public FDMBarrierHestonADI2D(
             final FDMHestonModel model,
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             final SpaceTimeDiscretization spaceTimeDiscretization,
             final Exercise exercise,
             final BarrierPDEMode barrierMode,

@@ -25,7 +25,7 @@ import net.finmath.modelling.products.CallOrPut;
  * @author Alessandro Gnoatto
  * @version 1.0
  */
-public class EuropeanOption implements FiniteDifferenceProduct {
+public class EuropeanOption implements FiniteDifferenceEquityProduct {
 
 	private final String underlyingName;
 	private final double maturity;

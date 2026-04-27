@@ -1,7 +1,7 @@
 package net.finmath.finitedifference.solvers.adi;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
 
@@ -52,7 +52,7 @@ public class FDMSabrADI2D extends AbstractADI2D {
 	 */
 	public FDMSabrADI2D(
 			final FDMSabrModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 		super(model, product, spaceTimeDiscretization, exercise);

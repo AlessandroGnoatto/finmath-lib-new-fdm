@@ -9,7 +9,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -62,7 +62,7 @@ public abstract class AbstractADI3D implements FDMSolver {
 	}
 
 	protected final FiniteDifferenceEquityModel model;
-	protected final FiniteDifferenceProduct product;
+	protected final FiniteDifferenceEquityProduct product;
 	protected final SpaceTimeDiscretization spaceTimeDiscretization;
 	protected final Exercise exercise;
 
@@ -79,7 +79,7 @@ public abstract class AbstractADI3D implements FDMSolver {
 
 	protected AbstractADI3D(
 			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 

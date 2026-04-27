@@ -100,7 +100,7 @@ import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierOption implements
-		FiniteDifferenceProduct,
+		FiniteDifferenceEquityProduct,
 		FiniteDifferenceInternalStateConstraint {
 
 	private enum PricingMode {
@@ -494,7 +494,7 @@ public class DoubleBarrierOption implements
 		 * Step 1: activated vanilla branch on a widened vanilla grid.
 		 */
 		final FiniteDifferenceEquityModel activatedModel = createAuxiliaryActivatedModel(effectiveModel);
-		final FiniteDifferenceProduct activatedProduct = createActivatedVanillaProduct();
+		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
 
 		final double[][] activatedValues = activatedProduct.getValues(activatedModel);
 
@@ -556,7 +556,7 @@ public class DoubleBarrierOption implements
 		 * Step 1: activated vanilla branch on a widened vanilla grid.
 		 */
 		final FiniteDifferenceEquityModel activatedModel = createAuxiliaryActivatedModel(effectiveModel);
-		final FiniteDifferenceProduct activatedProduct = createActivatedVanillaProduct();
+		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
 
 		final double[][] activatedValues = activatedProduct.getValues(activatedModel);
 
@@ -611,7 +611,7 @@ public class DoubleBarrierOption implements
 	 * ============================================
 	 */
 
-	private FiniteDifferenceProduct createActivatedVanillaProduct() {
+	private FiniteDifferenceEquityProduct createActivatedVanillaProduct() {
 		if(exercise.isEuropean()) {
 			return new EuropeanOption(underlyingName, maturity, strike, callOrPutSign);
 		}
@@ -1519,7 +1519,7 @@ public class DoubleBarrierOption implements
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 
@@ -1535,7 +1535,7 @@ public class DoubleBarrierOption implements
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 
@@ -1611,7 +1611,7 @@ public class DoubleBarrierOption implements
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 
@@ -1635,7 +1635,7 @@ public class DoubleBarrierOption implements
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 
@@ -1722,7 +1722,7 @@ public class DoubleBarrierOption implements
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 
@@ -1746,7 +1746,7 @@ public class DoubleBarrierOption implements
 
 		@Override
 		public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-				final FiniteDifferenceProduct product,
+				final FiniteDifferenceEquityProduct product,
 				final double time,
 				final double... stateVariables) {
 

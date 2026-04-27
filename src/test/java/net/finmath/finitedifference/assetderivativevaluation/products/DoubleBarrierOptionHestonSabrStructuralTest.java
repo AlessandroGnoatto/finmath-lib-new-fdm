@@ -397,7 +397,7 @@ public class DoubleBarrierOptionHestonSabrStructuralTest {
     }
 
     private double valueAtSpotAndSecondState0(
-            final FiniteDifferenceProduct product,
+            final FiniteDifferenceEquityProduct product,
             final FiniteDifferenceEquityModel model,
             final double spot) {
 

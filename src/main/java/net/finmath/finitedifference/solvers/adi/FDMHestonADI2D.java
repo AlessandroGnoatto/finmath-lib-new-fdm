@@ -1,7 +1,7 @@
 package net.finmath.finitedifference.solvers.adi;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.modelling.Exercise;
 
@@ -51,7 +51,7 @@ public class FDMHestonADI2D extends AbstractADI2D {
 	 */
 	public FDMHestonADI2D(
 			final FDMHestonModel model,
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
 		super(model, product, spaceTimeDiscretization, exercise);

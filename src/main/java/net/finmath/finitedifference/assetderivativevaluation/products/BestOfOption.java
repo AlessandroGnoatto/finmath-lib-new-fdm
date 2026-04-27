@@ -64,7 +64,7 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * @author Alessandro Gnoatto
  */
-public class BestOfOption implements FiniteDifferenceProduct {
+public class BestOfOption implements FiniteDifferenceEquityProduct {
 
 	private final String firstUnderlyingName;
 	private final String secondUnderlyingName;

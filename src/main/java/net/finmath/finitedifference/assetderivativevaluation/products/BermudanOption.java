@@ -21,7 +21,7 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * @author Alessandro Gnoatto
  */
-public class BermudanOption implements FiniteDifferenceProduct {
+public class BermudanOption implements FiniteDifferenceEquityProduct {
 
 	private final String underlyingName;
 	private final double maturity;

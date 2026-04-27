@@ -23,7 +23,7 @@ import net.finmath.modelling.products.CallOrPut;
  * @author Alessandro Gnoatto
  * @version 1.0
  */
-public class AmericanOption implements FiniteDifferenceProduct {
+public class AmericanOption implements FiniteDifferenceEquityProduct {
 
 	private final String underlyingName;
 	private final double maturity;

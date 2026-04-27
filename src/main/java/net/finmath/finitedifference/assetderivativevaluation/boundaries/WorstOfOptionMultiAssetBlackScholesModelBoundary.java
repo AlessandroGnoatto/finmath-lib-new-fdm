@@ -1,7 +1,7 @@
 package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMMultiAssetBlackScholesModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.assetderivativevaluation.products.WorstOfOption;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
@@ -100,7 +100,7 @@ public class WorstOfOptionMultiAssetBlackScholesModelBoundary implements FiniteD
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -135,7 +135,7 @@ public class WorstOfOptionMultiAssetBlackScholesModelBoundary implements FiniteD
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -192,7 +192,7 @@ public class WorstOfOptionMultiAssetBlackScholesModelBoundary implements FiniteD
 	 * @param product The product.
 	 * @return The worst-of option.
 	 */
-	private WorstOfOption validateAndCastProduct(final FiniteDifferenceProduct product) {
+	private WorstOfOption validateAndCastProduct(final FiniteDifferenceEquityProduct product) {
 		if(!(product instanceof WorstOfOption)) {
 			throw new IllegalArgumentException(
 					"WorstOfOptionMultiAssetBlackScholesModelBoundary requires a WorstOfOption.");

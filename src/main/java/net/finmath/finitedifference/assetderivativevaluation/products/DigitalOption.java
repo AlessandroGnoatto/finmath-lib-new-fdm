@@ -44,7 +44,7 @@ import net.finmath.time.TimeDiscretization;
  *
  * @author Alessandro Gnoatto
  */
-public class DigitalOption implements FiniteDifferenceProduct {
+public class DigitalOption implements FiniteDifferenceEquityProduct {
 
 	private final String underlyingName;
 	private final double maturity;

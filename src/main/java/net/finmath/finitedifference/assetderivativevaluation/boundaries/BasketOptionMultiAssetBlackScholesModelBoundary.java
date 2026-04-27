@@ -2,7 +2,7 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMMultiAssetBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.BasketOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.functions.AnalyticFormulas;
@@ -91,7 +91,7 @@ public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -141,7 +141,7 @@ public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 
 	@Override
 	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceProduct product,
+			final FiniteDifferenceEquityProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -191,7 +191,7 @@ public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
 		return conditions;
 	}
 
-	private BasketOption validateAndCastProduct(final FiniteDifferenceProduct product) {
+	private BasketOption validateAndCastProduct(final FiniteDifferenceEquityProduct product) {
 		if(!(product instanceof BasketOption)) {
 			throw new IllegalArgumentException(
 					"BasketOptionMultiAssetBlackScholesModelBoundary requires a BasketOption.");

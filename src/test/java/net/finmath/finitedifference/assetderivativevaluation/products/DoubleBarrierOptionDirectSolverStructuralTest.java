@@ -265,20 +265,20 @@ public class DoubleBarrierOptionDirectSolverStructuralTest {
 					new AmericanExercise(0.0, MATURITY)
 			);
 
-			final FiniteDifferenceProduct europeanVanilla = new EuropeanOption(
+			final FiniteDifferenceEquityProduct europeanVanilla = new EuropeanOption(
 					MATURITY,
 					STRIKE,
 					callOrPut
 			);
 
-			final FiniteDifferenceProduct bermudanVanilla = new BermudanOption(
+			final FiniteDifferenceEquityProduct bermudanVanilla = new BermudanOption(
 					null,
 					new double[] { 0.5, MATURITY },
 					STRIKE,
 					callOrPut
 			);
 
-			final FiniteDifferenceProduct americanVanilla = new AmericanOption(
+			final FiniteDifferenceEquityProduct americanVanilla = new AmericanOption(
 					MATURITY,
 					STRIKE,
 					callOrPut
@@ -360,20 +360,20 @@ public class DoubleBarrierOptionDirectSolverStructuralTest {
 					new AmericanExercise(0.0, MATURITY)
 			);
 
-			final FiniteDifferenceProduct europeanVanilla = new EuropeanOption(
+			final FiniteDifferenceEquityProduct europeanVanilla = new EuropeanOption(
 					MATURITY,
 					STRIKE,
 					callOrPut
 			);
 
-			final FiniteDifferenceProduct bermudanVanilla = new BermudanOption(
+			final FiniteDifferenceEquityProduct bermudanVanilla = new BermudanOption(
 					null,
 					new double[] { 0.5, MATURITY },
 					STRIKE,
 					callOrPut
 			);
 
-			final FiniteDifferenceProduct americanVanilla = new AmericanOption(
+			final FiniteDifferenceEquityProduct americanVanilla = new AmericanOption(
 					MATURITY,
 					STRIKE,
 					callOrPut
