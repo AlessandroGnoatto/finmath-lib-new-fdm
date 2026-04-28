@@ -4,11 +4,15 @@ import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
+import net.finmath.finitedifference.FiniteDifferenceModel;
+import net.finmath.finitedifference.FiniteDifferenceProduct;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.finitedifference.interestrate.models.FiniteDifferenceInterestRateModel;
+import net.finmath.finitedifference.interestrate.products.FiniteDifferenceInterestRateProduct;
 import net.finmath.modelling.Exercise;
 
 /**
@@ -21,7 +25,8 @@ import net.finmath.modelling.Exercise;
  *   <li>pointwise terminal payoff initialization,</li>
  *   <li>direct terminal-vector initialization,</li>
  *   <li>direct terminal-vector initialization with separate pointwise exercise payoff,</li>
- *   <li>direct terminal-vector initialization with a continuous time-dependent obstacle.</li>
+ *   <li>direct terminal-vector initialization with a continuous time-dependent obstacle,</li>
+ *   <li>interest-rate event conditions applied on the value vector at prescribed event times.</li>
  * </ul>
  *
  * <p>
@@ -31,7 +36,22 @@ import net.finmath.modelling.Exercise;
  *
  * <p>
  * The fourth case is useful for shout-style problems, where the solution is constrained
- * by a time- and state-dependent continuation floor V &gt;= V*(t,x) at every time step.
+ * by a time- and state-dependent continuation floor {@code V >= V*(t,x)} at every time step.
+ * </p>
+ *
+ * <p>
+ * If the product is a {@link FiniteDifferenceInterestRateProduct}, then at every event time
+ * {@code t} the solver applies the vector-level jump condition
+ * </p>
+ *
+ * <p>
+ * <i>
+ * V(t^{-},x) = J_t(V(t^{+},x),x).
+ * </i>
+ * </p>
+ *
+ * <p>
+ * Event times are required to be part of the solver time discretization.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -41,10 +61,87 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMThetaMethod1D implements FDMSolver {
 
-	private final FiniteDifferenceEquityModel model;
-	private final FiniteDifferenceEquityProduct product;
+	private static final double SAFE_TIME_EPSILON = 1E-6;
+	private static final double EVENT_TIME_TOLERANCE = 1E-12;
+	private static final double LOCAL_DISCOUNT_BOND_EPSILON = 1E-6;
+
+	private final FiniteDifferenceModel model;
+	private final FiniteDifferenceProduct<? extends FiniteDifferenceModel> product;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 	private final Exercise exercise;
+
+	private static final class ModelCoefficients {
+
+		private final double[] drift;
+		private final double[] variance;
+		private final double[] shortRate;
+
+		private ModelCoefficients(
+				final double[] drift,
+				final double[] variance,
+				final double[] shortRate) {
+			this.drift = drift;
+			this.variance = variance;
+			this.shortRate = shortRate;
+		}
+
+		private double[] getDrift() {
+			return drift;
+		}
+
+		private double[] getVariance() {
+			return variance;
+		}
+
+		private double[] getShortRate() {
+			return shortRate;
+		}
+	}
+
+	private static final class RowCoefficients {
+
+		private final double lower;
+		private final double diag;
+		private final double upper;
+
+		private RowCoefficients(final double lower, final double diag, final double upper) {
+			this.lower = lower;
+			this.diag = diag;
+			this.upper = upper;
+		}
+	}
+
+	/**
+	 * Creates a theta-method finite-difference solver for a one-dimensional backward PDE.
+	 *
+	 * @param model The finite-difference equity model providing PDE coefficients and boundary conditions.
+	 * @param product The equity product to be valued.
+	 * @param spaceTimeDiscretization The joint space-time discretization.
+	 * @param exercise The exercise specification.
+	 */
+	public FDMThetaMethod1D(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceEquityProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise) {
+		this((FiniteDifferenceModel) model, product, spaceTimeDiscretization, exercise);
+	}
+
+	/**
+	 * Creates a theta-method finite-difference solver for a one-dimensional backward PDE.
+	 *
+	 * @param model The finite-difference interest-rate model providing PDE coefficients and boundary conditions.
+	 * @param product The interest-rate product to be valued.
+	 * @param spaceTimeDiscretization The joint space-time discretization.
+	 * @param exercise The exercise specification.
+	 */
+	public FDMThetaMethod1D(
+			final FiniteDifferenceInterestRateModel model,
+			final FiniteDifferenceInterestRateProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise) {
+		this((FiniteDifferenceModel) model, product, spaceTimeDiscretization, exercise);
+	}
 
 	/**
 	 * Creates a theta-method finite-difference solver for a one-dimensional backward PDE.
@@ -55,14 +152,34 @@ public class FDMThetaMethod1D implements FDMSolver {
 	 * @param exercise The exercise specification.
 	 */
 	public FDMThetaMethod1D(
-			final FiniteDifferenceEquityModel model,
-			final FiniteDifferenceEquityProduct product,
+			final FiniteDifferenceModel model,
+			final FiniteDifferenceProduct<? extends FiniteDifferenceModel> product,
 			final SpaceTimeDiscretization spaceTimeDiscretization,
 			final Exercise exercise) {
+
+		if(model == null) {
+			throw new IllegalArgumentException("model must not be null.");
+		}
+		if(product == null) {
+			throw new IllegalArgumentException("product must not be null.");
+		}
+		if(spaceTimeDiscretization == null) {
+			throw new IllegalArgumentException("spaceTimeDiscretization must not be null.");
+		}
+		if(exercise == null) {
+			throw new IllegalArgumentException("exercise must not be null.");
+		}
+		if(spaceTimeDiscretization.getNumberOfSpaceGrids() != 1) {
+			throw new IllegalArgumentException("FDMThetaMethod1D requires a one-dimensional space discretization.");
+		}
+
 		this.model = model;
 		this.product = product;
 		this.spaceTimeDiscretization = spaceTimeDiscretization;
 		this.exercise = exercise;
+
+		validateModelProductCompatibility();
+		validateInterestRateEventTimesInGrid();
 	}
 
 	@Override
@@ -161,12 +278,12 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final DoubleBinaryOperator continuousObstacleValue) {
 
 		final double[] xGrid = spaceTimeDiscretization.getSpaceGrid(0).getGrid();
-		final int nX = xGrid.length;
+		final int numberOfGridPoints = xGrid.length;
 
 		if(terminalValues == null) {
 			throw new IllegalArgumentException("terminalValues must not be null.");
 		}
-		if(terminalValues.length != nX) {
+		if(terminalValues.length != numberOfGridPoints) {
 			throw new IllegalArgumentException("terminalValues length does not match spatial grid length.");
 		}
 		if(exerciseValue != null && continuousObstacleValue != null) {
@@ -183,11 +300,21 @@ public class FDMThetaMethod1D implements FDMSolver {
 		final double theta = spaceTimeDiscretization.getTheta();
 		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
+		final double horizon = spaceTimeDiscretization.getTimeDiscretization().getLastTime();
 
 		double[] u = terminalValues.clone();
-		final double[][] z = new double[nX][timeLength];
+		final double[][] z = new double[numberOfGridPoints][timeLength];
 
-		for(int i = 0; i < nX; i++) {
+		final BoundaryCondition lowerTerminalCondition = getLowerBoundaryCondition(horizon, xGrid[0]);
+		final BoundaryCondition upperTerminalCondition = getUpperBoundaryCondition(horizon, xGrid[numberOfGridPoints - 1]);
+
+		reimposeInternalConstraints(u, xGrid, horizon);
+		reimposeBoundaryValues(u, lowerTerminalCondition, upperTerminalCondition);
+		u = applyInterestRateEventConditionIfNeeded(horizon, u);
+		reimposeInternalConstraints(u, xGrid, horizon);
+		reimposeBoundaryValues(u, lowerTerminalCondition, upperTerminalCondition);
+
+		for(int i = 0; i < numberOfGridPoints; i++) {
 			z[i][0] = u[i];
 		}
 
@@ -198,55 +325,50 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
 			final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-			final ThetaMethod1DAssembly.ModelCoefficients coefficients_m =
-					ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_m);
-			final ThetaMethod1DAssembly.ModelCoefficients coefficients_mp1 =
-					ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_mp1);
+			final ModelCoefficients coefficientsAtCurrentTime = buildModelCoefficients(xGrid, t_m);
+			final ModelCoefficients coefficientsAtNextTime = buildModelCoefficients(xGrid, t_mp1);
 
-			final TridiagonalMatrix lhs = new TridiagonalMatrix(nX);
-			final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(nX);
+			final TridiagonalMatrix lhs = new TridiagonalMatrix(numberOfGridPoints);
+			final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(numberOfGridPoints);
 
-			ThetaMethod1DAssembly.buildThetaLeftHandSide(
+			buildThetaLeftHandSide(
 					lhs,
 					xGrid,
-					coefficients_mp1.getDrift(),
-					coefficients_mp1.getVariance(),
-					coefficients_mp1.getShortRate(),
+					coefficientsAtNextTime.getDrift(),
+					coefficientsAtNextTime.getVariance(),
+					coefficientsAtNextTime.getShortRate(),
 					deltaTau,
 					theta);
 
-			ThetaMethod1DAssembly.buildThetaRightHandSide(
+			buildThetaRightHandSide(
 					rhsOperator,
 					xGrid,
-					coefficients_m.getDrift(),
-					coefficients_m.getVariance(),
-					coefficients_m.getShortRate(),
+					coefficientsAtCurrentTime.getDrift(),
+					coefficientsAtCurrentTime.getVariance(),
+					coefficientsAtCurrentTime.getShortRate(),
 					deltaTau,
 					theta);
 
-			final double[] rhs = ThetaMethod1DAssembly.apply(rhsOperator, u);
+			final double[] rhs = apply(rhsOperator, u);
 
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
-			final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
+			final double boundaryTime = horizon - tau_mp1;
 
-			final BoundaryCondition lowerCondition =
-					model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, xGrid[0])[0];
+			final BoundaryCondition lowerCondition = getLowerBoundaryCondition(boundaryTime, xGrid[0]);
+			final BoundaryCondition upperCondition = getUpperBoundaryCondition(boundaryTime, xGrid[numberOfGridPoints - 1]);
 
 			if(lowerCondition.isDirichlet()) {
-				ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, 0, lowerCondition.getValue());
+				overwriteAsDirichlet(lhs, rhs, 0, lowerCondition.getValue());
 			}
-
-			final BoundaryCondition upperCondition =
-					model.getBoundaryConditionsAtUpperBoundary(product, boundaryTime, xGrid[nX - 1])[0];
 
 			if(upperCondition.isDirichlet()) {
-				ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, nX - 1, upperCondition.getValue());
+				overwriteAsDirichlet(lhs, rhs, numberOfGridPoints - 1, upperCondition.getValue());
 			}
 
-			for(int i = 1; i < nX - 1; i++) {
+			for(int i = 1; i < numberOfGridPoints - 1; i++) {
 				final double x = xGrid[i];
 				if(isInternalConstraintActive(boundaryTime, x)) {
-					ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, i, getInternalConstrainedValue(boundaryTime, x));
+					overwriteAsDirichlet(lhs, rhs, i, getInternalConstrainedValue(boundaryTime, x));
 				}
 			}
 
@@ -315,13 +437,332 @@ public class FDMThetaMethod1D implements FDMSolver {
 				}
 			}
 
-			u = nextU;
-			for(int i = 0; i < nX; i++) {
+			u = applyInterestRateEventConditionIfNeeded(boundaryTime, nextU);
+			reimposeInternalConstraints(u, xGrid, boundaryTime);
+			reimposeBoundaryValues(u, lowerCondition, upperCondition);
+
+			for(int i = 0; i < numberOfGridPoints; i++) {
 				z[i][m + 1] = u[i];
 			}
 		}
 
 		return z;
+	}
+
+	private void validateModelProductCompatibility() {
+		if(model instanceof FiniteDifferenceEquityModel && !(product instanceof FiniteDifferenceEquityProduct)) {
+			throw new IllegalArgumentException(
+					"An equity finite-difference model requires a FiniteDifferenceEquityProduct.");
+		}
+		if(model instanceof FiniteDifferenceInterestRateModel && !(product instanceof FiniteDifferenceInterestRateProduct)) {
+			throw new IllegalArgumentException(
+					"An interest-rate finite-difference model requires a FiniteDifferenceInterestRateProduct.");
+		}
+		if(!(model instanceof FiniteDifferenceEquityModel) && !(model instanceof FiniteDifferenceInterestRateModel)) {
+			throw new IllegalArgumentException(
+					"FDMThetaMethod1D currently supports only FiniteDifferenceEquityModel and FiniteDifferenceInterestRateModel.");
+		}
+	}
+
+	private void validateInterestRateEventTimesInGrid() {
+
+		if(!(product instanceof FiniteDifferenceInterestRateProduct)) {
+			return;
+		}
+
+		final FiniteDifferenceInterestRateProduct interestRateProduct =
+				(FiniteDifferenceInterestRateProduct) product;
+
+		final double horizon = spaceTimeDiscretization.getTimeDiscretization().getLastTime();
+
+		for(final double eventTime : interestRateProduct.getEventTimes()) {
+
+			if(eventTime < -EVENT_TIME_TOLERANCE || eventTime > horizon + EVENT_TIME_TOLERANCE) {
+				throw new IllegalArgumentException(
+						"Interest-rate event time " + eventTime
+						+ " lies outside the solver time horizon [0," + horizon + "].");
+			}
+
+			final double tau = horizon - eventTime;
+			final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndex(tau);
+
+			if(timeIndex < 0) {
+				throw new IllegalArgumentException(
+						"Interest-rate event time " + eventTime
+						+ " is not contained in the solver time discretization. "
+						+ "Please refine the time grid so that all event times are grid points.");
+			}
+		}
+	}
+
+	private boolean isInterestRateEventTime(final double time) {
+
+		if(!(product instanceof FiniteDifferenceInterestRateProduct)) {
+			return false;
+		}
+
+		final FiniteDifferenceInterestRateProduct interestRateProduct =
+				(FiniteDifferenceInterestRateProduct) product;
+
+		for(final double eventTime : interestRateProduct.getEventTimes()) {
+			if(Math.abs(eventTime - time) <= EVENT_TIME_TOLERANCE) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private double[] applyInterestRateEventConditionIfNeeded(
+			final double time,
+			final double[] valuesAfterEvent) {
+
+		if(!(product instanceof FiniteDifferenceInterestRateProduct)) {
+			return valuesAfterEvent;
+		}
+
+		if(!isInterestRateEventTime(time)) {
+			return valuesAfterEvent;
+		}
+
+		final FiniteDifferenceInterestRateProduct interestRateProduct =
+				(FiniteDifferenceInterestRateProduct) product;
+
+		final FiniteDifferenceInterestRateModel interestRateModel =
+				(FiniteDifferenceInterestRateModel) model;
+
+		return interestRateProduct.applyEventCondition(
+				time,
+				valuesAfterEvent,
+				interestRateModel
+		);
+	}
+
+	private ModelCoefficients buildModelCoefficients(
+			final double[] xGrid,
+			final double time) {
+
+		final int numberOfGridPoints = xGrid.length;
+
+		final double[] drift = new double[numberOfGridPoints];
+		final double[] variance = new double[numberOfGridPoints];
+		final double[] shortRate = new double[numberOfGridPoints];
+
+		for(int i = 0; i < numberOfGridPoints; i++) {
+			final double x = xGrid[i];
+
+			drift[i] = getDriftAt(time, x);
+
+			final double[][] factorLoading = getFactorLoadingAt(time, x);
+
+			double localVariance = 0.0;
+			for(int factor = 0; factor < factorLoading[0].length; factor++) {
+				final double b = factorLoading[0][factor];
+				localVariance += b * b;
+			}
+			variance[i] = localVariance;
+
+			shortRate[i] = getLocalShortRateAt(time, x);
+		}
+
+		return new ModelCoefficients(drift, variance, shortRate);
+	}
+
+	private double getDriftAt(final double time, final double x) {
+		if(model instanceof FiniteDifferenceEquityModel) {
+			return ((FiniteDifferenceEquityModel) model).getDrift(time, x)[0];
+		}
+		else if(model instanceof FiniteDifferenceInterestRateModel) {
+			return ((FiniteDifferenceInterestRateModel) model).getDrift(time, x)[0];
+		}
+		else {
+			throw new IllegalStateException("Unsupported model type.");
+		}
+	}
+
+	private double[][] getFactorLoadingAt(final double time, final double x) {
+		if(model instanceof FiniteDifferenceEquityModel) {
+			return ((FiniteDifferenceEquityModel) model).getFactorLoading(time, x);
+		}
+		else if(model instanceof FiniteDifferenceInterestRateModel) {
+			return ((FiniteDifferenceInterestRateModel) model).getFactorLoading(time, x);
+		}
+		else {
+			throw new IllegalStateException("Unsupported model type.");
+		}
+	}
+
+	private double getLocalShortRateAt(final double time, final double x) {
+		if(model instanceof FiniteDifferenceEquityModel) {
+			final double safeTime = time == 0.0 ? SAFE_TIME_EPSILON : Math.max(time, SAFE_TIME_EPSILON);
+			return -Math.log(((FiniteDifferenceEquityModel) model).getRiskFreeCurve().getDiscountFactor(safeTime)) / safeTime;
+		}
+		else if(model instanceof FiniteDifferenceInterestRateModel) {
+			final FiniteDifferenceInterestRateModel interestRateModel =
+					(FiniteDifferenceInterestRateModel) model;
+
+			final double maturity = time + LOCAL_DISCOUNT_BOND_EPSILON;
+			final double discountBond = interestRateModel.getDiscountBond(time, maturity, x);
+
+			return -Math.log(discountBond) / LOCAL_DISCOUNT_BOND_EPSILON;
+		}
+		else {
+			throw new IllegalStateException("Unsupported model type.");
+		}
+	}
+
+	private BoundaryCondition getLowerBoundaryCondition(final double time, final double x) {
+		if(model instanceof FiniteDifferenceEquityModel) {
+			return ((FiniteDifferenceEquityModel) model)
+					.getBoundaryConditionsAtLowerBoundary((FiniteDifferenceEquityProduct) product, time, x)[0];
+		}
+		else if(model instanceof FiniteDifferenceInterestRateModel) {
+			return ((FiniteDifferenceInterestRateModel) model)
+					.getBoundaryConditionsAtLowerBoundary((FiniteDifferenceInterestRateProduct) product, time, x)[0];
+		}
+		else {
+			throw new IllegalStateException("Unsupported model type.");
+		}
+	}
+
+	private BoundaryCondition getUpperBoundaryCondition(final double time, final double x) {
+		if(model instanceof FiniteDifferenceEquityModel) {
+			return ((FiniteDifferenceEquityModel) model)
+					.getBoundaryConditionsAtUpperBoundary((FiniteDifferenceEquityProduct) product, time, x)[0];
+		}
+		else if(model instanceof FiniteDifferenceInterestRateModel) {
+			return ((FiniteDifferenceInterestRateModel) model)
+					.getBoundaryConditionsAtUpperBoundary((FiniteDifferenceInterestRateProduct) product, time, x)[0];
+		}
+		else {
+			throw new IllegalStateException("Unsupported model type.");
+		}
+	}
+
+	private void buildThetaLeftHandSide(
+			final TridiagonalMatrix lhs,
+			final double[] xGrid,
+			final double[] drift,
+			final double[] variance,
+			final double[] shortRate,
+			final double deltaTau,
+			final double theta) {
+
+		final double alpha = theta * deltaTau;
+
+		for(int i = 0; i < xGrid.length; i++) {
+			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, drift[i], variance[i], shortRate[i]);
+			lhs.lower[i] = -alpha * spatial.lower;
+			lhs.diag[i] = 1.0 - alpha * spatial.diag;
+			lhs.upper[i] = -alpha * spatial.upper;
+		}
+	}
+
+	private void buildThetaRightHandSide(
+			final TridiagonalMatrix rhsOperator,
+			final double[] xGrid,
+			final double[] drift,
+			final double[] variance,
+			final double[] shortRate,
+			final double deltaTau,
+			final double theta) {
+
+		final double alpha = (1.0 - theta) * deltaTau;
+
+		for(int i = 0; i < xGrid.length; i++) {
+			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, drift[i], variance[i], shortRate[i]);
+			rhsOperator.lower[i] = alpha * spatial.lower;
+			rhsOperator.diag[i] = 1.0 + alpha * spatial.diag;
+			rhsOperator.upper[i] = alpha * spatial.upper;
+		}
+	}
+
+	private double[] apply(final TridiagonalMatrix matrix, final double[] vector) {
+		final int n = vector.length;
+		final double[] result = new double[n];
+
+		for(int i = 0; i < n; i++) {
+			double value = matrix.diag[i] * vector[i];
+			if(i > 0) {
+				value += matrix.lower[i] * vector[i - 1];
+			}
+			if(i < n - 1) {
+				value += matrix.upper[i] * vector[i + 1];
+			}
+			result[i] = value;
+		}
+
+		return result;
+	}
+
+	private void overwriteAsDirichlet(
+			final TridiagonalMatrix matrix,
+			final double[] rhs,
+			final int row,
+			final double value) {
+
+		matrix.lower[row] = 0.0;
+		matrix.diag[row] = 1.0;
+		matrix.upper[row] = 0.0;
+		rhs[row] = value;
+	}
+
+	private RowCoefficients spatialOperatorRow(
+			final int i,
+			final double[] xGrid,
+			final double drift,
+			final double variance,
+			final double shortRate) {
+
+		final int n = xGrid.length;
+		final double halfVariance = 0.5 * variance;
+
+		double firstDerivativeLower = 0.0;
+		double firstDerivativeDiagonal = 0.0;
+		double firstDerivativeUpper = 0.0;
+
+		double secondDerivativeLower = 0.0;
+		double secondDerivativeDiagonal = 0.0;
+		double secondDerivativeUpper = 0.0;
+
+		if(i == 0) {
+			final double h1 = xGrid[1] - xGrid[0];
+			final double h2 = xGrid[2] - xGrid[1];
+
+			firstDerivativeDiagonal = -1.0 / h1;
+			firstDerivativeUpper = 1.0 / h1;
+
+			secondDerivativeDiagonal = -2.0 / (h1 * h2);
+			secondDerivativeUpper = 2.0 / (h1 * (h1 + h2));
+		}
+		else if(i == n - 1) {
+			final double h0 = xGrid[i] - xGrid[i - 1];
+			final double h3 = xGrid[i - 1] - xGrid[i - 2];
+
+			firstDerivativeLower = -1.0 / h0;
+			firstDerivativeDiagonal = 1.0 / h0;
+
+			secondDerivativeLower = 2.0 / (h0 * (h0 + h3));
+			secondDerivativeDiagonal = -2.0 / (h3 * h0);
+		}
+		else {
+			final double h0 = xGrid[i] - xGrid[i - 1];
+			final double h1 = xGrid[i + 1] - xGrid[i];
+
+			firstDerivativeLower = -h1 / (h0 * (h1 + h0));
+			firstDerivativeDiagonal = (h1 - h0) / (h1 * h0);
+			firstDerivativeUpper = h0 / (h1 * (h0 + h1));
+
+			secondDerivativeLower = 2.0 / (h0 * (h0 + h1));
+			secondDerivativeDiagonal = -2.0 / (h0 * h1);
+			secondDerivativeUpper = 2.0 / (h1 * (h0 + h1));
+		}
+
+		return new RowCoefficients(
+				drift * firstDerivativeLower + halfVariance * secondDerivativeLower,
+				drift * firstDerivativeDiagonal + halfVariance * secondDerivativeDiagonal - shortRate,
+				drift * firstDerivativeUpper + halfVariance * secondDerivativeUpper
+		);
 	}
 
 	private double[] buildObstacleVector(

@@ -1,10 +1,10 @@
 package net.finmath.finitedifference.interestrate.models;
 
 import net.finmath.finitedifference.FiniteDifferenceModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.finitedifference.interestrate.products.FiniteDifferenceInterestRateProduct;
 import net.finmath.marketdata.model.AnalyticModel;
 
 /**
@@ -222,7 +222,7 @@ public interface FiniteDifferenceInterestRateModel extends FiniteDifferenceModel
 	 * @return Boundary conditions at the lower boundary.
 	 */
 	default BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceEquityProduct product,
+			final FiniteDifferenceInterestRateProduct product,
 			final double time,
 			final double... stateVariables) {
 
@@ -250,7 +250,7 @@ public interface FiniteDifferenceInterestRateModel extends FiniteDifferenceModel
 	 * @return Boundary conditions at the upper boundary.
 	 */
 	default BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceEquityProduct product,
+			final FiniteDifferenceInterestRateProduct product,
 			final double time,
 			final double... stateVariables) {
 
