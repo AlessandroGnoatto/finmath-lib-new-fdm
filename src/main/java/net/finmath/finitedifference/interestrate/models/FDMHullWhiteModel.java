@@ -503,23 +503,48 @@ public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
 	}
 
 	private double getMeanReversion(final double time) {
-		int timeIndex = volatilityModel.getTimeDiscretization().getTimeIndex(time);
-		if(timeIndex < 0) {
-			timeIndex = -timeIndex - 2;
-		}
-		timeIndex = Math.max(0, Math.min(timeIndex, volatilityModel.getTimeDiscretization().getNumberOfTimeSteps() - 1));
-
+		final int timeIndex = getVolatilityIntervalIndex(time);
 		return volatilityModel.getMeanReversion(timeIndex).doubleValue();
 	}
 
 	private double getVolatility(final double time) {
-		int timeIndex = volatilityModel.getTimeDiscretization().getTimeIndex(time);
+		final int timeIndex = getVolatilityIntervalIndex(time);
+		return volatilityModel.getVolatility(timeIndex).doubleValue();
+	}
+
+	private int getVolatilityIntervalIndex(final double time) {
+		final var timeDiscretization = volatilityModel.getTimeDiscretization();
+
+		int timeIndex = timeDiscretization.getTimeIndex(time);
 		if(timeIndex < 0) {
 			timeIndex = -timeIndex - 2;
 		}
-		timeIndex = Math.max(0, Math.min(timeIndex, volatilityModel.getTimeDiscretization().getNumberOfTimeSteps() - 1));
 
-		return volatilityModel.getVolatility(timeIndex).doubleValue();
+		/*
+		 * Special case:
+		 * A volatility model specified on TimeDiscretizationFromArray(0.0)
+		 * is interpreted as piecewise constant with one single parameter set
+		 * valid for all times, exactly as in the Monte Carlo Hull-White setup.
+		 */
+		final int maxIndex;
+		if(timeDiscretization.getNumberOfTimeSteps() > 0) {
+			maxIndex = timeDiscretization.getNumberOfTimeSteps() - 1;
+		}
+		else if(timeDiscretization.getNumberOfTimes() > 0) {
+			maxIndex = 0;
+		}
+		else {
+			throw new IllegalArgumentException("Volatility-model time discretization is empty.");
+		}
+
+		if(timeIndex < 0) {
+			timeIndex = 0;
+		}
+		if(timeIndex > maxIndex) {
+			timeIndex = maxIndex;
+		}
+
+		return timeIndex;
 	}
 
 	private double getInitialDiscountForwardRate(final double periodStart, final double periodEnd) {
@@ -597,25 +622,6 @@ public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
 				* (Math.exp(-2.0 * getMRTime(timeNext, maturity))
 						- Math.exp(-2.0 * getMRTime(timePrevious, maturity)))
 				/ (2.0 * meanReversion);
-	}
-
-	private int getVolatilityIntervalIndex(final double time) {
-		final var timeDiscretization = volatilityModel.getTimeDiscretization();
-
-		int timeIndex = timeDiscretization.getTimeIndex(time);
-		if(timeIndex < 0) {
-			timeIndex = -timeIndex - 2;
-		}
-
-		if(timeIndex < 0) {
-			timeIndex = 0;
-		}
-
-		if(timeIndex >= timeDiscretization.getNumberOfTimeSteps()) {
-			timeIndex = timeDiscretization.getNumberOfTimeSteps() - 1;
-		}
-
-		return timeIndex;
 	}
 
 	@Override
