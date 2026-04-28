@@ -1,17 +1,12 @@
 package net.finmath.finitedifference.interestrate.boundaries;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.finitedifference.interestrate.models.FDMHullWhiteModel;
 import net.finmath.finitedifference.interestrate.products.FiniteDifferenceInterestRateProduct;
 import net.finmath.finitedifference.interestrate.products.Swaption;
-import net.finmath.modelling.Exercise;
+import net.finmath.finitedifference.interestrate.products.Swaption.ResolvedExerciseData;
 import net.finmath.montecarlo.interestrate.products.BermudanSwaptionFromSwapSchedules.SwaptionType;
-import net.finmath.time.Schedule;
-import net.finmath.time.TimeDiscretization;
 
 /**
  * Boundary conditions for {@link Swaption} under {@link FDMHullWhiteModel}.
@@ -173,250 +168,28 @@ public class SwaptionHullWhiteModelBoundary implements FiniteDifferenceInterestR
 			final double time,
 			final double stateVariable) {
 
-		final List<ExerciseOpportunity> remainingExerciseOpportunities =
-				getRemainingExerciseOpportunities(swaption, time);
-
-		if(remainingExerciseOpportunities.isEmpty()) {
-			return 0.0;
-		}
+		final ResolvedExerciseData resolvedExerciseData = swaption.getResolvedExerciseData(model);
 
 		double value = 0.0;
 
-		for(final ExerciseOpportunity opportunity : remainingExerciseOpportunities) {
-			final double swapValue = getUnderlyingSwapValue(
-					swaption,
-					time,
-					opportunity.scheduleIndex,
-					stateVariable
-			);
-
-			value = Math.max(value, Math.max(swapValue, 0.0));
-		}
-
-		return value;
-	}
-
-	private List<ExerciseOpportunity> getRemainingExerciseOpportunities(
-			final Swaption swaption,
-			final double time) {
-
-		final Exercise exercise = swaption.getExercise();
-		final List<ExerciseOpportunity> opportunities = new ArrayList<>();
-
-		if(exercise.isAmerican()) {
-			if(time <= exercise.getMaturity() + TIME_TOLERANCE) {
-				opportunities.add(new ExerciseOpportunity(time, 0));
-			}
-			return opportunities;
-		}
-
-		final double[] exerciseTimes = resolveDiscreteExerciseTimes(swaption);
-		final int[] scheduleIndices = resolveDiscreteScheduleIndices(swaption, exerciseTimes);
-
-		for(int i = 0; i < exerciseTimes.length; i++) {
-			if(exerciseTimes[i] >= time - TIME_TOLERANCE) {
-				opportunities.add(new ExerciseOpportunity(exerciseTimes[i], scheduleIndices[i]));
-			}
-		}
-
-		return opportunities;
-	}
-
-	private double[] resolveDiscreteExerciseTimes(final Swaption swaption) {
-
-		final double[] explicitExerciseDates = swaption.getExplicitExerciseDates();
-		if(explicitExerciseDates != null) {
-			return explicitExerciseDates.clone();
-		}
-
-		final Exercise exercise = swaption.getExercise();
-
-		if(exercise.isEuropean()) {
-			return new double[] { exercise.getMaturity() };
-		}
-
-		if(exercise.isBermudan()) {
-			final Schedule[] fixSchedules = swaption.getFixSchedules();
-
-			if(fixSchedules.length == 1) {
-				return new double[] { exercise.getMaturity() };
-			}
-
-			final double[] exerciseTimes = new double[fixSchedules.length];
-			for(int i = 0; i < exerciseTimes.length; i++) {
-				exerciseTimes[i] = inferExerciseDateFromSchedules(
-						swaption.getFixSchedules()[i],
-						swaption.getFloatSchedules()[i],
-						i
-				);
-			}
-			return exerciseTimes;
-		}
-
-		throw new IllegalArgumentException("Unsupported exercise type.");
-	}
-
-	private int[] resolveDiscreteScheduleIndices(
-			final Swaption swaption,
-			final double[] exerciseTimes) {
-
-		final Schedule[] fixSchedules = swaption.getFixSchedules();
-
-		if(fixSchedules.length == 1) {
-			final int[] scheduleIndices = new int[exerciseTimes.length];
-			for(int i = 0; i < scheduleIndices.length; i++) {
-				scheduleIndices[i] = 0;
-			}
-			return scheduleIndices;
-		}
-
-		if(fixSchedules.length != exerciseTimes.length) {
-			throw new IllegalArgumentException(
-					"The number of underlying swap definitions must be either 1 or equal to the number of exercise dates."
-			);
-		}
-
-		final int[] scheduleIndices = new int[exerciseTimes.length];
-		for(int i = 0; i < scheduleIndices.length; i++) {
-			scheduleIndices[i] = i;
-		}
-
-		return scheduleIndices;
-	}
-
-	private double inferExerciseDateFromSchedules(
-			final Schedule fixSchedule,
-			final Schedule floatSchedule,
-			final int scheduleIndex) {
-
-		final double fixStart = fixSchedule.getPeriodStart(0);
-		final double floatStart = floatSchedule.getPeriodStart(0);
-
-		if(Math.abs(fixStart - floatStart) > TIME_TOLERANCE) {
-			throw new IllegalArgumentException(
-					"Cannot infer a unique exercise date from schedule pair "
-					+ scheduleIndex
-					+ ": first fixed-leg start and first float-leg start differ."
-			);
-		}
-
-		return fixStart;
-	}
-
-	private double getUnderlyingSwapValue(
-			final Swaption swaption,
-			final double time,
-			final int scheduleIndex,
-			final double stateVariable) {
-
-		final double fixedLegValue = getFixedLegValue(
-				swaption,
-				time,
-				scheduleIndex,
-				stateVariable
-		);
-
-		final double floatingLegValue = getFloatingLegValue(
-				swaption,
-				time,
-				scheduleIndex,
-				stateVariable
-		);
-
-		if(swaption.getSwaptionType() == SwaptionType.PAYER) {
-			return floatingLegValue - fixedLegValue;
-		}
-		else if(swaption.getSwaptionType() == SwaptionType.RECEIVER) {
-			return fixedLegValue - floatingLegValue;
-		}
-		else {
-			throw new IllegalArgumentException("Unsupported swaption type: " + swaption.getSwaptionType());
-		}
-	}
-
-	private double getFixedLegValue(
-			final Swaption swaption,
-			final double time,
-			final int scheduleIndex,
-			final double stateVariable) {
-
-		final Schedule fixedSchedule = swaption.getFixSchedules()[scheduleIndex];
-		final double fixedRate = swaption.getSwapRates()[scheduleIndex];
-		final double notional = swaption.getNotionals()[scheduleIndex];
-
-		double value = 0.0;
-
-		for(int periodIndex = 0; periodIndex < fixedSchedule.getNumberOfPeriods(); periodIndex++) {
-			final double paymentTime = fixedSchedule.getPayment(periodIndex);
-
-			if(paymentTime <= time + TIME_TOLERANCE) {
+		for(int i = 0; i < resolvedExerciseData.getNumberOfExerciseTimes(); i++) {
+			if(resolvedExerciseData.getExerciseTime(i) < time - TIME_TOLERANCE) {
 				continue;
 			}
 
-			final double accrualFactor = fixedSchedule.getPeriodLength(periodIndex);
-			final double discountBond = model.getDiscountBond(time, paymentTime, stateVariable);
+			final int scheduleIndex = resolvedExerciseData.getScheduleIndex(i);
 
-			value += notional * fixedRate * accrualFactor * discountBond;
+			value = Math.max(
+					value,
+					swaption.getIntrinsicValue(
+							time,
+							scheduleIndex,
+							stateVariable,
+							model
+					)
+			);
 		}
 
 		return value;
-	}
-
-	private double getFloatingLegValue(
-			final Swaption swaption,
-			final double time,
-			final int scheduleIndex,
-			final double stateVariable) {
-
-		final Schedule floatingSchedule = swaption.getFloatSchedules()[scheduleIndex];
-		final double notional = swaption.getNotionals()[scheduleIndex];
-
-		double value = 0.0;
-
-		for(int periodIndex = 0; periodIndex < floatingSchedule.getNumberOfPeriods(); periodIndex++) {
-			final double fixingTime = floatingSchedule.getFixing(periodIndex);
-			final double paymentTime = floatingSchedule.getPayment(periodIndex);
-
-			if(fixingTime < time - TIME_TOLERANCE) {
-				continue;
-			}
-			if(paymentTime <= time + TIME_TOLERANCE) {
-				continue;
-			}
-
-			final double accrualFactor = floatingSchedule.getPeriodLength(periodIndex);
-			final double forwardRate = model.getForwardRate(
-					swaption.getForwardCurveName(),
-					time,
-					fixingTime,
-					paymentTime,
-					stateVariable
-			);
-			final double discountBond = model.getDiscountBond(
-					time,
-					paymentTime,
-					stateVariable
-			);
-
-			value += notional * forwardRate * accrualFactor * discountBond;
-		}
-
-		return value;
-	}
-
-	/**
-	 * Small container for one exercise opportunity.
-	 *
-	 * @author Alessandro Gnoatto
-	 */
-	private static final class ExerciseOpportunity {
-
-		private final double exerciseTime;
-		private final int scheduleIndex;
-
-		private ExerciseOpportunity(final double exerciseTime, final int scheduleIndex) {
-			this.exerciseTime = exerciseTime;
-			this.scheduleIndex = scheduleIndex;
-		}
 	}
 }

@@ -189,10 +189,8 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 			final double evaluationTime,
 			final FiniteDifferenceInterestRateModel model) {
 
-		validateModel(model);
-
-		final ResolvedExerciseData resolvedExerciseData = resolveExerciseData(model);
-		final double lastExerciseTime = resolvedExerciseData.exerciseTimes[resolvedExerciseData.exerciseTimes.length - 1];
+		final ResolvedExerciseData resolvedExerciseData = getResolvedExerciseData(model);
+		final double lastExerciseTime = resolvedExerciseData.getLastExerciseTime();
 
 		final ResolvedSwaption resolvedProduct = new ResolvedSwaption(resolvedExerciseData);
 
@@ -213,10 +211,8 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 	@Override
 	public double[][] getValues(final FiniteDifferenceInterestRateModel model) {
 
-		validateModel(model);
-
-		final ResolvedExerciseData resolvedExerciseData = resolveExerciseData(model);
-		final double lastExerciseTime = resolvedExerciseData.exerciseTimes[resolvedExerciseData.exerciseTimes.length - 1];
+		final ResolvedExerciseData resolvedExerciseData = getResolvedExerciseData(model);
+		final double lastExerciseTime = resolvedExerciseData.getLastExerciseTime();
 
 		final ResolvedSwaption resolvedProduct = new ResolvedSwaption(resolvedExerciseData);
 
@@ -317,6 +313,78 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 		return floatSchedules.clone();
 	}
 
+	/**
+	 * Resolves the exercise data to be used numerically under the given model.
+	 *
+	 * <p>
+	 * For American exercise, the exercise times depend on the model time grid.
+	 * For European and Bermudan exercise, they are determined directly from the
+	 * contractual product data.
+	 * </p>
+	 *
+	 * @param model The finite-difference interest-rate model.
+	 * @return The resolved exercise data.
+	 */
+	public ResolvedExerciseData getResolvedExerciseData(final FiniteDifferenceInterestRateModel model) {
+		validateModel(model);
+
+		if(exercise.isAmerican()) {
+			return resolveAmericanExerciseData(model);
+		}
+
+		final double[] exerciseTimes = resolveDiscreteExerciseTimes();
+		final int[] scheduleIndices = resolveDiscreteScheduleIndices(exerciseTimes);
+
+		return new ResolvedExerciseData(exerciseTimes, scheduleIndices);
+	}
+
+	/**
+	 * Returns the intrinsic value at the given time and state for the schedule
+	 * indexed by {@code scheduleIndex}.
+	 *
+	 * @param time The running time.
+	 * @param scheduleIndex The schedule index.
+	 * @param stateVariable The state variable.
+	 * @param model The finite-difference interest-rate model.
+	 * @return The intrinsic value.
+	 */
+	public double getIntrinsicValue(
+			final double time,
+			final int scheduleIndex,
+			final double stateVariable,
+			final FiniteDifferenceInterestRateModel model) {
+		return Math.max(getUnderlyingSwapValue(time, scheduleIndex, stateVariable, model), 0.0);
+	}
+
+	/**
+	 * Returns the underlying swap value at the given time and state for the
+	 * schedule indexed by {@code scheduleIndex}.
+	 *
+	 * @param time The running time.
+	 * @param scheduleIndex The schedule index.
+	 * @param stateVariable The state variable.
+	 * @param model The finite-difference interest-rate model.
+	 * @return The underlying swap value.
+	 */
+	public double getUnderlyingSwapValue(
+			final double time,
+			final int scheduleIndex,
+			final double stateVariable,
+			final FiniteDifferenceInterestRateModel model) {
+
+		final double fixedLegValue = getFixedLegValue(time, scheduleIndex, stateVariable, model);
+		final double floatingLegValue = getFloatingLegValue(time, scheduleIndex, stateVariable, model);
+
+		switch(swaptionType) {
+		case PAYER:
+			return floatingLegValue - fixedLegValue;
+		case RECEIVER:
+			return fixedLegValue - floatingLegValue;
+		default:
+			throw new IllegalArgumentException("Unsupported swaption type: " + swaptionType);
+		}
+	}
+
 	private void validateInputs() {
 		for(int i = 0; i < notionals.length; i++) {
 			if(notionals[i] <= 0.0) {
@@ -384,18 +452,6 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 		final SpaceTimeDiscretization discretization = model.getSpaceTimeDiscretization();
 		final double[] xGrid = discretization.getSpaceGrid(0).getGrid();
 		return new double[xGrid.length];
-	}
-
-	private ResolvedExerciseData resolveExerciseData(final FiniteDifferenceInterestRateModel model) {
-
-		if(exercise.isAmerican()) {
-			return resolveAmericanExerciseData(model);
-		}
-
-		final double[] exerciseTimes = resolveDiscreteExerciseTimes();
-		final int[] scheduleIndices = resolveDiscreteScheduleIndices(exerciseTimes);
-
-		return new ResolvedExerciseData(exerciseTimes, scheduleIndices);
 	}
 
 	private double[] resolveDiscreteExerciseTimes() {
@@ -492,33 +548,6 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 		return fixStart;
 	}
 
-	private double getIntrinsicValue(
-			final double time,
-			final int scheduleIndex,
-			final double stateVariable,
-			final FiniteDifferenceInterestRateModel model) {
-		return Math.max(getUnderlyingSwapValue(time, scheduleIndex, stateVariable, model), 0.0);
-	}
-
-	private double getUnderlyingSwapValue(
-			final double time,
-			final int scheduleIndex,
-			final double stateVariable,
-			final FiniteDifferenceInterestRateModel model) {
-
-		final double fixedLegValue = getFixedLegValue(time, scheduleIndex, stateVariable, model);
-		final double floatingLegValue = getFloatingLegValue(time, scheduleIndex, stateVariable, model);
-
-		switch(swaptionType) {
-		case PAYER:
-			return floatingLegValue - fixedLegValue;
-		case RECEIVER:
-			return fixedLegValue - floatingLegValue;
-		default:
-			throw new IllegalArgumentException("Unsupported swaption type: " + swaptionType);
-		}
-	}
-
 	private double getFixedLegValue(
 			final double time,
 			final int scheduleIndex,
@@ -608,7 +637,7 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 	 *
 	 * @author Alessandro Gnoatto
 	 */
-	private static final class ResolvedExerciseData {
+	public static final class ResolvedExerciseData {
 
 		private final double[] exerciseTimes;
 		private final int[] scheduleIndices;
@@ -618,6 +647,78 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 				final int[] scheduleIndices) {
 			this.exerciseTimes = exerciseTimes.clone();
 			this.scheduleIndices = scheduleIndices.clone();
+		}
+
+		/**
+		 * Returns the resolved exercise times.
+		 *
+		 * @return The resolved exercise times.
+		 */
+		public double[] getExerciseTimes() {
+			return exerciseTimes.clone();
+		}
+
+		/**
+		 * Returns the resolved schedule indices.
+		 *
+		 * @return The resolved schedule indices.
+		 */
+		public int[] getScheduleIndices() {
+			return scheduleIndices.clone();
+		}
+
+		/**
+		 * Returns the number of resolved exercise opportunities.
+		 *
+		 * @return The number of resolved exercise opportunities.
+		 */
+		public int getNumberOfExerciseTimes() {
+			return exerciseTimes.length;
+		}
+
+		/**
+		 * Returns the exercise time at the given index.
+		 *
+		 * @param index The index.
+		 * @return The exercise time.
+		 */
+		public double getExerciseTime(final int index) {
+			return exerciseTimes[index];
+		}
+
+		/**
+		 * Returns the schedule index at the given index.
+		 *
+		 * @param index The index.
+		 * @return The schedule index.
+		 */
+		public int getScheduleIndex(final int index) {
+			return scheduleIndices[index];
+		}
+
+		/**
+		 * Returns the last exercise time.
+		 *
+		 * @return The last exercise time.
+		 */
+		public double getLastExerciseTime() {
+			return exerciseTimes[exerciseTimes.length - 1];
+		}
+
+		/**
+		 * Returns the resolved exercise index for the given time.
+		 *
+		 * @param time The running time.
+		 * @return The resolved exercise index.
+		 */
+		public int findExerciseIndex(final double time) {
+			for(int i = 0; i < exerciseTimes.length; i++) {
+				if(Math.abs(exerciseTimes[i] - time) <= TIME_TOLERANCE) {
+					return i;
+				}
+			}
+
+			throw new IllegalArgumentException("No exercise index found for time " + time + ".");
 		}
 	}
 
@@ -645,7 +746,7 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 
 		@Override
 		public double[] getEventTimes() {
-			return resolvedExerciseData.exerciseTimes.clone();
+			return resolvedExerciseData.getExerciseTimes();
 		}
 
 		@Override
@@ -658,8 +759,8 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 				throw new IllegalArgumentException("valuesAfterEvent must not be null.");
 			}
 
-			final int exerciseIndex = findExerciseIndex(time);
-			final int scheduleIndex = resolvedExerciseData.scheduleIndices[exerciseIndex];
+			final int exerciseIndex = resolvedExerciseData.findExerciseIndex(time);
+			final int scheduleIndex = resolvedExerciseData.getScheduleIndex(exerciseIndex);
 
 			final double[] xGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 
@@ -693,16 +794,6 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
 		@Override
 		public double[][] getValues(final FiniteDifferenceInterestRateModel model) {
 			return Swaption.this.getValues(model);
-		}
-
-		private int findExerciseIndex(final double time) {
-			for(int i = 0; i < resolvedExerciseData.exerciseTimes.length; i++) {
-				if(Math.abs(resolvedExerciseData.exerciseTimes[i] - time) <= TIME_TOLERANCE) {
-					return i;
-				}
-			}
-
-			throw new IllegalArgumentException("No exercise index found for time " + time + ".");
 		}
 	}
 }
