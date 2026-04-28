@@ -74,15 +74,15 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 		private final double[] drift;
 		private final double[] variance;
-		private final double[] shortRate;
+		private final double[] localDiscountRate;
 
 		private ModelCoefficients(
 				final double[] drift,
 				final double[] variance,
-				final double[] shortRate) {
+				final double[] localDiscountRate) {
 			this.drift = drift;
 			this.variance = variance;
-			this.shortRate = shortRate;
+			this.localDiscountRate = localDiscountRate;
 		}
 
 		private double[] getDrift() {
@@ -93,21 +93,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 			return variance;
 		}
 
-		private double[] getShortRate() {
-			return shortRate;
-		}
-	}
-
-	private static final class RowCoefficients {
-
-		private final double lower;
-		private final double diag;
-		private final double upper;
-
-		private RowCoefficients(final double lower, final double diag, final double upper) {
-			this.lower = lower;
-			this.diag = diag;
-			this.upper = upper;
+		private double[] getLocalDiscountRate() {
+			return localDiscountRate;
 		}
 	}
 
@@ -331,25 +318,27 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final TridiagonalMatrix lhs = new TridiagonalMatrix(numberOfGridPoints);
 			final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(numberOfGridPoints);
 
-			buildThetaLeftHandSide(
+			ThetaMethod1DAssembly.buildThetaLeftHandSide(
 					lhs,
 					xGrid,
 					coefficientsAtNextTime.getDrift(),
 					coefficientsAtNextTime.getVariance(),
-					coefficientsAtNextTime.getShortRate(),
+					coefficientsAtNextTime.getLocalDiscountRate(),
 					deltaTau,
-					theta);
+					theta
+			);
 
-			buildThetaRightHandSide(
+			ThetaMethod1DAssembly.buildThetaRightHandSide(
 					rhsOperator,
 					xGrid,
 					coefficientsAtCurrentTime.getDrift(),
 					coefficientsAtCurrentTime.getVariance(),
-					coefficientsAtCurrentTime.getShortRate(),
+					coefficientsAtCurrentTime.getLocalDiscountRate(),
 					deltaTau,
-					theta);
+					theta
+			);
 
-			final double[] rhs = apply(rhsOperator, u);
+			final double[] rhs = ThetaMethod1DAssembly.apply(rhsOperator, u);
 
 			final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
 			final double boundaryTime = horizon - tau_mp1;
@@ -358,17 +347,22 @@ public class FDMThetaMethod1D implements FDMSolver {
 			final BoundaryCondition upperCondition = getUpperBoundaryCondition(boundaryTime, xGrid[numberOfGridPoints - 1]);
 
 			if(lowerCondition.isDirichlet()) {
-				overwriteAsDirichlet(lhs, rhs, 0, lowerCondition.getValue());
+				ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, 0, lowerCondition.getValue());
 			}
 
 			if(upperCondition.isDirichlet()) {
-				overwriteAsDirichlet(lhs, rhs, numberOfGridPoints - 1, upperCondition.getValue());
+				ThetaMethod1DAssembly.overwriteAsDirichlet(lhs, rhs, numberOfGridPoints - 1, upperCondition.getValue());
 			}
 
 			for(int i = 1; i < numberOfGridPoints - 1; i++) {
 				final double x = xGrid[i];
 				if(isInternalConstraintActive(boundaryTime, x)) {
-					overwriteAsDirichlet(lhs, rhs, i, getInternalConstrainedValue(boundaryTime, x));
+					ThetaMethod1DAssembly.overwriteAsDirichlet(
+							lhs,
+							rhs,
+							i,
+							getInternalConstrainedValue(boundaryTime, x)
+					);
 				}
 			}
 
@@ -393,7 +387,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 						u,
 						1.2,
 						500,
-						1E-10);
+						1E-10
+				);
 
 				reimposeInternalConstraints(nextU, xGrid, boundaryTime);
 				reimposeBoundaryValues(nextU, lowerCondition, upperCondition);
@@ -405,7 +400,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 						boundaryTime,
 						exerciseValue,
 						lowerCondition,
-						upperCondition);
+						upperCondition
+				);
 
 				nextU = ProjectedTridiagonalSOR.solve(
 						lhs,
@@ -414,7 +410,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 						u,
 						1.2,
 						500,
-						1E-10);
+						1E-10
+				);
 
 				reimposeInternalConstraints(nextU, xGrid, boundaryTime);
 				reimposeBoundaryValues(nextU, lowerCondition, upperCondition);
@@ -429,7 +426,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 							boundaryTime,
 							exerciseValue,
 							lowerCondition,
-							upperCondition);
+							upperCondition
+					);
 				}
 				else {
 					reimposeInternalConstraints(nextU, xGrid, boundaryTime);
@@ -546,7 +544,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 		final double[] drift = new double[numberOfGridPoints];
 		final double[] variance = new double[numberOfGridPoints];
-		final double[] shortRate = new double[numberOfGridPoints];
+		final double[] localDiscountRate = new double[numberOfGridPoints];
 
 		for(int i = 0; i < numberOfGridPoints; i++) {
 			final double x = xGrid[i];
@@ -562,10 +560,10 @@ public class FDMThetaMethod1D implements FDMSolver {
 			}
 			variance[i] = localVariance;
 
-			shortRate[i] = getLocalShortRateAt(time, x);
+			localDiscountRate[i] = getLocalShortRateAt(time, x);
 		}
 
-		return new ModelCoefficients(drift, variance, shortRate);
+		return new ModelCoefficients(drift, variance, localDiscountRate);
 	}
 
 	private double getDriftAt(final double time, final double x) {
@@ -637,132 +635,6 @@ public class FDMThetaMethod1D implements FDMSolver {
 		else {
 			throw new IllegalStateException("Unsupported model type.");
 		}
-	}
-
-	private void buildThetaLeftHandSide(
-			final TridiagonalMatrix lhs,
-			final double[] xGrid,
-			final double[] drift,
-			final double[] variance,
-			final double[] shortRate,
-			final double deltaTau,
-			final double theta) {
-
-		final double alpha = theta * deltaTau;
-
-		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, drift[i], variance[i], shortRate[i]);
-			lhs.lower[i] = -alpha * spatial.lower;
-			lhs.diag[i] = 1.0 - alpha * spatial.diag;
-			lhs.upper[i] = -alpha * spatial.upper;
-		}
-	}
-
-	private void buildThetaRightHandSide(
-			final TridiagonalMatrix rhsOperator,
-			final double[] xGrid,
-			final double[] drift,
-			final double[] variance,
-			final double[] shortRate,
-			final double deltaTau,
-			final double theta) {
-
-		final double alpha = (1.0 - theta) * deltaTau;
-
-		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, drift[i], variance[i], shortRate[i]);
-			rhsOperator.lower[i] = alpha * spatial.lower;
-			rhsOperator.diag[i] = 1.0 + alpha * spatial.diag;
-			rhsOperator.upper[i] = alpha * spatial.upper;
-		}
-	}
-
-	private double[] apply(final TridiagonalMatrix matrix, final double[] vector) {
-		final int n = vector.length;
-		final double[] result = new double[n];
-
-		for(int i = 0; i < n; i++) {
-			double value = matrix.diag[i] * vector[i];
-			if(i > 0) {
-				value += matrix.lower[i] * vector[i - 1];
-			}
-			if(i < n - 1) {
-				value += matrix.upper[i] * vector[i + 1];
-			}
-			result[i] = value;
-		}
-
-		return result;
-	}
-
-	private void overwriteAsDirichlet(
-			final TridiagonalMatrix matrix,
-			final double[] rhs,
-			final int row,
-			final double value) {
-
-		matrix.lower[row] = 0.0;
-		matrix.diag[row] = 1.0;
-		matrix.upper[row] = 0.0;
-		rhs[row] = value;
-	}
-
-	private RowCoefficients spatialOperatorRow(
-			final int i,
-			final double[] xGrid,
-			final double drift,
-			final double variance,
-			final double shortRate) {
-
-		final int n = xGrid.length;
-		final double halfVariance = 0.5 * variance;
-
-		double firstDerivativeLower = 0.0;
-		double firstDerivativeDiagonal = 0.0;
-		double firstDerivativeUpper = 0.0;
-
-		double secondDerivativeLower = 0.0;
-		double secondDerivativeDiagonal = 0.0;
-		double secondDerivativeUpper = 0.0;
-
-		if(i == 0) {
-			final double h1 = xGrid[1] - xGrid[0];
-			final double h2 = xGrid[2] - xGrid[1];
-
-			firstDerivativeDiagonal = -1.0 / h1;
-			firstDerivativeUpper = 1.0 / h1;
-
-			secondDerivativeDiagonal = -2.0 / (h1 * h2);
-			secondDerivativeUpper = 2.0 / (h1 * (h1 + h2));
-		}
-		else if(i == n - 1) {
-			final double h0 = xGrid[i] - xGrid[i - 1];
-			final double h3 = xGrid[i - 1] - xGrid[i - 2];
-
-			firstDerivativeLower = -1.0 / h0;
-			firstDerivativeDiagonal = 1.0 / h0;
-
-			secondDerivativeLower = 2.0 / (h0 * (h0 + h3));
-			secondDerivativeDiagonal = -2.0 / (h3 * h0);
-		}
-		else {
-			final double h0 = xGrid[i] - xGrid[i - 1];
-			final double h1 = xGrid[i + 1] - xGrid[i];
-
-			firstDerivativeLower = -h1 / (h0 * (h1 + h0));
-			firstDerivativeDiagonal = (h1 - h0) / (h1 * h0);
-			firstDerivativeUpper = h0 / (h1 * (h0 + h1));
-
-			secondDerivativeLower = 2.0 / (h0 * (h0 + h1));
-			secondDerivativeDiagonal = -2.0 / (h0 * h1);
-			secondDerivativeUpper = 2.0 / (h1 * (h0 + h1));
-		}
-
-		return new RowCoefficients(
-				drift * firstDerivativeLower + halfVariance * secondDerivativeLower,
-				drift * firstDerivativeDiagonal + halfVariance * secondDerivativeDiagonal - shortRate,
-				drift * firstDerivativeUpper + halfVariance * secondDerivativeUpper
-		);
 	}
 
 	private double[] buildObstacleVector(

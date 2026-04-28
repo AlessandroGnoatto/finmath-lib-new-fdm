@@ -1,23 +1,30 @@
 package net.finmath.finitedifference.solvers;
 
+import java.util.Arrays;
+
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 
 /**
- * Shared matrix-free assembly utilities for 1D theta-method finite-difference solvers.
+ * Shared matrix-free assembly utilities for one-dimensional theta-method
+ * finite-difference solvers.
  *
  * <p>
- * This class provides the common numerical building blocks used by:
+ * This class is primarily numerical: it assembles the one-dimensional spatial
+ * operator directly into tridiagonal coefficients.
  * </p>
- * <ul>
- *   <li>{@link FDMThetaMethod1D}</li>
- *   <li>{@link FDMThetaMethod1DTwoState}</li>
- * </ul>
  *
  * <p>
- * It assembles the 1D spatial operator directly into tridiagonal coefficients,
- * without constructing dense matrices.
+ * The generic assembly methods work with arrays for drift, variance, and local
+ * discount / reaction coefficients, which allows state-dependent reaction terms
+ * as required for interest-rate PDEs.
  * </p>
- * 
+ *
+ * <p>
+ * For backward compatibility with equity-only solvers using deterministic
+ * discounting, the class also provides convenience methods based on a scalar
+ * short rate.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public final class ThetaMethod1DAssembly {
@@ -28,14 +35,24 @@ public final class ThetaMethod1DAssembly {
 	}
 
 	/**
-	 * Container for model coefficients on a 1D grid.
+	 * Container for model coefficients on a one-dimensional grid in the
+	 * deterministic-rate equity case.
+	 *
+	 * <p>
+	 * This compatibility container is still useful for jump and two-state equity
+	 * solvers, where the discounting term is spatially constant.
+	 * </p>
 	 */
 	public static final class ModelCoefficients {
+
 		private final double[] drift;
 		private final double[] variance;
 		private final double shortRate;
 
-		public ModelCoefficients(final double[] drift, final double[] variance, final double shortRate) {
+		public ModelCoefficients(
+				final double[] drift,
+				final double[] variance,
+				final double shortRate) {
 			this.drift = drift;
 			this.variance = variance;
 			this.shortRate = shortRate;
@@ -55,6 +72,7 @@ public final class ThetaMethod1DAssembly {
 	}
 
 	private static final class RowCoefficients {
+
 		private final double lower;
 		private final double diag;
 		private final double upper;
@@ -67,10 +85,15 @@ public final class ThetaMethod1DAssembly {
 	}
 
 	/**
-	 * Evaluates the 1D drift, variance and short rate on the supplied grid at one time.
+	 * Compatibility method for equity-only solvers with deterministic discounting.
 	 *
-	 * @param model The finite-difference model.
-	 * @param xGrid The 1D state grid.
+	 * <p>
+	 * Evaluates the one-dimensional drift, variance, and scalar short rate on the
+	 * supplied grid at one time.
+	 * </p>
+	 *
+	 * @param model The finite-difference equity model.
+	 * @param xGrid The one-dimensional state grid.
 	 * @param time The running time.
 	 * @return The model coefficients.
 	 */
@@ -79,33 +102,38 @@ public final class ThetaMethod1DAssembly {
 			final double[] xGrid,
 			final double time) {
 
-		final int n = xGrid.length;
+		final int numberOfGridPoints = xGrid.length;
 
-		final double[] mu = new double[n];
-		final double[] variance = new double[n];
+		final double[] drift = new double[numberOfGridPoints];
+		final double[] variance = new double[numberOfGridPoints];
 
-		for(int i = 0; i < n; i++) {
+		for(int i = 0; i < numberOfGridPoints; i++) {
 			final double x = xGrid[i];
 
-			mu[i] = model.getDrift(time, x)[0];
+			drift[i] = model.getDrift(time, x)[0];
 
 			final double[][] factorLoading = model.getFactorLoading(time, x);
 
 			double localVariance = 0.0;
-			for(int f = 0; f < factorLoading[0].length; f++) {
-				final double b = factorLoading[0][f];
+			for(int factor = 0; factor < factorLoading[0].length; factor++) {
+				final double b = factorLoading[0][factor];
 				localVariance += b * b;
 			}
 			variance[i] = localVariance;
 		}
 
-		return new ModelCoefficients(mu, variance, getShortRate(model, time));
+		return new ModelCoefficients(drift, variance, getShortRate(model, time));
 	}
 
 	/**
-	 * Computes the continuously compounded short rate implied by the model discount curve.
+	 * Compatibility method for equity-only solvers with deterministic discounting.
 	 *
-	 * @param model The finite-difference model.
+	 * <p>
+	 * Computes the continuously compounded short rate implied by the model
+	 * discount curve.
+	 * </p>
+	 *
+	 * @param model The finite-difference equity model.
 	 * @param time The running time.
 	 * @return The short rate.
 	 */
@@ -115,14 +143,18 @@ public final class ThetaMethod1DAssembly {
 	}
 
 	/**
-	 * Builds the left-hand side matrix for the theta step:
-	 * {@code I - theta * dt * L(t_{m+1})}.
+	 * Compatibility overload for deterministic-rate solvers.
+	 *
+	 * <p>
+	 * Builds the left-hand side matrix for the theta step using a scalar short
+	 * rate.
+	 * </p>
 	 *
 	 * @param lhs The tridiagonal matrix to overwrite.
-	 * @param xGrid The 1D state grid.
+	 * @param xGrid The one-dimensional state grid.
 	 * @param drift The drift values on the grid.
 	 * @param variance The variance values on the grid.
-	 * @param shortRate The short rate.
+	 * @param shortRate The scalar short rate.
 	 * @param deltaTau The time step size.
 	 * @param theta The theta parameter.
 	 */
@@ -135,9 +167,57 @@ public final class ThetaMethod1DAssembly {
 			final double deltaTau,
 			final double theta) {
 
+		final double[] localDiscountRate = new double[xGrid.length];
+		Arrays.fill(localDiscountRate, shortRate);
+
+		buildThetaLeftHandSide(
+				lhs,
+				xGrid,
+				drift,
+				variance,
+				localDiscountRate,
+				deltaTau,
+				theta
+		);
+	}
+
+	/**
+	 * Builds the left-hand side matrix for the theta step:
+	 *
+	 * <p>
+	 * <i>
+	 * I - theta * dt * L(t_{m+1}).
+	 * </i>
+	 * </p>
+	 *
+	 * @param lhs The tridiagonal matrix to overwrite.
+	 * @param xGrid The one-dimensional state grid.
+	 * @param drift The drift values on the grid.
+	 * @param variance The variance values on the grid.
+	 * @param localDiscountRate The local reaction / discount coefficients on the grid.
+	 * @param deltaTau The time step size.
+	 * @param theta The theta parameter.
+	 */
+	public static void buildThetaLeftHandSide(
+			final TridiagonalMatrix lhs,
+			final double[] xGrid,
+			final double[] drift,
+			final double[] variance,
+			final double[] localDiscountRate,
+			final double deltaTau,
+			final double theta) {
+
 		final double alpha = theta * deltaTau;
+
 		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, drift[i], variance[i], shortRate);
+			final RowCoefficients spatial = spatialOperatorRow(
+					i,
+					xGrid,
+					drift[i],
+					variance[i],
+					localDiscountRate[i]
+			);
+
 			lhs.lower[i] = -alpha * spatial.lower;
 			lhs.diag[i] = 1.0 - alpha * spatial.diag;
 			lhs.upper[i] = -alpha * spatial.upper;
@@ -145,14 +225,18 @@ public final class ThetaMethod1DAssembly {
 	}
 
 	/**
-	 * Builds the right-hand side operator for the theta step:
-	 * {@code I + (1-theta) * dt * L(t_m)}.
+	 * Compatibility overload for deterministic-rate solvers.
+	 *
+	 * <p>
+	 * Builds the right-hand side operator for the theta step using a scalar short
+	 * rate.
+	 * </p>
 	 *
 	 * @param rhsOperator The tridiagonal matrix to overwrite.
-	 * @param xGrid The 1D state grid.
+	 * @param xGrid The one-dimensional state grid.
 	 * @param drift The drift values on the grid.
 	 * @param variance The variance values on the grid.
-	 * @param shortRate The short rate.
+	 * @param shortRate The scalar short rate.
 	 * @param deltaTau The time step size.
 	 * @param theta The theta parameter.
 	 */
@@ -165,9 +249,57 @@ public final class ThetaMethod1DAssembly {
 			final double deltaTau,
 			final double theta) {
 
+		final double[] localDiscountRate = new double[xGrid.length];
+		Arrays.fill(localDiscountRate, shortRate);
+
+		buildThetaRightHandSide(
+				rhsOperator,
+				xGrid,
+				drift,
+				variance,
+				localDiscountRate,
+				deltaTau,
+				theta
+		);
+	}
+
+	/**
+	 * Builds the right-hand side operator for the theta step:
+	 *
+	 * <p>
+	 * <i>
+	 * I + (1-theta) * dt * L(t_m).
+	 * </i>
+	 * </p>
+	 *
+	 * @param rhsOperator The tridiagonal matrix to overwrite.
+	 * @param xGrid The one-dimensional state grid.
+	 * @param drift The drift values on the grid.
+	 * @param variance The variance values on the grid.
+	 * @param localDiscountRate The local reaction / discount coefficients on the grid.
+	 * @param deltaTau The time step size.
+	 * @param theta The theta parameter.
+	 */
+	public static void buildThetaRightHandSide(
+			final TridiagonalMatrix rhsOperator,
+			final double[] xGrid,
+			final double[] drift,
+			final double[] variance,
+			final double[] localDiscountRate,
+			final double deltaTau,
+			final double theta) {
+
 		final double alpha = (1.0 - theta) * deltaTau;
+
 		for(int i = 0; i < xGrid.length; i++) {
-			final RowCoefficients spatial = spatialOperatorRow(i, xGrid, drift[i], variance[i], shortRate);
+			final RowCoefficients spatial = spatialOperatorRow(
+					i,
+					xGrid,
+					drift[i],
+					variance[i],
+					localDiscountRate[i]
+			);
+
 			rhsOperator.lower[i] = alpha * spatial.lower;
 			rhsOperator.diag[i] = 1.0 + alpha * spatial.diag;
 			rhsOperator.upper[i] = alpha * spatial.upper;
@@ -179,7 +311,7 @@ public final class ThetaMethod1DAssembly {
 	 *
 	 * @param matrix The tridiagonal matrix.
 	 * @param vector The vector.
-	 * @return {@code matrix * vector}.
+	 * @return The product {@code matrix * vector}.
 	 */
 	public static double[] apply(final TridiagonalMatrix matrix, final double[] vector) {
 		final int n = vector.length;
@@ -200,7 +332,7 @@ public final class ThetaMethod1DAssembly {
 	}
 
 	/**
-	 * Overwrites one row with a Dirichlet condition.
+	 * Overwrites one matrix row with a Dirichlet condition.
 	 *
 	 * @param matrix The matrix.
 	 * @param rhs The right-hand side vector.
@@ -221,58 +353,59 @@ public final class ThetaMethod1DAssembly {
 
 	private static RowCoefficients spatialOperatorRow(
 			final int i,
-			final double[] x,
-			final double mu,
+			final double[] xGrid,
+			final double drift,
 			final double variance,
-			final double r) {
+			final double localDiscountRate) {
 
-		final int n = x.length;
+		final int n = xGrid.length;
 		final double halfVariance = 0.5 * variance;
 
-		double t1Lower = 0.0;
-		double t1Diag = 0.0;
-		double t1Upper = 0.0;
+		double firstDerivativeLower = 0.0;
+		double firstDerivativeDiagonal = 0.0;
+		double firstDerivativeUpper = 0.0;
 
-		double t2Lower = 0.0;
-		double t2Diag = 0.0;
-		double t2Upper = 0.0;
+		double secondDerivativeLower = 0.0;
+		double secondDerivativeDiagonal = 0.0;
+		double secondDerivativeUpper = 0.0;
 
 		if(i == 0) {
-			final double h1 = x[1] - x[0];
-			final double h2 = x[2] - x[1];
+			final double h1 = xGrid[1] - xGrid[0];
+			final double h2 = xGrid[2] - xGrid[1];
 
-			t1Diag = -1.0 / h1;
-			t1Upper = 1.0 / h1;
+			firstDerivativeDiagonal = -1.0 / h1;
+			firstDerivativeUpper = 1.0 / h1;
 
-			t2Diag = -2.0 / (h1 * h2);
-			t2Upper = 2.0 / (h1 * (h1 + h2));
+			secondDerivativeDiagonal = -2.0 / (h1 * h2);
+			secondDerivativeUpper = 2.0 / (h1 * (h1 + h2));
 		}
 		else if(i == n - 1) {
-			final double h0 = x[i] - x[i - 1];
-			final double h3 = x[i - 1] - x[i - 2];
+			final double h0 = xGrid[i] - xGrid[i - 1];
+			final double h3 = xGrid[i - 1] - xGrid[i - 2];
 
-			t1Lower = -1.0 / h0;
-			t1Diag = 1.0 / h0;
+			firstDerivativeLower = -1.0 / h0;
+			firstDerivativeDiagonal = 1.0 / h0;
 
-			t2Lower = 2.0 / (h0 * (h0 + h3));
-			t2Diag = -2.0 / (h3 * h0);
+			secondDerivativeLower = 2.0 / (h0 * (h0 + h3));
+			secondDerivativeDiagonal = -2.0 / (h3 * h0);
 		}
 		else {
-			final double h0 = x[i] - x[i - 1];
-			final double h1 = x[i + 1] - x[i];
+			final double h0 = xGrid[i] - xGrid[i - 1];
+			final double h1 = xGrid[i + 1] - xGrid[i];
 
-			t1Lower = -h1 / (h0 * (h1 + h0));
-			t1Diag = (h1 - h0) / (h1 * h0);
-			t1Upper = h0 / (h1 * (h0 + h1));
+			firstDerivativeLower = -h1 / (h0 * (h1 + h0));
+			firstDerivativeDiagonal = (h1 - h0) / (h1 * h0);
+			firstDerivativeUpper = h0 / (h1 * (h0 + h1));
 
-			t2Lower = 2.0 / (h0 * (h0 + h1));
-			t2Diag = -2.0 / (h0 * h1);
-			t2Upper = 2.0 / (h1 * (h0 + h1));
+			secondDerivativeLower = 2.0 / (h0 * (h0 + h1));
+			secondDerivativeDiagonal = -2.0 / (h0 * h1);
+			secondDerivativeUpper = 2.0 / (h1 * (h0 + h1));
 		}
 
 		return new RowCoefficients(
-				mu * t1Lower + halfVariance * t2Lower,
-				mu * t1Diag + halfVariance * t2Diag - r,
-				mu * t1Upper + halfVariance * t2Upper);
+				drift * firstDerivativeLower + halfVariance * secondDerivativeLower,
+				drift * firstDerivativeDiagonal + halfVariance * secondDerivativeDiagonal - localDiscountRate,
+				drift * firstDerivativeUpper + halfVariance * secondDerivativeUpper
+		);
 	}
 }
