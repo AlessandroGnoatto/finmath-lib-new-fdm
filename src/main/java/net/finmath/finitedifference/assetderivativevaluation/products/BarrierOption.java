@@ -35,7 +35,8 @@ import net.finmath.time.TimeDiscretization;
  * Current implementation policy after this patch:
  * </p>
  * <ul>
- *   <li>knock-out options are priced directly by the finite-difference solver,</li>
+ *   <li>knock-out options are priced directly by the finite-difference solver,
+ *       including 2D Heston / SABR under European, Bermudan, and American exercise,</li>
  *   <li>1D knock-in options are priced directly through a coupled two-state PDE
  *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
  *   <li>2D Heston / SABR knock-in options are priced directly through an
@@ -295,14 +296,14 @@ public class BarrierOption implements
             return PricingMode.DIRECT_IN_1D_TWO_STATE;
         }
 
-        if(dims == 2 && supportsDirect2DKnockIn(model)) {
+        if(dims == 2 && supportsDirect2DStochasticVolBarrier(model)) {
             return PricingMode.DIRECT_IN_2D_PRE_HIT;
         }
 
         return PricingMode.PARITY_IN_FALLBACK;
     }
 
-    private boolean supportsDirect2DKnockIn(final FiniteDifferenceEquityModel model) {
+    private boolean supportsDirect2DStochasticVolBarrier(final FiniteDifferenceEquityModel model) {
         return model instanceof FDMHestonModel || model instanceof FDMSabrModel;
     }
 
@@ -324,7 +325,12 @@ public class BarrierOption implements
             return;
         }
 
-        if(dims == 2 && !isOutOption() && supportsDirect2DKnockIn(model)
+        if(dims == 2 && isOutOption() && supportsDirect2DStochasticVolBarrier(model)
+                && (exercise.isBermudan() || exercise.isAmerican())) {
+            return;
+        }
+
+        if(dims == 2 && !isOutOption() && supportsDirect2DStochasticVolBarrier(model)
                 && (exercise.isBermudan() || exercise.isAmerican())) {
             return;
         }
@@ -395,7 +401,7 @@ public class BarrierOption implements
                     "priceInOptionDirectly2D was called for a non knock-in barrier type.");
         }
 
-        if(!supportsDirect2DKnockIn(model)) {
+        if(!supportsDirect2DStochasticVolBarrier(model)) {
             return priceInOptionByParity(model);
         }
 
