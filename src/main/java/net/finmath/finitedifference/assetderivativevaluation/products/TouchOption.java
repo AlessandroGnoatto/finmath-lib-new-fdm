@@ -1,5 +1,10 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import java.util.Set;
+import java.util.TreeSet;
+
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
+import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
@@ -11,19 +16,19 @@ import net.finmath.finitedifference.solvers.FDMThetaMethod1DTwoState;
 import net.finmath.finitedifference.solvers.ImmediateCashActivationPolicy;
 import net.finmath.finitedifference.solvers.TwoStateActivationPolicy;
 import net.finmath.finitedifference.solvers.TwoStateActiveBoundaryProvider;
+import net.finmath.finitedifference.solvers.adi.ActivatedBarrierTrace2D;
+import net.finmath.finitedifference.solvers.adi.BarrierPDEMode;
+import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
 import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;
+import net.finmath.modelling.products.MonitoringType;
 import net.finmath.modelling.products.TouchSettlementTiming;
 import net.finmath.time.TimeDiscretization;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
-import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
-import net.finmath.finitedifference.solvers.adi.ActivatedBarrierTrace2D;
-import net.finmath.finitedifference.solvers.adi.BarrierPDEMode;
-import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
+import net.finmath.time.TimeDiscretizationFromArray;
 
 /**
  * Finite-difference valuation of a single-barrier cash touch option.
@@ -68,16 +73,18 @@ import net.finmath.finitedifference.solvers.adi.BarrierPreHitSpecification;
  * </ul>
  *
  * <p>
- * The implementation supports European exercise only. Knock-out products are priced directly by
- * imposing the inactive value in the knocked-out region. One-dimensional knock-in products are
- * priced by a two-state finite-difference scheme. Two-dimensional knock-in products are handled by
- * solving a pre-hit PDE with an analytically specified activated boundary trace.
+ * Monitoring semantics:
  * </p>
+ * <ul>
+ *   <li>{@link MonitoringType#CONTINUOUS}: the current continuous-monitoring implementation is used,</li>
+ *   <li>{@link MonitoringType#DISCRETE}: monitoring is applied only on the prescribed monitoring
+ *       dates via vector event conditions. First milestone scope is 1D European cash touch / no-touch.</li>
+ * </ul>
  *
  * @author Alessandro Gnoatto
  */
 public class TouchOption implements
-	FiniteDifferenceEquityProduct,
+	FiniteDifferenceEquityEventProduct,
 	FiniteDifferenceInternalStateConstraint,
 	FiniteDifferenceOneDimensionalKnockInProduct {
 
@@ -89,6 +96,7 @@ public class TouchOption implements
 
 	private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
 	private static final double GRID_TOLERANCE = 1E-8;
+	private static final double MONITORING_TIME_TOLERANCE = 1E-12;
 
 	private final String underlyingName;
 	private final double maturity;
@@ -97,6 +105,8 @@ public class TouchOption implements
 	private final double payoffAmount;
 	private final TouchSettlementTiming settlementTiming;
 	private final Exercise exercise;
+	private final MonitoringType monitoringType;
+	private final double[] monitoringTimes;
 
 	/**
 	 * Creates a touch option.
@@ -117,6 +127,42 @@ public class TouchOption implements
 			final double payoffAmount,
 			final TouchSettlementTiming settlementTiming,
 			final Exercise exercise) {
+		this(
+				underlyingName,
+				maturity,
+				barrierValue,
+				barrierType,
+				payoffAmount,
+				settlementTiming,
+				exercise,
+				MonitoringType.CONTINUOUS,
+				null
+		);
+	}
+
+	/**
+	 * Creates a touch option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 * @param settlementTiming Settlement timing.
+	 * @param exercise Exercise specification.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring dates used when {@code monitoringType == DISCRETE}.
+	 */
+	public TouchOption(
+			final String underlyingName,
+			final double maturity,
+			final double barrierValue,
+			final BarrierType barrierType,
+			final double payoffAmount,
+			final TouchSettlementTiming settlementTiming,
+			final Exercise exercise,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
 
 		if(barrierType == null) {
 			throw new IllegalArgumentException("Barrier type must not be null.");
@@ -126,6 +172,9 @@ public class TouchOption implements
 		}
 		if(exercise == null) {
 			throw new IllegalArgumentException("Exercise must not be null.");
+		}
+		if(monitoringType == null) {
+			throw new IllegalArgumentException("Monitoring type must not be null.");
 		}
 		if(!exercise.isEuropean()) {
 			throw new IllegalArgumentException("TouchOption currently supports only European exercise.");
@@ -150,6 +199,10 @@ public class TouchOption implements
 		this.payoffAmount = payoffAmount;
 		this.settlementTiming = settlementTiming;
 		this.exercise = exercise;
+		this.monitoringType = monitoringType;
+		this.monitoringTimes = monitoringTimes == null ? null : monitoringTimes.clone();
+
+		validateMonitoringSpecification();
 	}
 
 	/**
@@ -282,6 +335,70 @@ public class TouchOption implements
 				TouchSettlementTiming.AT_EXPIRY,
 				new EuropeanExercise(maturity)
 		);
+	}
+
+	/**
+	 * Creates a touch option with anonymous underlying and explicit monitoring.
+	 *
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 * @param settlementTiming Settlement timing.
+	 * @param exercise Exercise specification.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring dates.
+	 */
+	public TouchOption(
+			final double maturity,
+			final double barrierValue,
+			final BarrierType barrierType,
+			final double payoffAmount,
+			final TouchSettlementTiming settlementTiming,
+			final Exercise exercise,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				null,
+				maturity,
+				barrierValue,
+				barrierType,
+				payoffAmount,
+				settlementTiming,
+				exercise,
+				monitoringType,
+				monitoringTimes
+		);
+	}
+
+	/**
+	 * Creates a touch option.
+	 *
+	 * @param maturity Option maturity.
+	 * @param barrierValue Barrier level.
+	 * @param barrierType Barrier type.
+	 * @param payoffAmount Cash payoff amount.
+	 * @param settlementTiming Settlement timing.
+	 * @param exercise Exercise specification.
+	 */
+	public TouchOption(
+	        final double maturity,
+	        final double barrierValue,
+	        final BarrierType barrierType,
+	        final double payoffAmount,
+	        final TouchSettlementTiming settlementTiming,
+	        final Exercise exercise) {
+	    this(
+	            null,
+	            maturity,
+	            barrierValue,
+	            barrierType,
+	            payoffAmount,
+	            settlementTiming,
+	            exercise,
+	            MonitoringType.CONTINUOUS,
+	            null
+	    );
 	}
 
 	/**
@@ -442,7 +559,7 @@ public class TouchOption implements
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
 
-		final SpaceTimeDiscretization valuationDiscretization = model.getSpaceTimeDiscretization();
+		final SpaceTimeDiscretization valuationDiscretization = getValuationSpaceTimeDiscretization(model);
 		final double tau = maturity - evaluationTime;
 		final int timeIndex = valuationDiscretization.getTimeDiscretization()
 				.getTimeIndexNearestLessOrEqual(tau);
@@ -465,20 +582,69 @@ public class TouchOption implements
 
 		validateProductConfiguration(model);
 
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
+
 		if(payoffAmount == 0.0) {
-			return buildZeroValueSurface(model);
+			return buildZeroValueSurface(effectiveModel);
 		}
 
-		switch(getPricingMode(model)) {
+		if(usesDiscreteMonitoring()) {
+			return priceDiscreteMonitored1D(effectiveModel);
+		}
+
+		switch(getPricingMode(effectiveModel)) {
 		case DIRECT_OUT:
-			return priceOutOptionDirectly(model);
+			return priceOutOptionDirectly(effectiveModel);
 		case DIRECT_IN_1D_TWO_STATE:
-			return priceInOptionDirectly1D(model);
+			return priceInOptionDirectly1D(effectiveModel);
 		case DIRECT_IN_2D_PRE_HIT:
-			return priceInOptionDirectly2D(model);
+			return priceInOptionDirectly2D(effectiveModel);
 		default:
 			throw new IllegalStateException("Unsupported pricing mode.");
 		}
+	}
+
+	@Override
+	public double[] getEventTimes() {
+		if(!usesDiscreteMonitoring()) {
+			return new double[0];
+		}
+		return monitoringTimes.clone();
+	}
+
+	@Override
+	public double[] applyEventCondition(
+			final double time,
+			final double[] valuesAfterEvent,
+			final FiniteDifferenceEquityModel model) {
+
+		if(!usesDiscreteMonitoring()) {
+			return valuesAfterEvent;
+		}
+
+		final double[] xGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+
+		if(valuesAfterEvent.length != xGrid.length) {
+			throw new IllegalArgumentException(
+					"Value vector length does not match the one-dimensional spatial grid.");
+		}
+
+		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+
+		for(int i = 0; i < xGrid.length; i++) {
+			if(!isBarrierBreached(xGrid[i])) {
+				continue;
+			}
+
+			if(isOutOption()) {
+				valuesBeforeEvent[i] = 0.0;
+			}
+			else {
+				valuesBeforeEvent[i] = getTouchedValueAtEventTime(time, model);
+			}
+		}
+
+		return valuesBeforeEvent;
 	}
 
 	private PricingMode getPricingMode(final FiniteDifferenceEquityModel model) {
@@ -513,6 +679,22 @@ public class TouchOption implements
 
 		validateBarrierInsideGrid(model);
 
+		if(usesDiscreteMonitoring()) {
+			/*
+			 * First milestone scope:
+			 * 1D European cash touch / no-touch only.
+			 */
+			if(dims != 1) {
+				throw new IllegalArgumentException(
+						"Discrete monitoring is currently implemented only for one-dimensional models.");
+			}
+			if(!exercise.isEuropean()) {
+				throw new IllegalArgumentException(
+						"Discrete monitoring is currently implemented only for European exercise.");
+			}
+			return;
+		}
+
 		if(!exercise.isEuropean()) {
 			throw new IllegalArgumentException("TouchOption currently supports only European exercise.");
 		}
@@ -545,6 +727,48 @@ public class TouchOption implements
 			}
 		}
 		return zeroValues;
+	}
+
+	private double[][] priceDiscreteMonitored1D(final FiniteDifferenceEquityModel model) {
+
+		final FDMSolver solver = FDMSolverFactory.createSolver(
+				model,
+				this,
+				model.getSpaceTimeDiscretization(),
+				exercise
+		);
+
+		return solver.getValues(
+				maturity,
+				buildDiscreteMonitoringTerminalValues(model.getSpaceTimeDiscretization())
+		);
+	}
+
+	private double[] buildDiscreteMonitoringTerminalValues(final SpaceTimeDiscretization discretization) {
+		final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
+		final double[] terminalValues = new double[sGrid.length];
+
+		final double terminalValue;
+		if(isOutOption()) {
+			/*
+			 * No-touch at expiry:
+			 * start from payoff everywhere and remove breached nodes on monitoring dates.
+			 */
+			terminalValue = payoffAmount;
+		}
+		else {
+			/*
+			 * One-touch:
+			 * start from zero and activate on monitoring dates when the barrier is hit.
+			 */
+			terminalValue = 0.0;
+		}
+
+		for(int i = 0; i < sGrid.length; i++) {
+			terminalValues[i] = terminalValue;
+		}
+
+		return terminalValues;
 	}
 
 	private double[][] priceOutOptionDirectly(final FiniteDifferenceEquityModel model) {
@@ -1124,6 +1348,53 @@ public class TouchOption implements
 		return barrierType == BarrierType.DOWN_OUT || barrierType == BarrierType.UP_OUT;
 	}
 
+	private boolean usesDiscreteMonitoring() {
+		return monitoringType == MonitoringType.DISCRETE;
+	}
+
+	private void validateMonitoringSpecification() {
+
+		if(monitoringType == MonitoringType.CONTINUOUS) {
+			if(monitoringTimes != null && monitoringTimes.length > 0) {
+				throw new IllegalArgumentException(
+						"Continuous monitoring must not specify monitoringTimes.");
+			}
+			return;
+		}
+
+		if(monitoringTimes == null || monitoringTimes.length == 0) {
+			throw new IllegalArgumentException(
+					"Discrete monitoring requires a non-empty monitoringTimes array.");
+		}
+
+		double previousTime = -Double.MAX_VALUE;
+		for(final double monitoringTime : monitoringTimes) {
+			if(monitoringTime < -MONITORING_TIME_TOLERANCE
+					|| monitoringTime > maturity + MONITORING_TIME_TOLERANCE) {
+				throw new IllegalArgumentException(
+						"Monitoring times must lie in [0,maturity].");
+			}
+			if(monitoringTime <= previousTime + MONITORING_TIME_TOLERANCE) {
+				throw new IllegalArgumentException(
+						"Monitoring times must be strictly increasing.");
+			}
+			previousTime = monitoringTime;
+		}
+	}
+
+	private boolean isBarrierBreached(final double assetValue) {
+		switch(barrierType) {
+		case DOWN_IN:
+		case DOWN_OUT:
+			return assetValue <= barrierValue;
+		case UP_IN:
+		case UP_OUT:
+			return assetValue >= barrierValue;
+		default:
+			throw new IllegalArgumentException("Unsupported barrier type.");
+		}
+	}
+
 	private boolean isAliveAtExerciseOrMaturityForOutOption(final double assetValue) {
 		switch(barrierType) {
 		case DOWN_OUT:
@@ -1135,6 +1406,95 @@ public class TouchOption implements
 		}
 	}
 
+	private double getTouchedValueAtEventTime(
+			final double time,
+			final FiniteDifferenceEquityModel model) {
+
+		if(settlementTiming == TouchSettlementTiming.AT_HIT) {
+			return payoffAmount;
+		}
+
+		if(time >= maturity - MONITORING_TIME_TOLERANCE) {
+			return payoffAmount;
+		}
+
+		final double safeTime = Math.max(time, 1E-12);
+		final double dfTime = model.getRiskFreeCurve().getDiscountFactor(safeTime);
+		final double dfMat = model.getRiskFreeCurve().getDiscountFactor(maturity);
+
+		return payoffAmount * dfMat / dfTime;
+	}
+
+	private SpaceTimeDiscretization getValuationSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
+
+		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
+
+		if(!usesDiscreteMonitoring()) {
+			return base;
+		}
+
+		TimeDiscretization refinedTimeDiscretization = base.getTimeDiscretization();
+		refinedTimeDiscretization = refineTimeDiscretizationWithMonitoring(refinedTimeDiscretization);
+
+		if(base.getNumberOfSpaceGrids() == 1) {
+			return new SpaceTimeDiscretization(
+					base.getSpaceGrid(0),
+					refinedTimeDiscretization,
+					base.getTheta(),
+					new double[] { base.getCenter(0) }
+			);
+		}
+
+		final int numberOfSpaceGrids = base.getNumberOfSpaceGrids();
+		final Grid[] spaceGrids = new Grid[numberOfSpaceGrids];
+		final double[] center = new double[numberOfSpaceGrids];
+
+		for(int i = 0; i < numberOfSpaceGrids; i++) {
+			spaceGrids[i] = base.getSpaceGrid(i);
+			center[i] = base.getCenter(i);
+		}
+
+		return new SpaceTimeDiscretization(
+				spaceGrids,
+				refinedTimeDiscretization,
+				base.getTheta(),
+				center
+		);
+	}
+
+	private FiniteDifferenceEquityModel getEffectiveModelForValuation(final FiniteDifferenceEquityModel model) {
+
+		final SpaceTimeDiscretization effectiveDiscretization = getValuationSpaceTimeDiscretization(model);
+
+		if(effectiveDiscretization == model.getSpaceTimeDiscretization()) {
+			return model;
+		}
+
+		return model.getCloneWithModifiedSpaceTimeDiscretization(effectiveDiscretization);
+	}
+
+	private TimeDiscretization refineTimeDiscretizationWithMonitoring(
+			final TimeDiscretization baseTimeDiscretization) {
+
+		final Set<Double> mergedTauTimes = new TreeSet<>();
+
+		for(int i = 0; i < baseTimeDiscretization.getNumberOfTimes(); i++) {
+			mergedTauTimes.add(baseTimeDiscretization.getTime(i));
+		}
+
+		for(final double monitoringTime : monitoringTimes) {
+			mergedTauTimes.add(maturity - monitoringTime);
+		}
+
+		final double[] refinedTimes = new double[mergedTauTimes.size()];
+		int index = 0;
+		for(final Double time : mergedTauTimes) {
+			refinedTimes[index++] = time;
+		}
+
+		return new TimeDiscretizationFromArray(refinedTimes);
+	}
+
 	/**
 	 * Returns whether the internal knock-out constraint is active at the given state.
 	 *
@@ -1144,6 +1504,10 @@ public class TouchOption implements
 	 */
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
+		if(usesDiscreteMonitoring()) {
+			return false;
+		}
+
 		if(!isOutOption()) {
 			return false;
 		}
@@ -1240,6 +1604,14 @@ public class TouchOption implements
 	 */
 	public Exercise getExercise() {
 		return exercise;
+	}
+
+	public MonitoringType getMonitoringType() {
+		return monitoringType;
+	}
+
+	public double[] getMonitoringTimes() {
+		return monitoringTimes == null ? null : monitoringTimes.clone();
 	}
 
 	/**

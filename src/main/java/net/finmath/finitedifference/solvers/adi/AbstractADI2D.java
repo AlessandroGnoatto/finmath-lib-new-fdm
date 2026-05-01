@@ -8,6 +8,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityEventProduct;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
@@ -75,12 +76,15 @@ import net.finmath.modelling.Exercise;
  *   <li>discrete exercise obstacles for Bermudan or American-style problems,</li>
  *   <li>continuous obstacles applied after each backward step,</li>
  *   <li>internal state constraints supplied by the product,</li>
+ *   <li>vector-level equity event conditions at prescribed event times,</li>
  *   <li>Dirichlet boundary extraction from the model boundary conditions.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto
  */
 public abstract class AbstractADI2D implements FDMSolver {
+
+	private static final double EVENT_TIME_TOLERANCE = 1E-12;
 
 	/**
 	 * Functional interface for payoffs or obstacles depending on time and two state variables.
@@ -154,6 +158,8 @@ public abstract class AbstractADI2D implements FDMSolver {
 
 		this.theta = Math.max(0.5, spaceTimeDiscretization.getTheta());
 		this.stencilBuilder = new ADI2DStencilBuilder(model, x0Grid, x1Grid);
+
+		validateProductEventTimesInGrid();
 	}
 
 	/**
@@ -261,6 +267,9 @@ public abstract class AbstractADI2D implements FDMSolver {
 
 		applyOuterBoundaries(time, u);
 		applyInternalConstraints(time, u);
+		u = applyProductEventConditionIfNeeded(time, u);
+		applyInternalConstraints(time, u);
+		applyOuterBoundaries(time, u);
 		u = sanitize(u);
 
 		final RealMatrix solutionSurface = new Array2DRowRealMatrix(n, timeLength);
@@ -284,6 +293,8 @@ public abstract class AbstractADI2D implements FDMSolver {
 			else {
 				applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, exerciseValue);
 			}
+
+			u = applyProductEventConditionIfNeeded(runningTimeNext, u);
 
 			applyInternalConstraints(runningTimeNext, u);
 			applyOuterBoundaries(runningTimeNext, u);
@@ -747,7 +758,21 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return i0 + i1 * n0;
 	}
 
+	protected double[] sanitize(final double[] values) {
+		final double[] out = values.clone();
+		for(int i = 0; i < out.length; i++) {
+			if(!Double.isFinite(out[i])) {
+				throw new ArithmeticException("ADI solver produced a non-finite value.");
+			}
+		}
+		return out;
+	}
+
 	protected double[] add(final double[] a, final double[] b) {
+		if(a.length != b.length) {
+			throw new IllegalArgumentException("Vector length mismatch.");
+		}
+
 		final double[] out = new double[a.length];
 		for(int i = 0; i < a.length; i++) {
 			out[i] = a[i] + b[i];
@@ -756,6 +781,10 @@ public abstract class AbstractADI2D implements FDMSolver {
 	}
 
 	protected double[] subtract(final double[] a, final double[] b) {
+		if(a.length != b.length) {
+			throw new IllegalArgumentException("Vector length mismatch.");
+		}
+
 		final double[] out = new double[a.length];
 		for(int i = 0; i < a.length; i++) {
 			out[i] = a[i] - b[i];
@@ -763,31 +792,71 @@ public abstract class AbstractADI2D implements FDMSolver {
 		return out;
 	}
 
-	protected double[] scale(final double[] a, final double c) {
+	protected double[] scale(final double[] a, final double scalar) {
 		final double[] out = new double[a.length];
 		for(int i = 0; i < a.length; i++) {
-			out[i] = c * a[i];
+			out[i] = scalar * a[i];
 		}
 		return out;
 	}
 
-	protected double[] sanitize(final double[] u) {
-		final double[] out = new double[u.length];
-		for(int i = 0; i < u.length; i++) {
-			final double value = u[i];
-			if(!Double.isFinite(value)) {
-				out[i] = 0.0;
+	private void validateProductEventTimesInGrid() {
+
+		if(!(product instanceof FiniteDifferenceEquityEventProduct)) {
+			return;
+		}
+
+		final double[] eventTimes = ((FiniteDifferenceEquityEventProduct) product).getEventTimes();
+		final double horizon = spaceTimeDiscretization.getTimeDiscretization().getLastTime();
+
+		for(final double eventTime : eventTimes) {
+			if(eventTime < -EVENT_TIME_TOLERANCE || eventTime > horizon + EVENT_TIME_TOLERANCE) {
+				throw new IllegalArgumentException(
+						"Event time " + eventTime
+						+ " lies outside the solver time horizon [0," + horizon + "].");
 			}
-			else if(value > 1E12) {
-				out[i] = 1E12;
-			}
-			else if(value < -1E12) {
-				out[i] = -1E12;
-			}
-			else {
-				out[i] = value;
+
+			final double tau = horizon - eventTime;
+			final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndex(tau);
+
+			if(timeIndex < 0) {
+				throw new IllegalArgumentException(
+						"Event time " + eventTime
+						+ " is not contained in the solver time discretization. "
+						+ "Please refine the time grid so that all event times are grid points.");
 			}
 		}
-		return out;
+	}
+
+	private boolean isProductEventTime(final double time) {
+
+		if(!(product instanceof FiniteDifferenceEquityEventProduct)) {
+			return false;
+		}
+
+		final double[] eventTimes = ((FiniteDifferenceEquityEventProduct) product).getEventTimes();
+
+		for(final double eventTime : eventTimes) {
+			if(Math.abs(eventTime - time) <= EVENT_TIME_TOLERANCE) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	protected double[] applyProductEventConditionIfNeeded(
+			final double time,
+			final double[] valuesAfterEvent) {
+
+		if(!isProductEventTime(time)) {
+			return valuesAfterEvent;
+		}
+
+		return ((FiniteDifferenceEquityEventProduct) product).applyEventCondition(
+				time,
+				valuesAfterEvent,
+				model
+		);
 	}
 }

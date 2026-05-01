@@ -1,5 +1,8 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import java.util.Set;
+import java.util.TreeSet;
+
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
@@ -21,7 +24,10 @@ import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
+import net.finmath.modelling.products.MonitoringType;
 import net.finmath.time.TimeDiscretization;
+import net.finmath.time.TimeDiscretizationFromArray;
+import net.finmath.finitedifference.solvers.adi.AbstractADI2D;
 
 /**
  * Finite-difference valuation of a standard single-barrier option on one asset.
@@ -32,43 +38,40 @@ import net.finmath.time.TimeDiscretization;
  * </p>
  *
  * <p>
- * Current implementation policy after this patch:
+ * Current implementation policy:
  * </p>
  * <ul>
- *   <li>knock-out options are priced directly by the finite-difference solver,
- *       including 2D Heston / SABR under European, Bermudan, and American exercise,</li>
- *   <li>1D knock-in options are priced directly through a coupled two-state PDE
- *       on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
- *   <li>2D Heston / SABR knock-in options are priced directly through an
- *       activated-vanilla + pre-hit PDE / interface formulation,</li>
- *   <li>other 2D knock-in options fall back to in-out parity,</li>
- *   <li>for 2D auxiliary pricing, the activated and pre-hit discretizations are passed
- *       explicitly to FDMSolverFactory, rather than relying on the model's stored grid.</li>
+ *   <li>continuously monitored knock-out options are priced directly by the finite-difference solver,</li>
+ *   <li>discretely monitored knock-out options are implemented for 1D models and for 2D Heston/SABR models via internal constraints active only on monitoring dates,</li>
+ *   <li>continuously monitored 1D knock-in options are priced directly through a coupled two-state PDE on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
+ *   <li>discretely monitored 1D knock-in options are implemented for European exercise only, via event-time replacement by the vanilla continuation surface,</li>
+ *   <li>continuously monitored 2D Heston / SABR knock-in options are priced directly through an activated-vanilla + pre-hit PDE / interface formulation,</li>
+ *   <li>discretely monitored 2D Heston / SABR knock-in options are implemented for European exercise only, on the full 2D grid via event-time replacement by the activated vanilla continuation surface,</li>
+ *   <li>other 2D knock-in options fall back to in-out parity.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto
  */
 public class BarrierOption implements
-        FiniteDifferenceEquityProduct,
+        FiniteDifferenceEquityEventProduct,
         FiniteDifferenceInternalStateConstraint,
         FiniteDifferenceOneDimensionalKnockInProduct {
 
     private enum PricingMode {
         DIRECT_OUT,
         DIRECT_IN_1D_TWO_STATE,
+        DIRECT_IN_1D_DISCRETE_EVENT,
+        DIRECT_IN_2D_DISCRETE_EVENT,
         DIRECT_IN_2D_PRE_HIT,
         PARITY_IN_FALLBACK
     }
 
-    /*
-     * 1D direct knock-in settings.
-     * These were the settings that produced the good Black-Scholes interior-barrier results.
-     */
     private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
     private static final int DOWN_IN_PUT_EXTRA_STEPS_1D = 160;
     private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
 
     private static final double GRID_TOLERANCE = 1E-8;
+    private static final double MONITORING_TIME_TOLERANCE = 1E-12;
 
     private final String underlyingName;
     private final double maturity;
@@ -78,6 +81,12 @@ public class BarrierOption implements
     private final CallOrPut callOrPutSign;
     private final BarrierType barrierType;
     private final Exercise exercise;
+    private final MonitoringType monitoringType;
+    private final double[] monitoringTimes;
+
+    private transient double[][] discreteKnockInActivatedSurface;
+    private transient SpaceTimeDiscretization discreteKnockInActivatedDiscretization;
+    private transient boolean discreteKnockInEventMode;
 
     public BarrierOption(
             final String underlyingName,
@@ -149,6 +158,56 @@ public class BarrierOption implements
             final CallOrPut callOrPutSign,
             final BarrierType barrierType,
             final Exercise exercise) {
+        this(
+                underlyingName,
+                maturity,
+                strike,
+                barrierValue,
+                rebate,
+                callOrPutSign,
+                barrierType,
+                exercise,
+                MonitoringType.CONTINUOUS,
+                null
+        );
+    }
+
+    public BarrierOption(
+            final String underlyingName,
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final double rebate,
+            final double callOrPutSign,
+            final BarrierType barrierType,
+            final Exercise exercise,
+            final MonitoringType monitoringType,
+            final double[] monitoringTimes) {
+        this(
+                underlyingName,
+                maturity,
+                strike,
+                barrierValue,
+                rebate,
+                mapCallOrPut(callOrPutSign),
+                barrierType,
+                exercise,
+                monitoringType,
+                monitoringTimes
+        );
+    }
+
+    public BarrierOption(
+            final String underlyingName,
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final double rebate,
+            final CallOrPut callOrPutSign,
+            final BarrierType barrierType,
+            final Exercise exercise,
+            final MonitoringType monitoringType,
+            final double[] monitoringTimes) {
         super();
         this.underlyingName = underlyingName;
         this.maturity = maturity;
@@ -158,6 +217,8 @@ public class BarrierOption implements
         this.callOrPutSign = callOrPutSign;
         this.barrierType = barrierType;
         this.exercise = exercise;
+        this.monitoringType = monitoringType;
+        this.monitoringTimes = monitoringTimes == null ? null : monitoringTimes.clone();
     }
 
     public BarrierOption(
@@ -200,6 +261,30 @@ public class BarrierOption implements
             final BarrierType barrierType,
             final Exercise exercise) {
         this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType, exercise);
+    }
+
+    public BarrierOption(
+            final double maturity,
+            final double strike,
+            final double barrierValue,
+            final double rebate,
+            final CallOrPut callOrPutSign,
+            final BarrierType barrierType,
+            final Exercise exercise,
+            final MonitoringType monitoringType,
+            final double[] monitoringTimes) {
+        this(
+                null,
+                maturity,
+                strike,
+                barrierValue,
+                rebate,
+                callOrPutSign,
+                barrierType,
+                exercise,
+                monitoringType,
+                monitoringTimes
+        );
     }
 
     public BarrierOption(
@@ -263,12 +348,14 @@ public class BarrierOption implements
 
         validateProductConfiguration(model);
 
-        if(isDegenerateZeroCase()) {
-            return buildZeroValueSurface(model);
-        }
+        if(!usesDiscreteMonitoring()) {
+            if(isDegenerateZeroCase()) {
+                return buildZeroValueSurface(model);
+            }
 
-        if(isDegenerateVanillaCase()) {
-            return createVanillaOption().getValues(model);
+            if(isDegenerateVanillaCase()) {
+                return createVanillaOption().getValues(model);
+            }
         }
 
         switch(getPricingMode(model)) {
@@ -276,6 +363,10 @@ public class BarrierOption implements
             return priceOutOptionDirectly(model);
         case DIRECT_IN_1D_TWO_STATE:
             return priceInOptionDirectly1D(model);
+        case DIRECT_IN_1D_DISCRETE_EVENT:
+            return priceInOptionDiscrete1D(model);
+        case DIRECT_IN_2D_DISCRETE_EVENT:
+            return priceInOptionDiscrete2D(model);
         case DIRECT_IN_2D_PRE_HIT:
             return priceInOptionDirectly2D(model);
         case PARITY_IN_FALLBACK:
@@ -285,12 +376,101 @@ public class BarrierOption implements
         }
     }
 
+    @Override
+    public double[] getEventTimes() {
+        if(usesDiscreteMonitoring() && !isOutOption()) {
+            return monitoringTimes == null ? new double[0] : monitoringTimes.clone();
+        }
+        return new double[0];
+    }
+
+    @Override
+    public double[] applyEventCondition(
+            final double time,
+            final double[] valuesAfterEvent,
+            final FiniteDifferenceEquityModel model) {
+
+        if(!(usesDiscreteMonitoring() && !isOutOption())) {
+            return valuesAfterEvent;
+        }
+
+        if(!discreteKnockInEventMode) {
+            return valuesAfterEvent;
+        }
+
+        if(discreteKnockInActivatedSurface == null || discreteKnockInActivatedDiscretization == null) {
+            throw new IllegalStateException(
+                    "Discrete knock-in event condition requires an activated vanilla surface."
+            );
+        }
+
+        final SpaceTimeDiscretization discretization = model.getSpaceTimeDiscretization();
+        final int dims = discretization.getNumberOfSpaceGrids();
+
+        if(dims == 1) {
+            final double[] xGrid = discretization.getSpaceGrid(0).getGrid();
+            if(valuesAfterEvent.length != xGrid.length) {
+                throw new IllegalArgumentException(
+                        "Value vector length does not match the one-dimensional spatial grid."
+                );
+            }
+
+            final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model);
+            final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+
+            for(int i = 0; i < xGrid.length; i++) {
+                if(isBarrierBreachedForKnockIn(xGrid[i])) {
+                    valuesBeforeEvent[i] = activatedVector[i];
+                }
+            }
+
+            return valuesBeforeEvent;
+        }
+
+        if(dims == 2) {
+            final double[] x0Grid = discretization.getSpaceGrid(0).getGrid();
+            final double[] x1Grid = discretization.getSpaceGrid(1).getGrid();
+
+            if(valuesAfterEvent.length != x0Grid.length * x1Grid.length) {
+                throw new IllegalArgumentException(
+                        "Value vector length does not match the two-dimensional spatial grid."
+                );
+            }
+
+            final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model);
+            final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+
+            for(int j = 0; j < x1Grid.length; j++) {
+                for(int i = 0; i < x0Grid.length; i++) {
+                    final int k = flatten(i, j, x0Grid.length);
+                    if(isBarrierBreachedForKnockIn(x0Grid[i])) {
+                        valuesBeforeEvent[k] = activatedVector[k];
+                    }
+                }
+            }
+
+            return valuesBeforeEvent;
+        }
+
+        throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+    }
+
     private PricingMode getPricingMode(final FiniteDifferenceEquityModel model) {
         if(isOutOption()) {
             return PricingMode.DIRECT_OUT;
         }
 
         final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+        if(usesDiscreteMonitoring()) {
+            if(dims == 1) {
+                return PricingMode.DIRECT_IN_1D_DISCRETE_EVENT;
+            }
+            if(dims == 2 && supportsDirect2DStochasticVolBarrier(model)) {
+                return PricingMode.DIRECT_IN_2D_DISCRETE_EVENT;
+            }
+            return PricingMode.PARITY_IN_FALLBACK;
+        }
 
         if(dims == 1) {
             return PricingMode.DIRECT_IN_1D_TWO_STATE;
@@ -310,12 +490,54 @@ public class BarrierOption implements
     private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
 
         validateBarrierInsideGrid(model);
+        validateMonitoringSpecification();
+
+        final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+        if(usesDiscreteMonitoring()) {
+
+            if(isOutOption()) {
+                if(dims == 1) {
+                    return;
+                }
+
+                if(dims == 2 && supportsDirect2DStochasticVolBarrier(model)) {
+                    return;
+                }
+
+                throw new IllegalArgumentException(
+                        "Discrete knock-out monitoring is currently implemented only for one-dimensional models "
+                        + "or two-dimensional Heston/SABR models."
+                );
+            }
+
+            if(dims == 1) {
+                if(!exercise.isEuropean()) {
+                    throw new IllegalArgumentException(
+                            "Discrete one-dimensional knock-in is currently implemented only for European exercise."
+                    );
+                }
+                return;
+            }
+
+            if(dims == 2 && supportsDirect2DStochasticVolBarrier(model)) {
+                if(!exercise.isEuropean()) {
+                    throw new IllegalArgumentException(
+                            "Discrete two-dimensional knock-in is currently implemented only for European exercise."
+                    );
+                }
+                return;
+            }
+
+            throw new IllegalArgumentException(
+                    "Discrete knock-in monitoring is currently implemented only for one-dimensional models "
+                    + "or two-dimensional Heston/SABR models."
+            );
+        }
 
         if(exercise.isEuropean()) {
             return;
         }
-
-        final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
         if(dims == 1 && isOutOption()) {
             return;
@@ -325,12 +547,7 @@ public class BarrierOption implements
             return;
         }
 
-        if(dims == 2 && isOutOption() && supportsDirect2DStochasticVolBarrier(model)
-                && (exercise.isBermudan() || exercise.isAmerican())) {
-            return;
-        }
-
-        if(dims == 2 && !isOutOption() && supportsDirect2DStochasticVolBarrier(model)
+        if(dims == 2 && supportsDirect2DStochasticVolBarrier(model)
                 && (exercise.isBermudan() || exercise.isAmerican())) {
             return;
         }
@@ -392,6 +609,108 @@ public class BarrierOption implements
                 knockInModel.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
                 model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid()
         );
+    }
+
+    private double[][] priceInOptionDiscrete1D(final FiniteDifferenceEquityModel model) {
+
+        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+            throw new IllegalStateException(
+                    "priceInOptionDiscrete1D was called for a non knock-in barrier type.");
+        }
+
+        if(!usesDiscreteMonitoring()) {
+            throw new IllegalStateException(
+                    "priceInOptionDiscrete1D requires discrete monitoring.");
+        }
+
+        if(!exercise.isEuropean()) {
+            throw new IllegalStateException(
+                    "priceInOptionDiscrete1D currently supports only European exercise.");
+        }
+
+        final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForOneDimensionalKnockIn(model);
+
+        final double[][] activatedVanillaValues = createVanillaOption().getValues(effectiveModel);
+        final double[] zeroTerminalValues =
+                buildZeroTerminalValues(effectiveModel.getSpaceTimeDiscretization());
+
+        discreteKnockInActivatedSurface = activatedVanillaValues;
+        discreteKnockInActivatedDiscretization = effectiveModel.getSpaceTimeDiscretization();
+        discreteKnockInEventMode = true;
+
+        try {
+            final FDMSolver solver = createSolver(
+                    effectiveModel,
+                    this,
+                    effectiveModel.getSpaceTimeDiscretization(),
+                    exercise
+            );
+
+            return solver.getValues(maturity, zeroTerminalValues);
+        }
+        finally {
+            discreteKnockInActivatedSurface = null;
+            discreteKnockInActivatedDiscretization = null;
+            discreteKnockInEventMode = false;
+        }
+    }
+
+    private double[][] priceInOptionDiscrete2D(final FiniteDifferenceEquityModel model) {
+
+        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+            throw new IllegalStateException(
+                    "priceInOptionDiscrete2D was called for a non knock-in barrier type.");
+        }
+
+        if(!usesDiscreteMonitoring()) {
+            throw new IllegalStateException(
+                    "priceInOptionDiscrete2D requires discrete monitoring.");
+        }
+
+        if(!exercise.isEuropean()) {
+            throw new IllegalStateException(
+                    "priceInOptionDiscrete2D currently supports only European exercise.");
+        }
+
+        if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() != 2) {
+            throw new IllegalStateException(
+                    "priceInOptionDiscrete2D requires a two-dimensional model.");
+        }
+
+        final FiniteDifferenceEquityModel effectiveModel =
+                getEffectiveModelForTwoDimensionalKnockIn(model);
+
+        final double[][] activatedVanillaValues = createVanillaOption().getValues(effectiveModel);
+
+        discreteKnockInActivatedSurface = activatedVanillaValues;
+        discreteKnockInActivatedDiscretization = effectiveModel.getSpaceTimeDiscretization();
+        discreteKnockInEventMode = true;
+
+        try {
+            final FDMSolver solver = createSolver(
+                    effectiveModel,
+                    this,
+                    effectiveModel.getSpaceTimeDiscretization(),
+                    exercise
+            );
+
+            if(!(solver instanceof AbstractADI2D)) {
+                throw new IllegalStateException(
+                        "Discrete 2D knock-in requires an ADI 2D solver, but got "
+                        + solver.getClass().getName()
+                );
+            }
+
+            return ((AbstractADI2D)solver).getValues(
+                    maturity,
+                    (x0, x1) -> 0.0
+            );
+        }
+        finally {
+            discreteKnockInActivatedSurface = null;
+            discreteKnockInActivatedDiscretization = null;
+            discreteKnockInEventMode = false;
+        }
     }
 
     private double[][] priceInOptionDirectly2D(final FiniteDifferenceEquityModel model) {
@@ -521,17 +840,6 @@ public class BarrierOption implements
             throw new IllegalArgumentException("Barrier grid must contain at least two points.");
         }
 
-        /*
-         * For European direct knock-ins we prefer to reuse the original barrier-aligned
-         * grid whenever the barrier is already a spot-grid node.
-         *
-         * However, for the problematic non-European DOWN_IN PUT case, the activated
-         * vanilla branch should be solved on a wider auxiliary grid, even if the
-         * barrier is already on the original grid. Otherwise the lower spot boundary
-         * is too close and contaminates the activated Bermudan/American put values.
-         *
-         * This is needed for both Heston and SABR.
-         */
         final boolean forceWidenedActivatedGrid =
                 (barrierModel instanceof FDMHestonModel || barrierModel instanceof FDMSabrModel)
                 && !exercise.isEuropean()
@@ -550,11 +858,6 @@ public class BarrierOption implements
             return barrierModel;
         }
 
-        /*
-         * Fallback / forced-widening path:
-         * build a wider barrier-aligned auxiliary activated grid while preserving the
-         * second-state grid and time grid exactly.
-         */
         final double[] secondGrid = base.getSpaceGrid(1).getGrid();
 
         final Grid activatedSpotGrid = buildActivatedSpotGridAlignedAtBarrier(
@@ -879,7 +1182,9 @@ public class BarrierOption implements
                 rebate,
                 callOrPutSign,
                 getCorrespondingOutBarrierType(),
-                exercise
+                exercise,
+                monitoringType,
+                monitoringTimes
         );
     }
 
@@ -1129,6 +1434,10 @@ public class BarrierOption implements
             return false;
         }
 
+        if(usesDiscreteMonitoring() && !isMonitoringTime(time)) {
+            return false;
+        }
+
         final double underlyingLevel = stateVariables[0];
 
         switch(barrierType) {
@@ -1150,6 +1459,209 @@ public class BarrierOption implements
         return rebate;
     }
 
+    private boolean usesDiscreteMonitoring() {
+        return monitoringType == MonitoringType.DISCRETE;
+    }
+
+    private boolean isMonitoringTime(final double time) {
+        if(!usesDiscreteMonitoring() || monitoringTimes == null) {
+            return false;
+        }
+
+        for(final double monitoringTime : monitoringTimes) {
+            if(Math.abs(monitoringTime - time) <= MONITORING_TIME_TOLERANCE) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void validateMonitoringSpecification() {
+
+        if(monitoringType == null) {
+            throw new IllegalArgumentException("monitoringType must not be null.");
+        }
+
+        if(monitoringType == MonitoringType.CONTINUOUS) {
+            if(monitoringTimes != null && monitoringTimes.length > 0) {
+                throw new IllegalArgumentException(
+                        "Continuous monitoring must not specify monitoringTimes."
+                );
+            }
+            return;
+        }
+
+        if(monitoringTimes == null || monitoringTimes.length == 0) {
+            throw new IllegalArgumentException(
+                    "Discrete monitoring requires a non-empty monitoringTimes array."
+            );
+        }
+
+        double previousTime = -Double.MAX_VALUE;
+        for(final double monitoringTime : monitoringTimes) {
+            if(monitoringTime < -MONITORING_TIME_TOLERANCE
+                    || monitoringTime > maturity + MONITORING_TIME_TOLERANCE) {
+                throw new IllegalArgumentException(
+                        "Monitoring times must lie in [0,maturity]."
+                );
+            }
+
+            if(monitoringTime <= previousTime + MONITORING_TIME_TOLERANCE) {
+                throw new IllegalArgumentException(
+                        "Monitoring times must be strictly increasing."
+                );
+            }
+
+            previousTime = monitoringTime;
+        }
+    }
+
+    private TimeDiscretization refineTimeDiscretizationWithMonitoring(
+            final TimeDiscretization baseTimeDiscretization) {
+
+        final Set<Double> mergedTauTimes = new TreeSet<>();
+
+        for(int i = 0; i < baseTimeDiscretization.getNumberOfTimes(); i++) {
+            mergedTauTimes.add(baseTimeDiscretization.getTime(i));
+        }
+
+        for(final double monitoringTime : monitoringTimes) {
+            mergedTauTimes.add(maturity - monitoringTime);
+        }
+
+        final double[] refinedTimes = new double[mergedTauTimes.size()];
+        int index = 0;
+        for(final Double time : mergedTauTimes) {
+            refinedTimes[index++] = time;
+        }
+
+        return new TimeDiscretizationFromArray(refinedTimes);
+    }
+
+    private double[] getDiscreteKnockInActivatedVectorAt(
+            final double time,
+            final FiniteDifferenceEquityModel model) {
+
+        final double tau = maturity - time;
+        int timeIndex = discreteKnockInActivatedDiscretization.getTimeDiscretization().getTimeIndex(tau);
+
+        if(timeIndex < 0) {
+            timeIndex = discreteKnockInActivatedDiscretization.getTimeDiscretization()
+                    .getTimeIndexNearestLessOrEqual(tau);
+        }
+
+        final SpaceTimeDiscretization targetDiscretization = model.getSpaceTimeDiscretization();
+        final SpaceTimeDiscretization sourceDiscretization = discreteKnockInActivatedDiscretization;
+
+        final int dims = targetDiscretization.getNumberOfSpaceGrids();
+
+        if(dims == 1) {
+            final double[] targetGrid = targetDiscretization.getSpaceGrid(0).getGrid();
+            final double[] sourceGrid = sourceDiscretization.getSpaceGrid(0).getGrid();
+
+            final double[] activatedVector = new double[targetGrid.length];
+
+            if(hasSameGrid(sourceGrid, targetGrid)) {
+                for(int i = 0; i < targetGrid.length; i++) {
+                    activatedVector[i] = discreteKnockInActivatedSurface[i][timeIndex];
+                }
+                return activatedVector;
+            }
+
+            final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
+                    sourceGrid,
+                    getColumn(discreteKnockInActivatedSurface, timeIndex),
+                    InterpolationMethod.LINEAR,
+                    ExtrapolationMethod.CONSTANT
+            );
+
+            for(int i = 0; i < targetGrid.length; i++) {
+                activatedVector[i] = interpolator.getValue(targetGrid[i]);
+            }
+
+            return activatedVector;
+        }
+
+        if(dims == 2) {
+            final double[] targetX0 = targetDiscretization.getSpaceGrid(0).getGrid();
+            final double[] targetX1 = targetDiscretization.getSpaceGrid(1).getGrid();
+            final double[] sourceX0 = sourceDiscretization.getSpaceGrid(0).getGrid();
+            final double[] sourceX1 = sourceDiscretization.getSpaceGrid(1).getGrid();
+
+            if(!hasSameGrid(sourceX0, targetX0) || !hasSameGrid(sourceX1, targetX1)) {
+                throw new IllegalArgumentException(
+                        "Discrete 2D knock-in currently requires activated and target grids to match."
+                );
+            }
+
+            final int n0 = targetX0.length;
+            final int n1 = targetX1.length;
+            final double[] activatedVector = new double[n0 * n1];
+
+            for(int j = 0; j < n1; j++) {
+                for(int i = 0; i < n0; i++) {
+                    final int k = flatten(i, j, n0);
+                    activatedVector[k] = discreteKnockInActivatedSurface[k][timeIndex];
+                }
+            }
+
+            return activatedVector;
+        }
+
+        throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+    }
+
+    private boolean hasSameGrid(final double[] first, final double[] second) {
+        if(first.length != second.length) {
+            return false;
+        }
+
+        for(int i = 0; i < first.length; i++) {
+            if(Math.abs(first[i] - second[i]) > GRID_TOLERANCE) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean isBarrierBreachedForKnockIn(final double underlyingLevel) {
+        switch(barrierType) {
+        case DOWN_IN:
+            return underlyingLevel <= barrierValue;
+        case UP_IN:
+            return underlyingLevel >= barrierValue;
+        default:
+            return false;
+        }
+    }
+
+    private double[] buildZeroTerminalValues(final SpaceTimeDiscretization discretization) {
+        final int dims = discretization.getNumberOfSpaceGrids();
+
+        if(dims == 1) {
+            final double[] grid = discretization.getSpaceGrid(0).getGrid();
+            final double[] terminalValues = new double[grid.length];
+            for(int i = 0; i < grid.length; i++) {
+                terminalValues[i] = 0.0;
+            }
+            return terminalValues;
+        }
+
+        if(dims == 2) {
+            final double[] grid0 = discretization.getSpaceGrid(0).getGrid();
+            final double[] grid1 = discretization.getSpaceGrid(1).getGrid();
+            final double[] terminalValues = new double[grid0.length * grid1.length];
+            for(int i = 0; i < terminalValues.length; i++) {
+                terminalValues[i] = 0.0;
+            }
+            return terminalValues;
+        }
+
+        throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+    }
+
     private static CallOrPut mapCallOrPut(final double callOrPutSign) {
         if(callOrPutSign == 1.0) {
             return CallOrPut.CALL;
@@ -1164,15 +1676,26 @@ public class BarrierOption implements
 
         final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
 
-        if(!exercise.isBermudan()) {
+        if(!exercise.isBermudan() && !usesDiscreteMonitoring()) {
             return base;
         }
 
-        final TimeDiscretization refinedTimeDiscretization =
-                FiniteDifferenceExerciseUtil.refineTimeDiscretization(
-                        base.getTimeDiscretization(),
-                        exercise
-                );
+        TimeDiscretization refinedTimeDiscretization = base.getTimeDiscretization();
+
+        if(exercise.isBermudan()) {
+            refinedTimeDiscretization =
+                    FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+                            refinedTimeDiscretization,
+                            exercise
+                    );
+        }
+
+        if(usesDiscreteMonitoring()) {
+            refinedTimeDiscretization =
+                    refineTimeDiscretizationWithMonitoring(
+                            refinedTimeDiscretization
+                    );
+        }
 
         if(base.getNumberOfSpaceGrids() == 1) {
             return new SpaceTimeDiscretization(
@@ -1254,6 +1777,14 @@ public class BarrierOption implements
 
     public Exercise getExercise() {
         return exercise;
+    }
+
+    public MonitoringType getMonitoringType() {
+        return monitoringType;
+    }
+
+    public double[] getMonitoringTimes() {
+        return monitoringTimes == null ? null : monitoringTimes.clone();
     }
 
     @Override

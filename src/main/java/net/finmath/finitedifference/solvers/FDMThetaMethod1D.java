@@ -7,6 +7,7 @@ import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.FiniteDifferenceModel;
 import net.finmath.finitedifference.FiniteDifferenceProduct;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityEventProduct;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceInternalStateConstraint;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
@@ -26,7 +27,7 @@ import net.finmath.modelling.Exercise;
  *   <li>direct terminal-vector initialization,</li>
  *   <li>direct terminal-vector initialization with separate pointwise exercise payoff,</li>
  *   <li>direct terminal-vector initialization with a continuous time-dependent obstacle,</li>
- *   <li>interest-rate event conditions applied on the value vector at prescribed event times.</li>
+ *   <li>vector-level event conditions applied on the value vector at prescribed event times.</li>
  * </ul>
  *
  * <p>
@@ -40,8 +41,9 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * If the product is a {@link FiniteDifferenceInterestRateProduct}, then at every event time
- * {@code t} the solver applies the vector-level jump condition
+ * If the product is a {@link FiniteDifferenceInterestRateProduct} or a
+ * {@link FiniteDifferenceEquityEventProduct}, then at every event time {@code t}
+ * the solver applies the vector-level jump condition
  * </p>
  *
  * <p>
@@ -57,7 +59,7 @@ import net.finmath.modelling.Exercise;
  * @author Alessandro Gnoatto
  * @author Ralph Rudd
  * @author Christian Fries
- * @author Jörg Kienitz
+ * @author Jorg Kienitz
  */
 public class FDMThetaMethod1D implements FDMSolver {
 
@@ -166,7 +168,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 		this.exercise = exercise;
 
 		validateModelProductCompatibility();
-		validateInterestRateEventTimesInGrid();
+		validateProductEventTimesInGrid();
 	}
 
 	@Override
@@ -297,7 +299,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 		reimposeInternalConstraints(u, xGrid, horizon);
 		reimposeBoundaryValues(u, lowerTerminalCondition, upperTerminalCondition);
-		u = applyInterestRateEventConditionIfNeeded(horizon, u);
+		u = applyProductEventConditionIfNeeded(horizon, u);
 		reimposeInternalConstraints(u, xGrid, horizon);
 		reimposeBoundaryValues(u, lowerTerminalCondition, upperTerminalCondition);
 
@@ -435,7 +437,7 @@ public class FDMThetaMethod1D implements FDMSolver {
 				}
 			}
 
-			u = applyInterestRateEventConditionIfNeeded(boundaryTime, nextU);
+			u = applyProductEventConditionIfNeeded(boundaryTime, nextU);
 			reimposeInternalConstraints(u, xGrid, boundaryTime);
 			reimposeBoundaryValues(u, lowerCondition, upperCondition);
 
@@ -462,22 +464,27 @@ public class FDMThetaMethod1D implements FDMSolver {
 		}
 	}
 
-	private void validateInterestRateEventTimesInGrid() {
+	private void validateProductEventTimesInGrid() {
 
-		if(!(product instanceof FiniteDifferenceInterestRateProduct)) {
+		if(product instanceof FiniteDifferenceInterestRateProduct) {
+			validateEventTimesInGrid(((FiniteDifferenceInterestRateProduct) product).getEventTimes());
 			return;
 		}
 
-		final FiniteDifferenceInterestRateProduct interestRateProduct =
-				(FiniteDifferenceInterestRateProduct) product;
+		if(product instanceof FiniteDifferenceEquityEventProduct) {
+			validateEventTimesInGrid(((FiniteDifferenceEquityEventProduct) product).getEventTimes());
+		}
+	}
+
+	private void validateEventTimesInGrid(final double[] eventTimes) {
 
 		final double horizon = spaceTimeDiscretization.getTimeDiscretization().getLastTime();
 
-		for(final double eventTime : interestRateProduct.getEventTimes()) {
+		for(final double eventTime : eventTimes) {
 
 			if(eventTime < -EVENT_TIME_TOLERANCE || eventTime > horizon + EVENT_TIME_TOLERANCE) {
 				throw new IllegalArgumentException(
-						"Interest-rate event time " + eventTime
+						"Event time " + eventTime
 						+ " lies outside the solver time horizon [0," + horizon + "].");
 			}
 
@@ -486,23 +493,28 @@ public class FDMThetaMethod1D implements FDMSolver {
 
 			if(timeIndex < 0) {
 				throw new IllegalArgumentException(
-						"Interest-rate event time " + eventTime
+						"Event time " + eventTime
 						+ " is not contained in the solver time discretization. "
 						+ "Please refine the time grid so that all event times are grid points.");
 			}
 		}
 	}
 
-	private boolean isInterestRateEventTime(final double time) {
+	private boolean isProductEventTime(final double time) {
 
-		if(!(product instanceof FiniteDifferenceInterestRateProduct)) {
+		final double[] eventTimes;
+
+		if(product instanceof FiniteDifferenceInterestRateProduct) {
+			eventTimes = ((FiniteDifferenceInterestRateProduct) product).getEventTimes();
+		}
+		else if(product instanceof FiniteDifferenceEquityEventProduct) {
+			eventTimes = ((FiniteDifferenceEquityEventProduct) product).getEventTimes();
+		}
+		else {
 			return false;
 		}
 
-		final FiniteDifferenceInterestRateProduct interestRateProduct =
-				(FiniteDifferenceInterestRateProduct) product;
-
-		for(final double eventTime : interestRateProduct.getEventTimes()) {
+		for(final double eventTime : eventTimes) {
 			if(Math.abs(eventTime - time) <= EVENT_TIME_TOLERANCE) {
 				return true;
 			}
@@ -511,29 +523,31 @@ public class FDMThetaMethod1D implements FDMSolver {
 		return false;
 	}
 
-	private double[] applyInterestRateEventConditionIfNeeded(
+	private double[] applyProductEventConditionIfNeeded(
 			final double time,
 			final double[] valuesAfterEvent) {
 
-		if(!(product instanceof FiniteDifferenceInterestRateProduct)) {
+		if(!isProductEventTime(time)) {
 			return valuesAfterEvent;
 		}
 
-		if(!isInterestRateEventTime(time)) {
-			return valuesAfterEvent;
+		if(product instanceof FiniteDifferenceInterestRateProduct) {
+			return ((FiniteDifferenceInterestRateProduct) product).applyEventCondition(
+					time,
+					valuesAfterEvent,
+					(FiniteDifferenceInterestRateModel) model
+			);
 		}
 
-		final FiniteDifferenceInterestRateProduct interestRateProduct =
-				(FiniteDifferenceInterestRateProduct) product;
+		if(product instanceof FiniteDifferenceEquityEventProduct) {
+			return ((FiniteDifferenceEquityEventProduct) product).applyEventCondition(
+					time,
+					valuesAfterEvent,
+					(FiniteDifferenceEquityModel) model
+			);
+		}
 
-		final FiniteDifferenceInterestRateModel interestRateModel =
-				(FiniteDifferenceInterestRateModel) model;
-
-		return interestRateProduct.applyEventCondition(
-				time,
-				valuesAfterEvent,
-				interestRateModel
-		);
+		return valuesAfterEvent;
 	}
 
 	private ModelCoefficients buildModelCoefficients(
