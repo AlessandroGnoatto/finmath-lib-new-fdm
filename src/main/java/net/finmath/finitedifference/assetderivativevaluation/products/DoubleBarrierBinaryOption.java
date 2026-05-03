@@ -1,12 +1,16 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.DoubleBinaryOperator;
-import java.util.function.DoubleUnaryOperator;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
-import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
+import net.finmath.finitedifference.assetderivativevaluation.products.internal.DiscreteMonitoringSupport;
 import net.finmath.finitedifference.grids.Grid;
+import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
 import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
@@ -14,10 +18,11 @@ import net.finmath.finitedifference.solvers.adi.AbstractADI2D;
 import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.DoubleBarrierType;
+import net.finmath.modelling.products.MonitoringType;
 import net.finmath.time.TimeDiscretization;
 
 /**
- * Finite-difference valuation of a continuously monitored double-barrier cash binary option.
+ * Finite-difference valuation of a double-barrier cash binary option.
  *
  * <p>
  * The contract is defined by a maturity <i>T</i>, a cash amount <i>C</i>, and two barriers
@@ -51,50 +56,22 @@ import net.finmath.time.TimeDiscretization;
  * </ul>
  *
  * <p>
- * In indicator notation, the terminal payoff can be written as:
+ * For continuous monitoring, the implementation remains a direct one-state constrained PDE.
+ * For discrete monitoring, barrier activation / knock-out is applied only at the supplied
+ * monitoring dates via vector-level event conditions.
  * </p>
- * <ul>
- *   <li>KNOCK_OUT:
- *       <i>C 1<sub>{&tau;<sub>L</sub> &gt; T, &tau;<sub>U</sub> &gt; T}</sub></i>,</li>
- *   <li>KNOCK_IN:
- *       <i>C 1<sub>{min(&tau;<sub>L</sub>,&tau;<sub>U</sub>) &le; T}</sub></i>,</li>
- *   <li>KIKO:
- *       <i>C 1<sub>{&tau;<sub>L</sub> &le; T, &tau;<sub>L</sub> &lt; &tau;<sub>U</sub>}</sub></i>,</li>
- *   <li>KOKI:
- *       <i>C 1<sub>{&tau;<sub>U</sub> &le; T, &tau;<sub>U</sub> &lt; &tau;<sub>L</sub>}</sub></i>.</li>
- * </ul>
  *
  * <p>
- * Exercise semantics implemented here:
- * </p>
- * <ul>
- *   <li>European: payoff is determined at maturity,</li>
- *   <li>Bermudan and American: the holder may exercise into the current binary intrinsic value,
- *       that is, the immediate cash-or-zero value implied by the current barrier state.</li>
- * </ul>
- *
- * <p>
- * Hence the immediate exercise value is:
- * </p>
- * <ul>
- *   <li>KNOCK_OUT: <i>C</i> inside the alive band and <i>0</i> outside,</li>
- *   <li>KNOCK_IN: <i>0</i> inside the alive band and <i>C</i> outside,</li>
- *   <li>KIKO: <i>C</i> below the lower barrier and <i>0</i> elsewhere,</li>
- *   <li>KOKI: <i>C</i> above the upper barrier and <i>0</i> elsewhere.</li>
- * </ul>
- *
- * <p>
- * The implementation remains a direct one-state constrained PDE. In one dimension the terminal
- * condition is cell-averaged for improved barrier resolution. In two dimensions the same barrier
- * logic is applied on the first state variable, while the second state variable is propagated by
- * the corresponding ADI solver.
+ * For discretely monitored knock-in / KIKO / KOKI cases, the activated branch is represented
+ * by cached activated cash vectors. The cache is stored in a thread-local stack so that nested
+ * valuations and concurrent valuations of the same product instance do not overwrite each other.
  * </p>
  *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierBinaryOption implements
-	FiniteDifferenceEquityProduct,
-	FiniteDifferenceInternalStateConstraint {
+		FiniteDifferenceEquityEventProduct,
+		FiniteDifferenceInternalStateConstraint {
 
 	private final String underlyingName;
 	private final double maturity;
@@ -103,6 +80,19 @@ public class DoubleBarrierBinaryOption implements
 	private final double upperBarrier;
 	private final DoubleBarrierType doubleBarrierType;
 	private final Exercise exercise;
+	private final MonitoringType monitoringType;
+	private final double[] monitoringTimes;
+
+	private static final class DiscreteKnockInEventState {
+
+		private final Map<Double, double[]> activatedVectorsAtEventTimes;
+
+		private DiscreteKnockInEventState(final Map<Double, double[]> activatedVectorsAtEventTimes) {
+			this.activatedVectorsAtEventTimes = activatedVectorsAtEventTimes;
+		}
+	}
+
+	private transient ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> discreteKnockInEventStateStack;
 
 	/**
 	 * Creates a double-barrier cash binary option.
@@ -123,12 +113,51 @@ public class DoubleBarrierBinaryOption implements
 			final double upperBarrier,
 			final DoubleBarrierType doubleBarrierType,
 			final Exercise exercise) {
+		this(
+				underlyingName,
+				maturity,
+				cashPayoff,
+				lowerBarrier,
+				upperBarrier,
+				doubleBarrierType,
+				exercise,
+				MonitoringType.CONTINUOUS,
+				null
+		);
+	}
+
+	/**
+	 * Creates a double-barrier cash binary option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierBinaryOption(
+			final String underlyingName,
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
 
 		if(doubleBarrierType == null) {
 			throw new IllegalArgumentException("Double barrier type must not be null.");
 		}
 		if(exercise == null) {
 			throw new IllegalArgumentException("Exercise must not be null.");
+		}
+		if(monitoringType == null) {
+			throw new IllegalArgumentException("Monitoring type must not be null.");
 		}
 		if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
 			throw new IllegalArgumentException(
@@ -154,6 +183,10 @@ public class DoubleBarrierBinaryOption implements
 		this.upperBarrier = upperBarrier;
 		this.doubleBarrierType = doubleBarrierType;
 		this.exercise = exercise;
+		this.monitoringType = monitoringType;
+		this.monitoringTimes = monitoringTimes == null ? null : monitoringTimes.clone();
+
+		validateMonitoringSpecification();
 	}
 
 	/**
@@ -185,6 +218,40 @@ public class DoubleBarrierBinaryOption implements
 	}
 
 	/**
+	 * Creates a European double-barrier cash binary option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierBinaryOption(
+			final String underlyingName,
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				underlyingName,
+				maturity,
+				cashPayoff,
+				lowerBarrier,
+				upperBarrier,
+				doubleBarrierType,
+				new EuropeanExercise(maturity),
+				monitoringType,
+				monitoringTimes
+		);
+	}
+
+	/**
 	 * Creates a European double-barrier cash binary option with anonymous underlying.
 	 *
 	 * @param maturity Option maturity.
@@ -207,6 +274,38 @@ public class DoubleBarrierBinaryOption implements
 				upperBarrier,
 				doubleBarrierType,
 				new EuropeanExercise(maturity)
+		);
+	}
+
+	/**
+	 * Creates a European double-barrier cash binary option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierBinaryOption(
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				null,
+				maturity,
+				cashPayoff,
+				lowerBarrier,
+				upperBarrier,
+				doubleBarrierType,
+				new EuropeanExercise(maturity),
+				monitoringType,
+				monitoringTimes
 		);
 	}
 
@@ -239,6 +338,70 @@ public class DoubleBarrierBinaryOption implements
 	}
 
 	/**
+	 * Creates a double-barrier cash binary option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param cashPayoff Cash payoff amount.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierBinaryOption(
+			final double maturity,
+			final double cashPayoff,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				null,
+				maturity,
+				cashPayoff,
+				lowerBarrier,
+				upperBarrier,
+				doubleBarrierType,
+				exercise,
+				monitoringType,
+				monitoringTimes
+		);
+	}
+
+	private ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> getDiscreteKnockInEventStateStack() {
+		if(discreteKnockInEventStateStack == null) {
+			discreteKnockInEventStateStack = ThreadLocal.withInitial(ArrayDeque::new);
+		}
+		return discreteKnockInEventStateStack;
+	}
+
+	private void pushDiscreteKnockInEventState(final DiscreteKnockInEventState state) {
+		getDiscreteKnockInEventStateStack().get().push(state);
+	}
+
+	private void popDiscreteKnockInEventState() {
+		final ArrayDeque<DiscreteKnockInEventState> stack = getDiscreteKnockInEventStateStack().get();
+
+		if(stack.isEmpty()) {
+			throw new IllegalStateException("No discrete knock-in event state to pop.");
+		}
+
+		stack.pop();
+
+		if(stack.isEmpty()) {
+			getDiscreteKnockInEventStateStack().remove();
+		}
+	}
+
+	private DiscreteKnockInEventState getCurrentDiscreteKnockInEventState() {
+		final ArrayDeque<DiscreteKnockInEventState> stack = getDiscreteKnockInEventStateStack().get();
+		return stack.isEmpty() ? null : stack.peek();
+	}
+
+	/**
 	 * Returns the values at the specified evaluation time on the model space grid.
 	 *
 	 * @param evaluationTime Evaluation time.
@@ -258,6 +421,11 @@ public class DoubleBarrierBinaryOption implements
 		for(int i = 0; i < values.length; i++) {
 			column[i] = values[i][timeIndex];
 		}
+
+		if(usesDiscreteMonitoring() && isMonitoringTime(evaluationTime)) {
+			return applyEvaluationTimeDiscreteCondition(evaluationTime, column, model);
+		}
+
 		return column;
 	}
 
@@ -295,54 +463,397 @@ public class DoubleBarrierBinaryOption implements
 			final FiniteDifferenceEquityModel model,
 			final SpaceTimeDiscretization valuationDiscretization) {
 
-		final FDMSolver solver = new FDMThetaMethod1D(
-				model,
-				this,
-				valuationDiscretization,
-				exercise
-		);
+		final boolean pushState = usesDiscreteMonitoring() && requiresActivatedEventState();
 
-		final double[] terminalValues = buildCellAveragedTerminalValues(valuationDiscretization);
-
-		if(exercise.isEuropean()) {
-			return solver.getValues(maturity, terminalValues);
+		if(pushState) {
+			pushDiscreteKnockInEventState(
+					new DiscreteKnockInEventState(buildActivatedVectorsAtEventTimes(model))
+			);
 		}
 
-		return solver.getValues(
-				maturity,
-				terminalValues,
-				this::pointwiseExercisePayoff
-		);
+		try {
+			final Exercise solverExercise = getSolverExerciseForValuation();
+
+			final FDMSolver solver = new FDMThetaMethod1D(
+					model,
+					this,
+					valuationDiscretization,
+					solverExercise
+			);
+
+			final double[] terminalValues = usesDiscreteMonitoring()
+					? buildDiscreteTerminalValues1D(valuationDiscretization)
+					: buildCellAveragedTerminalValues(valuationDiscretization);
+
+			if(solverExercise.isEuropean()) {
+				return solver.getValues(maturity, terminalValues);
+			}
+
+			return solver.getValues(
+					maturity,
+					terminalValues,
+					this::pointwiseExercisePayoff
+			);
+		}
+		finally {
+			if(pushState) {
+				popDiscreteKnockInEventState();
+			}
+		}
 	}
 
 	private double[][] getValues2D(
 			final FiniteDifferenceEquityModel model,
 			final SpaceTimeDiscretization valuationDiscretization) {
 
-		final FDMSolver solver = FDMSolverFactory.createSolver(
-				model,
-				this,
-				valuationDiscretization,
-				exercise
-		);
+		final boolean pushState = usesDiscreteMonitoring() && requiresActivatedEventState();
 
-		final DoubleBinaryOperator terminalPayoff2D =
-				(assetValue, secondState) -> pointwiseTerminalPayoff(assetValue);
-
-		if(exercise.isEuropean()) {
-			return solver.getValues(maturity, terminalPayoff2D);
+		if(pushState) {
+			pushDiscreteKnockInEventState(
+					new DiscreteKnockInEventState(buildActivatedVectorsAtEventTimes(model))
+			);
 		}
 
-		if(!(solver instanceof AbstractADI2D)) {
-			throw new IllegalArgumentException(
-					"Two-dimensional Bermudan/American double-barrier binary pricing requires an ADI solver.");
+		try {
+			final Exercise solverExercise = getSolverExerciseForValuation();
+
+			final FDMSolver solver = FDMSolverFactory.createSolver(
+					model,
+					this,
+					valuationDiscretization,
+					solverExercise
+			);
+
+			final DoubleBinaryOperator terminalPayoff2D = usesDiscreteMonitoring()
+					? getDiscreteTerminalPayoff2D()
+					: (assetValue, secondState) -> pointwiseTerminalPayoff(assetValue);
+
+			if(solverExercise.isEuropean()) {
+				return solver.getValues(maturity, terminalPayoff2D);
+			}
+
+			if(!(solver instanceof AbstractADI2D)) {
+				throw new IllegalArgumentException(
+						"Two-dimensional Bermudan/American double-barrier binary pricing requires an ADI solver.");
+			}
+
+			return ((AbstractADI2D) solver).getValues(
+					maturity,
+					terminalPayoff2D,
+					(runningTime, assetValue, secondState) -> pointwiseExercisePayoff(assetValue)
+			);
+		}
+		finally {
+			if(pushState) {
+				popDiscreteKnockInEventState();
+			}
+		}
+	}
+
+	@Override
+	public double[] getEventTimes() {
+		if(!usesDiscreteMonitoring()) {
+			return new double[0];
+		}
+		return monitoringTimes == null ? new double[0] : monitoringTimes.clone();
+	}
+
+	@Override
+	public double[] applyEventCondition(
+			final double time,
+			final double[] valuesAfterEvent,
+			final FiniteDifferenceEquityModel model) {
+
+		if(!usesDiscreteMonitoring()) {
+			return valuesAfterEvent;
 		}
 
-		return ((AbstractADI2D) solver).getValues(
-				maturity,
-				terminalPayoff2D,
-				(runningTime, assetValue, secondState) -> pointwiseExercisePayoff(assetValue)
+		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(dims == 1) {
+			final double[] xGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+
+			if(valuesAfterEvent.length != xGrid.length) {
+				throw new IllegalArgumentException(
+						"Value vector length does not match the one-dimensional spatial grid.");
+			}
+
+			return applyDiscreteEvent1D(time, valuesAfterEvent, xGrid);
+		}
+
+		if(dims == 2) {
+			final double[] x0 = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+			final double[] x1 = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
+
+			if(valuesAfterEvent.length != x0.length * x1.length) {
+				throw new IllegalArgumentException(
+						"Value vector length does not match the two-dimensional spatial grid.");
+			}
+
+			return applyDiscreteEvent2D(time, valuesAfterEvent, x0, x1);
+		}
+
+		throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+	}
+
+	private double[] applyDiscreteEvent1D(
+			final double time,
+			final double[] valuesAfterEvent,
+			final double[] xGrid) {
+
+		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+		final double[] activatedVector = requiresActivatedEventState()
+				? getActivatedVectorForEventTime(time, getCurrentDiscreteKnockInEventState())
+				: null;
+
+		for(int i = 0; i < xGrid.length; i++) {
+			final double assetValue = xGrid[i];
+
+			switch(doubleBarrierType) {
+			case KNOCK_OUT:
+				if(!isInsideBarrierBand(assetValue)) {
+					valuesBeforeEvent[i] = 0.0;
+				}
+				break;
+
+			case KNOCK_IN:
+				if(!isInsideBarrierBand(assetValue)) {
+					valuesBeforeEvent[i] = activatedVector[i];
+				}
+				break;
+
+			case KIKO:
+				if(isBelowLowerBarrier(assetValue)) {
+					valuesBeforeEvent[i] = activatedVector[i];
+				}
+				else if(isAboveUpperBarrier(assetValue)) {
+					valuesBeforeEvent[i] = 0.0;
+				}
+				break;
+
+			case KOKI:
+				if(isAboveUpperBarrier(assetValue)) {
+					valuesBeforeEvent[i] = activatedVector[i];
+				}
+				else if(isBelowLowerBarrier(assetValue)) {
+					valuesBeforeEvent[i] = 0.0;
+				}
+				break;
+
+			default:
+				throw new IllegalArgumentException("Unsupported double barrier type.");
+			}
+		}
+
+		return valuesBeforeEvent;
+	}
+
+	private double[] applyDiscreteEvent2D(
+			final double time,
+			final double[] valuesAfterEvent,
+			final double[] x0,
+			final double[] x1) {
+
+		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+		final double[] activatedVector = requiresActivatedEventState()
+				? getActivatedVectorForEventTime(time, getCurrentDiscreteKnockInEventState())
+				: null;
+
+		final int n0 = x0.length;
+
+		for(int j = 0; j < x1.length; j++) {
+			for(int i = 0; i < x0.length; i++) {
+				final int index = flatten(i, j, n0);
+				final double assetValue = x0[i];
+
+				switch(doubleBarrierType) {
+				case KNOCK_OUT:
+					if(!isInsideBarrierBand(assetValue)) {
+						valuesBeforeEvent[index] = 0.0;
+					}
+					break;
+
+				case KNOCK_IN:
+					if(!isInsideBarrierBand(assetValue)) {
+						valuesBeforeEvent[index] = activatedVector[index];
+					}
+					break;
+
+				case KIKO:
+					if(isBelowLowerBarrier(assetValue)) {
+						valuesBeforeEvent[index] = activatedVector[index];
+					}
+					else if(isAboveUpperBarrier(assetValue)) {
+						valuesBeforeEvent[index] = 0.0;
+					}
+					break;
+
+				case KOKI:
+					if(isAboveUpperBarrier(assetValue)) {
+						valuesBeforeEvent[index] = activatedVector[index];
+					}
+					else if(isBelowLowerBarrier(assetValue)) {
+						valuesBeforeEvent[index] = 0.0;
+					}
+					break;
+
+				default:
+					throw new IllegalArgumentException("Unsupported double barrier type.");
+				}
+			}
+		}
+
+		return valuesBeforeEvent;
+	}
+
+	private double[] getActivatedVectorForEventTime(
+			final double time,
+			final DiscreteKnockInEventState state) {
+
+		if(state == null || state.activatedVectorsAtEventTimes == null) {
+			throw new IllegalStateException(
+					"Discrete knock-in event condition requires cached activated vectors."
+			);
+		}
+
+		final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
+
+		for(final Map.Entry<Double, double[]> entry : state.activatedVectorsAtEventTimes.entrySet()) {
+			if(Math.abs(entry.getKey() - time) <= tolerance) {
+				return entry.getValue();
+			}
+		}
+
+		throw new IllegalArgumentException(
+				"No cached activated vector found for event time " + time + "."
 		);
+	}
+
+	private double[] applyEvaluationTimeDiscreteCondition(
+			final double evaluationTime,
+			final double[] valuesAtEvaluationTime,
+			final FiniteDifferenceEquityModel model) {
+
+		if(!requiresActivatedEventState()) {
+			return applyEventCondition(evaluationTime, valuesAtEvaluationTime, model);
+		}
+
+		final Map<Double, double[]> activatedVectorsAtEventTimes = new HashMap<>();
+		activatedVectorsAtEventTimes.put(
+				evaluationTime,
+				buildActivatedCashVectorAtEventTime(
+						evaluationTime,
+						model,
+						valuesAtEvaluationTime.length
+				)
+		);
+
+		pushDiscreteKnockInEventState(
+				new DiscreteKnockInEventState(activatedVectorsAtEventTimes)
+		);
+
+		try {
+			return applyEventCondition(evaluationTime, valuesAtEvaluationTime, model);
+		}
+		finally {
+			popDiscreteKnockInEventState();
+		}
+	}
+
+	private Map<Double, double[]> buildActivatedVectorsAtEventTimes(
+			final FiniteDifferenceEquityModel model) {
+
+		final Map<Double, double[]> activatedVectorsAtEventTimes = new HashMap<>();
+		final int numberOfSpacePoints =
+				getTotalNumberOfSpacePoints(model.getSpaceTimeDiscretization());
+
+		for(final double eventTime : monitoringTimes) {
+			activatedVectorsAtEventTimes.put(
+					eventTime,
+					buildActivatedCashVectorAtEventTime(
+							eventTime,
+							model,
+							numberOfSpacePoints
+					)
+			);
+		}
+
+		return activatedVectorsAtEventTimes;
+	}
+
+	private double[] buildActivatedCashVectorAtEventTime(
+			final double eventTime,
+			final FiniteDifferenceEquityModel model,
+			final int numberOfSpacePoints) {
+
+		final double activatedValue = getActivatedCashValueAt(eventTime, model);
+		final double[] activatedVector = new double[numberOfSpacePoints];
+
+		Arrays.fill(activatedVector, activatedValue);
+
+		return activatedVector;
+	}
+
+	private double getActivatedCashValueAt(
+			final double eventTime,
+			final FiniteDifferenceEquityModel model) {
+
+		final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
+
+		double cashReceiptTime = maturity;
+
+		if(exercise.isExerciseAllowed(eventTime)) {
+			cashReceiptTime = eventTime;
+		}
+		else {
+			for(final double exerciseTime : exercise.getExerciseTimes()) {
+				if(exerciseTime >= eventTime - tolerance) {
+					cashReceiptTime = exerciseTime;
+					break;
+				}
+			}
+		}
+
+		final double discountAtEventTime =
+				model.getRiskFreeCurve().getDiscountFactor(eventTime);
+		final double discountAtCashReceiptTime =
+				model.getRiskFreeCurve().getDiscountFactor(cashReceiptTime);
+
+		return cashPayoff * discountAtCashReceiptTime / discountAtEventTime;
+	}
+
+	private Exercise getSolverExerciseForValuation() {
+		if(usesDiscreteMonitoring() && requiresActivatedEventState()) {
+			return new EuropeanExercise(maturity);
+		}
+
+		return exercise;
+	}
+
+	private boolean requiresActivatedEventState() {
+		return doubleBarrierType == DoubleBarrierType.KNOCK_IN
+				|| doubleBarrierType == DoubleBarrierType.KIKO
+				|| doubleBarrierType == DoubleBarrierType.KOKI;
+	}
+
+	private double[] buildDiscreteTerminalValues1D(final SpaceTimeDiscretization discretization) {
+
+		final double[] terminalValues = new double[discretization.getSpaceGrid(0).getGrid().length];
+
+		if(doubleBarrierType == DoubleBarrierType.KNOCK_OUT) {
+			Arrays.fill(terminalValues, cashPayoff);
+		}
+
+		return terminalValues;
+	}
+
+	private DoubleBinaryOperator getDiscreteTerminalPayoff2D() {
+
+		if(doubleBarrierType == DoubleBarrierType.KNOCK_OUT) {
+			return (assetValue, secondState) -> cashPayoff;
+		}
+
+		return (assetValue, secondState) -> 0.0;
 	}
 
 	private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
@@ -372,11 +883,13 @@ public class DoubleBarrierBinaryOption implements
 		final int numberOfTimePoints = discretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
 
 		final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
+
 		for(int i = 0; i < numberOfSpacePoints; i++) {
 			for(int j = 0; j < numberOfTimePoints; j++) {
 				zeroValues[i][j] = 0.0;
 			}
 		}
+
 		return zeroValues;
 	}
 
@@ -387,6 +900,7 @@ public class DoubleBarrierBinaryOption implements
 		for(int i = 0; i < sGrid.length; i++) {
 			final double leftEdge = getLeftDualCellEdge(sGrid, i);
 			final double rightEdge = getRightDualCellEdge(sGrid, i);
+
 			terminalValues[i] = cellAveragedTerminalPayoff(leftEdge, rightEdge);
 		}
 
@@ -400,9 +914,12 @@ public class DoubleBarrierBinaryOption implements
 
 		final double cellLength = rightEdge - leftEdge;
 
-		final double belowLowerLength = Math.max(0.0, Math.min(rightEdge, lowerBarrier) - leftEdge);
-		final double aboveUpperLength = Math.max(0.0, rightEdge - Math.max(leftEdge, upperBarrier));
-		final double insideBandLength = Math.max(0.0, Math.min(rightEdge, upperBarrier) - Math.max(leftEdge, lowerBarrier));
+		final double belowLowerLength =
+				Math.max(0.0, Math.min(rightEdge, lowerBarrier) - leftEdge);
+		final double aboveUpperLength =
+				Math.max(0.0, rightEdge - Math.max(leftEdge, upperBarrier));
+		final double insideBandLength =
+				Math.max(0.0, Math.min(rightEdge, upperBarrier) - Math.max(leftEdge, lowerBarrier));
 
 		switch(doubleBarrierType) {
 		case KNOCK_OUT:
@@ -445,14 +962,24 @@ public class DoubleBarrierBinaryOption implements
 	 * Returns the immediate exercise payoff under the current binary state.
 	 *
 	 * <p>
-	 * For this product, the natural exercise value is the current binary intrinsic value.
-	 * This matches the terminal state classification.
+	 * For continuous monitoring, this matches the terminal state classification.
+	 * For discrete knock-in-like products, the pre-hit branch is solved as a European
+	 * continuation problem; exercise rights are carried by the activated cash branch.
 	 * </p>
 	 *
 	 * @param assetValue Current underlying level.
 	 * @return The immediate exercise payoff.
 	 */
 	private double pointwiseExercisePayoff(final double assetValue) {
+
+		if(usesDiscreteMonitoring()) {
+			if(doubleBarrierType == DoubleBarrierType.KNOCK_OUT) {
+				return cashPayoff;
+			}
+
+			return 0.0;
+		}
+
 		return pointwiseTerminalPayoff(assetValue);
 	}
 
@@ -460,6 +987,7 @@ public class DoubleBarrierBinaryOption implements
 		if(i == 0) {
 			return grid[0];
 		}
+
 		return 0.5 * (grid[i - 1] + grid[i]);
 	}
 
@@ -467,6 +995,7 @@ public class DoubleBarrierBinaryOption implements
 		if(i == grid.length - 1) {
 			return grid[grid.length - 1];
 		}
+
 		return 0.5 * (grid[i] + grid[i + 1]);
 	}
 
@@ -491,7 +1020,13 @@ public class DoubleBarrierBinaryOption implements
 	 */
 	@Override
 	public boolean isConstraintActive(final double time, final double... stateVariables) {
+
+		if(usesDiscreteMonitoring()) {
+			return false;
+		}
+
 		final double underlyingLevel = stateVariables[0];
+
 		return isBelowLowerBarrier(underlyingLevel) || isAboveUpperBarrier(underlyingLevel);
 	}
 
@@ -524,18 +1059,55 @@ public class DoubleBarrierBinaryOption implements
 		}
 	}
 
+	private boolean usesDiscreteMonitoring() {
+		return DiscreteMonitoringSupport.usesDiscreteMonitoring(monitoringType);
+	}
+
+	private boolean isMonitoringTime(final double time) {
+		return DiscreteMonitoringSupport.isMonitoringTime(
+				time,
+				monitoringTimes,
+				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
+		);
+	}
+
+	private void validateMonitoringSpecification() {
+		DiscreteMonitoringSupport.validateMonitoringSpecification(
+				monitoringType,
+				monitoringTimes,
+				maturity,
+				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
+		);
+	}
+
 	private SpaceTimeDiscretization getValuationSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
 		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
 
-		if(!exercise.isBermudan()) {
-			return base;
+		TimeDiscretization refinedTimeDiscretization = base.getTimeDiscretization();
+		boolean requiresModifiedDiscretization = false;
+
+		if(exercise.isBermudan()) {
+			refinedTimeDiscretization =
+					FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+							refinedTimeDiscretization,
+							exercise
+					);
+			requiresModifiedDiscretization = true;
 		}
 
-		final TimeDiscretization refinedTimeDiscretization =
-				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
-						base.getTimeDiscretization(),
-						exercise
-				);
+		if(usesDiscreteMonitoring()) {
+			refinedTimeDiscretization =
+					DiscreteMonitoringSupport.refineTimeDiscretizationWithMonitoring(
+							refinedTimeDiscretization,
+							maturity,
+							monitoringTimes
+					);
+			requiresModifiedDiscretization = true;
+		}
+
+		if(!requiresModifiedDiscretization) {
+			return base;
+		}
 
 		if(base.getNumberOfSpaceGrids() == 1) {
 			return new SpaceTimeDiscretization(
@@ -586,6 +1158,10 @@ public class DoubleBarrierBinaryOption implements
 		else {
 			throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
 		}
+	}
+
+	private int flatten(final int i, final int j, final int n0) {
+		return i + n0 * j;
 	}
 
 	/**
@@ -649,5 +1225,23 @@ public class DoubleBarrierBinaryOption implements
 	 */
 	public Exercise getExercise() {
 		return exercise;
+	}
+
+	/**
+	 * Returns the monitoring type.
+	 *
+	 * @return The monitoring type.
+	 */
+	public MonitoringType getMonitoringType() {
+		return monitoringType;
+	}
+
+	/**
+	 * Returns the monitoring times.
+	 *
+	 * @return The monitoring times, or {@code null} for continuous monitoring.
+	 */
+	public double[] getMonitoringTimes() {
+		return monitoringTimes == null ? null : monitoringTimes.clone();
 	}
 }
