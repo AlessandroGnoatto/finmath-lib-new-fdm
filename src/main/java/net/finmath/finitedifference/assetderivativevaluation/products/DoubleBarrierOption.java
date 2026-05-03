@@ -1,12 +1,15 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
-import java.util.Arrays;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.internal.DiscreteMonitoringSupport;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
@@ -14,6 +17,7 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
 import net.finmath.finitedifference.solvers.FDMSolver;
 import net.finmath.finitedifference.solvers.FDMSolverFactory;
+import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 import net.finmath.interpolation.RationalFunctionInterpolation;
 import net.finmath.interpolation.RationalFunctionInterpolation.ExtrapolationMethod;
 import net.finmath.interpolation.RationalFunctionInterpolation.InterpolationMethod;
@@ -22,8 +26,8 @@ import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.Exercise;
 import net.finmath.modelling.products.CallOrPut;
 import net.finmath.modelling.products.DoubleBarrierType;
+import net.finmath.modelling.products.MonitoringType;
 import net.finmath.time.TimeDiscretization;
-import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
 
 /**
  * Finite-difference valuation of a continuously monitored vanilla double-barrier option.
@@ -97,16 +101,25 @@ import net.finmath.finitedifference.solvers.FDMThetaMethod1D;
  * second state variable.
  * </p>
  *
+ * <p>
+ * For discrete monitoring, barrier activation / knock-out is applied only at the supplied
+ * monitoring dates via event conditions. In the discretely monitored knock-in case, the
+ * activated branch is the true vanilla branch with the product exercise style, while the
+ * pre-hit branch is solved as a European continuation problem between monitoring dates.
+ * </p>
+ *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierOption implements
-		FiniteDifferenceEquityProduct,
+		FiniteDifferenceEquityEventProduct,
 		FiniteDifferenceInternalStateConstraint {
 
 	private enum PricingMode {
 		DIRECT_OUT,
 		DIRECT_IN_1D_PRE_HIT,
-		DIRECT_IN_2D_PRE_HIT
+		DIRECT_IN_1D_DISCRETE_EVENT,
+		DIRECT_IN_2D_PRE_HIT,
+		DIRECT_IN_2D_DISCRETE_EVENT
 	}
 
 	private static final double GRID_TOLERANCE = 1E-8;
@@ -119,6 +132,19 @@ public class DoubleBarrierOption implements
 	private final CallOrPut callOrPutSign;
 	private final DoubleBarrierType doubleBarrierType;
 	private final Exercise exercise;
+	private final MonitoringType monitoringType;
+	private final double[] monitoringTimes;
+
+	private static final class DiscreteKnockInEventState {
+
+		private final Map<Double, double[]> activatedVectorsAtEventTimes;
+
+		private DiscreteKnockInEventState(final Map<Double, double[]> activatedVectorsAtEventTimes) {
+			this.activatedVectorsAtEventTimes = activatedVectorsAtEventTimes;
+		}
+	}
+
+	private transient ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> discreteKnockInEventStateStack;
 
 	/**
 	 * Creates a double-barrier option.
@@ -141,6 +167,45 @@ public class DoubleBarrierOption implements
 			final CallOrPut callOrPutSign,
 			final DoubleBarrierType doubleBarrierType,
 			final Exercise exercise) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				callOrPutSign,
+				doubleBarrierType,
+				exercise,
+				MonitoringType.CONTINUOUS,
+				null
+		);
+	}
+
+	/**
+	 * Creates a double-barrier option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
 
 		if(callOrPutSign == null) {
 			throw new IllegalArgumentException("Option type must not be null.");
@@ -150,6 +215,9 @@ public class DoubleBarrierOption implements
 		}
 		if(exercise == null) {
 			throw new IllegalArgumentException("Exercise must not be null.");
+		}
+		if(monitoringType == null) {
+			throw new IllegalArgumentException("Monitoring type must not be null.");
 		}
 		if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
 			throw new IllegalArgumentException(
@@ -179,6 +247,10 @@ public class DoubleBarrierOption implements
 		this.callOrPutSign = callOrPutSign;
 		this.doubleBarrierType = doubleBarrierType;
 		this.exercise = exercise;
+		this.monitoringType = monitoringType;
+		this.monitoringTimes = monitoringTimes == null ? null : monitoringTimes.clone();
+
+		validateMonitoringSpecification();
 	}
 
 	/**
@@ -213,6 +285,43 @@ public class DoubleBarrierOption implements
 	}
 
 	/**
+	 * Creates a European double-barrier option.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				callOrPutSign,
+				doubleBarrierType,
+				new EuropeanExercise(maturity),
+				monitoringType,
+				monitoringTimes
+		);
+	}
+
+	/**
 	 * Creates a European double-barrier option with anonymous underlying.
 	 *
 	 * @param maturity Option maturity.
@@ -242,6 +351,41 @@ public class DoubleBarrierOption implements
 	}
 
 	/**
+	 * Creates a European double-barrier option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierOption(
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				null,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				callOrPutSign,
+				doubleBarrierType,
+				new EuropeanExercise(maturity),
+				monitoringType,
+				monitoringTimes
+		);
+	}
+
+	/**
 	 * Creates a European double-barrier option using a numeric call/put sign.
 	 *
 	 * @param maturity Option maturity.
@@ -267,6 +411,41 @@ public class DoubleBarrierOption implements
 				mapCallOrPut(callOrPutSign),
 				doubleBarrierType,
 				new EuropeanExercise(maturity)
+		);
+	}
+
+	/**
+	 * Creates a European double-barrier option using a numeric call/put sign.
+	 *
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierOption(
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final double callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				null,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				mapCallOrPut(callOrPutSign),
+				doubleBarrierType,
+				new EuropeanExercise(maturity),
+				monitoringType,
+				monitoringTimes
 		);
 	}
 
@@ -304,6 +483,45 @@ public class DoubleBarrierOption implements
 	}
 
 	/**
+	 * Creates a double-barrier option using a numeric call/put sign.
+	 *
+	 * @param underlyingName Name of the underlying. May be {@code null}.
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final double callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				underlyingName,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				mapCallOrPut(callOrPutSign),
+				doubleBarrierType,
+				exercise,
+				monitoringType,
+				monitoringTimes
+		);
+	}
+
+	/**
 	 * Creates a double-barrier option with anonymous underlying.
 	 *
 	 * @param maturity Option maturity.
@@ -335,6 +553,73 @@ public class DoubleBarrierOption implements
 	}
 
 	/**
+	 * Creates a double-barrier option with anonymous underlying.
+	 *
+	 * @param maturity Option maturity.
+	 * @param strike Option strike.
+	 * @param lowerBarrier Lower barrier.
+	 * @param upperBarrier Upper barrier.
+	 * @param callOrPutSign Call/put sign.
+	 * @param doubleBarrierType Double-barrier type.
+	 * @param exercise Exercise specification.
+	 * @param monitoringType Monitoring type.
+	 * @param monitoringTimes Monitoring times for discrete monitoring.
+	 */
+	public DoubleBarrierOption(
+			final double maturity,
+			final double strike,
+			final double lowerBarrier,
+			final double upperBarrier,
+			final CallOrPut callOrPutSign,
+			final DoubleBarrierType doubleBarrierType,
+			final Exercise exercise,
+			final MonitoringType monitoringType,
+			final double[] monitoringTimes) {
+		this(
+				null,
+				maturity,
+				strike,
+				lowerBarrier,
+				upperBarrier,
+				callOrPutSign,
+				doubleBarrierType,
+				exercise,
+				monitoringType,
+				monitoringTimes
+		);
+	}
+
+	private ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> getDiscreteKnockInEventStateStack() {
+		if(discreteKnockInEventStateStack == null) {
+			discreteKnockInEventStateStack = ThreadLocal.withInitial(ArrayDeque::new);
+		}
+		return discreteKnockInEventStateStack;
+	}
+
+	private void pushDiscreteKnockInEventState(final DiscreteKnockInEventState state) {
+		getDiscreteKnockInEventStateStack().get().push(state);
+	}
+
+	private void popDiscreteKnockInEventState() {
+		final ArrayDeque<DiscreteKnockInEventState> stack = getDiscreteKnockInEventStateStack().get();
+
+		if(stack.isEmpty()) {
+			throw new IllegalStateException("No discrete knock-in event state to pop.");
+		}
+
+		stack.pop();
+
+		if(stack.isEmpty()) {
+			getDiscreteKnockInEventStateStack().remove();
+		}
+	}
+
+	private DiscreteKnockInEventState getCurrentDiscreteKnockInEventState() {
+		final ArrayDeque<DiscreteKnockInEventState> stack = getDiscreteKnockInEventStateStack().get();
+		return stack.isEmpty() ? null : stack.peek();
+	}
+
+	/**
 	 * Returns the values at the specified evaluation time on the model space grid.
 	 *
 	 * @param evaluationTime Evaluation time.
@@ -354,6 +639,11 @@ public class DoubleBarrierOption implements
 		for(int i = 0; i < values.length; i++) {
 			column[i] = values[i][timeIndex];
 		}
+
+		if(usesDiscreteMonitoring() && isMonitoringTime(evaluationTime)) {
+			return applyEvaluationTimeDiscreteCondition(evaluationTime, column, model);
+		}
+
 		return column;
 	}
 
@@ -367,12 +657,14 @@ public class DoubleBarrierOption implements
 	public double[][] getValues(final FiniteDifferenceEquityModel model) {
 		validateProductConfiguration(model);
 
-		if(isDegenerateZeroCase()) {
-			return buildZeroValueSurface(model);
-		}
+		if(!usesDiscreteMonitoring()) {
+			if(isDegenerateZeroCase()) {
+				return buildZeroValueSurface(model);
+			}
 
-		if(isDegenerateVanillaCase()) {
-			return createVanillaOption().getValues(getEffectiveModelForValuation(model));
+			if(isDegenerateVanillaCase()) {
+				return createVanillaOption().getValues(getEffectiveModelForValuation(model));
+			}
 		}
 
 		switch(getPricingMode(model)) {
@@ -382,8 +674,14 @@ public class DoubleBarrierOption implements
 		case DIRECT_IN_1D_PRE_HIT:
 			return priceInOptionDirectly1D(model);
 
+		case DIRECT_IN_1D_DISCRETE_EVENT:
+			return priceInOptionDiscrete1D(model);
+
 		case DIRECT_IN_2D_PRE_HIT:
 			return priceInOptionDirectly2D(model);
+
+		case DIRECT_IN_2D_DISCRETE_EVENT:
+			return priceInOptionDiscrete2D(model);
 
 		default:
 			throw new IllegalStateException("Unsupported pricing mode.");
@@ -396,6 +694,19 @@ public class DoubleBarrierOption implements
 		}
 
 		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(usesDiscreteMonitoring()) {
+			if(dims == 1) {
+				return PricingMode.DIRECT_IN_1D_DISCRETE_EVENT;
+			}
+
+			if(dims == 2 && supportsDirect2D(model)) {
+				return PricingMode.DIRECT_IN_2D_DISCRETE_EVENT;
+			}
+
+			throw new IllegalArgumentException(
+					"Discrete double-barrier knock-in currently supports only 1D models and 2D Heston/SABR models.");
+		}
 
 		if(dims == 1) {
 			return PricingMode.DIRECT_IN_1D_PRE_HIT;
@@ -429,6 +740,25 @@ public class DoubleBarrierOption implements
 		}
 
 		validateBarriersInsideGrid(model);
+
+		if(usesDiscreteMonitoring()) {
+			validateDiscreteMonitoringScope(model);
+		}
+	}
+
+	private void validateDiscreteMonitoringScope(final FiniteDifferenceEquityModel model) {
+		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(dims == 1) {
+			return;
+		}
+
+		if(dims == 2 && supportsDirect2D(model)) {
+			return;
+		}
+
+		throw new IllegalArgumentException(
+				"Discrete monitoring for DoubleBarrierOption currently supports only 1D models and 2D Heston/SABR models.");
 	}
 
 	private double[][] buildZeroValueSurface(final FiniteDifferenceEquityModel model) {
@@ -543,6 +873,32 @@ public class DoubleBarrierOption implements
 		);
 	}
 
+	private double[][] priceInOptionDiscrete1D(final FiniteDifferenceEquityModel model) {
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
+		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
+
+		final DiscreteKnockInEventState eventState = new DiscreteKnockInEventState(
+				buildActivatedVectorsAtEventTimes(effectiveModel, activatedProduct)
+		);
+
+		pushDiscreteKnockInEventState(eventState);
+
+		try {
+			final FDMSolver solver = FDMSolverFactory.createSolver(
+					effectiveModel,
+					this,
+					effectiveModel.getSpaceTimeDiscretization(),
+					new EuropeanExercise(maturity)
+			);
+
+			final double[] zeroTerminal = buildZeroTerminalValues(effectiveModel.getSpaceTimeDiscretization());
+			return solver.getValues(maturity, zeroTerminal);
+		}
+		finally {
+			popDiscreteKnockInEventState();
+		}
+	}
+
 	/*
 	 * ============================================
 	 * DIRECT KNOCK-IN 2D HESTON / SABR
@@ -605,6 +961,51 @@ public class DoubleBarrierOption implements
 		);
 	}
 
+	private double[][] priceInOptionDiscrete2D(final FiniteDifferenceEquityModel model) {
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
+		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
+
+		final DiscreteKnockInEventState eventState = new DiscreteKnockInEventState(
+				buildActivatedVectorsAtEventTimes(effectiveModel, activatedProduct)
+		);
+
+		pushDiscreteKnockInEventState(eventState);
+
+		try {
+			final FDMSolver solver = FDMSolverFactory.createSolver(
+					effectiveModel,
+					this,
+					effectiveModel.getSpaceTimeDiscretization(),
+					new EuropeanExercise(maturity)
+			);
+
+			return solver.getValues(maturity, assetValue -> 0.0);
+		}
+		finally {
+			popDiscreteKnockInEventState();
+		}
+	}
+
+	private Map<Double, double[]> buildActivatedVectorsAtEventTimes(
+			final FiniteDifferenceEquityModel effectiveModel,
+			final FiniteDifferenceEquityProduct activatedProduct) {
+
+		final Map<Double, double[]> activatedVectorsAtEventTimes = new HashMap<>();
+
+		if(monitoringTimes == null) {
+			return activatedVectorsAtEventTimes;
+		}
+
+		for(final double eventTime : monitoringTimes) {
+			activatedVectorsAtEventTimes.put(
+					eventTime,
+					activatedProduct.getValue(eventTime, effectiveModel).clone()
+			);
+		}
+
+		return activatedVectorsAtEventTimes;
+	}
+
 	/*
 	 * ============================================
 	 * ACTIVATED VANILLA BRANCH
@@ -650,7 +1051,7 @@ public class DoubleBarrierOption implements
 
 		final double sMin = Math.floor(targetMin / deltaS) * deltaS;
 		final double sMax = Math.ceil(targetMax / deltaS) * deltaS;
-		final int numberOfSteps = Math.max(2, (int) Math.round((sMax - sMin) / deltaS));
+		final int numberOfSteps = Math.max(2, (int)Math.round((sMax - sMin) / deltaS));
 
 		final Grid activatedSpotGrid = new UniformGrid(numberOfSteps, sMin, sMax);
 
@@ -700,7 +1101,7 @@ public class DoubleBarrierOption implements
 		final double[] originalSpotGrid = base.getSpaceGrid(0).getGrid();
 		final double deltaS = originalSpotGrid[1] - originalSpotGrid[0];
 
-		final int numberOfSteps = Math.max(2, (int) Math.ceil((upperBarrier - lowerBarrier) / deltaS));
+		final int numberOfSteps = Math.max(2, (int)Math.ceil((upperBarrier - lowerBarrier) / deltaS));
 		final Grid preHitSpotGrid = new UniformGrid(numberOfSteps, lowerBarrier, upperBarrier);
 
 		final SpaceTimeDiscretization preHitDiscretization = new SpaceTimeDiscretization(
@@ -730,7 +1131,7 @@ public class DoubleBarrierOption implements
 		final double[] originalSpotGrid = base.getSpaceGrid(0).getGrid();
 		final double deltaS = originalSpotGrid[1] - originalSpotGrid[0];
 
-		final int numberOfSpotSteps = Math.max(2, (int) Math.ceil((upperBarrier - lowerBarrier) / deltaS));
+		final int numberOfSpotSteps = Math.max(2, (int)Math.ceil((upperBarrier - lowerBarrier) / deltaS));
 		final Grid preHitSpotGrid = new UniformGrid(numberOfSpotSteps, lowerBarrier, upperBarrier);
 
 		final double[] secondGrid = base.getSpaceGrid(1).getGrid();
@@ -748,7 +1149,7 @@ public class DoubleBarrierOption implements
 		);
 
 		if(baseModel instanceof FDMHestonModel) {
-			final FDMHestonModel hestonBase = (FDMHestonModel) baseModel;
+			final FDMHestonModel hestonBase = (FDMHestonModel)baseModel;
 			return new DoubleBarrierPreHitHestonModel(
 					hestonBase,
 					preHitDiscretization,
@@ -757,7 +1158,7 @@ public class DoubleBarrierOption implements
 			);
 		}
 		else if(baseModel instanceof FDMSabrModel) {
-			final FDMSabrModel sabrBase = (FDMSabrModel) baseModel;
+			final FDMSabrModel sabrBase = (FDMSabrModel)baseModel;
 			return new DoubleBarrierPreHitSabrModel(
 					sabrBase,
 					preHitDiscretization,
@@ -1100,10 +1501,6 @@ public class DoubleBarrierOption implements
 		return doubleBarrierType == DoubleBarrierType.KNOCK_OUT;
 	}
 
-	private boolean isInOption() {
-		return doubleBarrierType == DoubleBarrierType.KNOCK_IN;
-	}
-
 	private boolean isAliveInsideBand(final double assetValue) {
 		return assetValue > lowerBarrier && assetValue < upperBarrier;
 	}
@@ -1140,6 +1537,250 @@ public class DoubleBarrierOption implements
 
 	/*
 	 * ============================================
+	 * DISCRETE MONITORING HOOKS
+	 * ============================================
+	 */
+
+	@Override
+	public double[] getEventTimes() {
+		if(!usesDiscreteMonitoring()) {
+			return new double[0];
+		}
+		return monitoringTimes == null ? new double[0] : monitoringTimes.clone();
+	}
+
+	@Override
+	public double[] applyEventCondition(
+			final double time,
+			final double[] valuesAfterEvent,
+			final FiniteDifferenceEquityModel model) {
+
+		if(!usesDiscreteMonitoring()) {
+			return valuesAfterEvent;
+		}
+
+		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(isOutOption()) {
+			if(dims == 1) {
+				return applyDiscreteOutEvent1D(valuesAfterEvent, model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid());
+			}
+			else if(dims == 2) {
+				return applyDiscreteOutEvent2D(
+						valuesAfterEvent,
+						model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+						model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid()
+				);
+			}
+		}
+		else {
+			final DiscreteKnockInEventState eventState = getCurrentDiscreteKnockInEventState();
+
+			if(eventState == null) {
+				throw new IllegalStateException(
+						"Discrete knock-in event condition requires thread-local activated continuation data.");
+			}
+
+			if(dims == 1) {
+				return applyDiscreteInEvent1D(
+						time,
+						valuesAfterEvent,
+						model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+						eventState
+				);
+			}
+			else if(dims == 2) {
+				return applyDiscreteInEvent2D(
+						time,
+						valuesAfterEvent,
+						model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+						model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid(),
+						eventState
+				);
+			}
+		}
+
+		throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
+	}
+
+	private double[] applyEvaluationTimeDiscreteCondition(
+			final double evaluationTime,
+			final double[] valuesAtEvaluationTime,
+			final FiniteDifferenceEquityModel model) {
+
+		if(!usesDiscreteMonitoring()) {
+			return valuesAtEvaluationTime;
+		}
+
+		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+
+		if(isOutOption()) {
+			if(dims == 1) {
+				return applyDiscreteOutEvent1D(valuesAtEvaluationTime, model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid());
+			}
+			else if(dims == 2) {
+				return applyDiscreteOutEvent2D(
+						valuesAtEvaluationTime,
+						model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+						model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid()
+				);
+			}
+			return valuesAtEvaluationTime;
+		}
+
+		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
+		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
+		final double[] activatedValuesAtEvaluationTime = activatedProduct.getValue(evaluationTime, effectiveModel);
+
+		if(dims == 1) {
+			final double[] spotGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+			final double[] adjustedValues = valuesAtEvaluationTime.clone();
+
+			for(int i = 0; i < spotGrid.length; i++) {
+				if(isKnockedIn(spotGrid[i])) {
+					adjustedValues[i] = activatedValuesAtEvaluationTime[i];
+				}
+			}
+
+			return adjustedValues;
+		}
+		else if(dims == 2) {
+			final double[] x0 = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+			final double[] x1 = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
+			final double[] adjustedValues = valuesAtEvaluationTime.clone();
+
+			for(int j = 0; j < x1.length; j++) {
+				for(int i = 0; i < x0.length; i++) {
+					if(isKnockedIn(x0[i])) {
+						final int k = flatten(i, j, x0.length);
+						adjustedValues[k] = activatedValuesAtEvaluationTime[k];
+					}
+				}
+			}
+
+			return adjustedValues;
+		}
+
+		return valuesAtEvaluationTime;
+	}
+
+	private double[] applyDiscreteOutEvent1D(
+			final double[] valuesAfterEvent,
+			final double[] spotGrid) {
+
+		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+
+		for(int i = 0; i < spotGrid.length; i++) {
+			if(!isAliveInsideBand(spotGrid[i])) {
+				valuesBeforeEvent[i] = 0.0;
+			}
+		}
+
+		return valuesBeforeEvent;
+	}
+
+	private double[] applyDiscreteOutEvent2D(
+			final double[] valuesAfterEvent,
+			final double[] x0,
+			final double[] x1) {
+
+		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+
+		for(int j = 0; j < x1.length; j++) {
+			for(int i = 0; i < x0.length; i++) {
+				if(!isAliveInsideBand(x0[i])) {
+					valuesBeforeEvent[flatten(i, j, x0.length)] = 0.0;
+				}
+			}
+		}
+
+		return valuesBeforeEvent;
+	}
+
+	private double[] applyDiscreteInEvent1D(
+			final double time,
+			final double[] valuesAfterEvent,
+			final double[] spotGrid,
+			final DiscreteKnockInEventState eventState) {
+
+		final double[] activatedVector = getActivatedVectorForEventTime(time, eventState);
+		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+
+		for(int i = 0; i < spotGrid.length; i++) {
+			if(isKnockedIn(spotGrid[i])) {
+				valuesBeforeEvent[i] = activatedVector[i];
+			}
+		}
+
+		return valuesBeforeEvent;
+	}
+
+	private double[] applyDiscreteInEvent2D(
+			final double time,
+			final double[] valuesAfterEvent,
+			final double[] x0,
+			final double[] x1,
+			final DiscreteKnockInEventState eventState) {
+
+		final double[] activatedVector = getActivatedVectorForEventTime(time, eventState);
+		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
+
+		for(int j = 0; j < x1.length; j++) {
+			for(int i = 0; i < x0.length; i++) {
+				if(isKnockedIn(x0[i])) {
+					valuesBeforeEvent[flatten(i, j, x0.length)] = activatedVector[flatten(i, j, x0.length)];
+				}
+			}
+		}
+
+		return valuesBeforeEvent;
+	}
+
+	private double[] getActivatedVectorForEventTime(
+			final double time,
+			final DiscreteKnockInEventState eventState) {
+
+		final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
+
+		for(final Map.Entry<Double, double[]> entry : eventState.activatedVectorsAtEventTimes.entrySet()) {
+			if(Math.abs(entry.getKey() - time) <= tolerance) {
+				return entry.getValue();
+			}
+		}
+
+		throw new IllegalArgumentException(
+				"No cached activated continuation vector found for monitoring time " + time + ".");
+	}
+
+	private boolean usesDiscreteMonitoring() {
+		return DiscreteMonitoringSupport.usesDiscreteMonitoring(monitoringType);
+	}
+
+	private void validateMonitoringSpecification() {
+		DiscreteMonitoringSupport.validateMonitoringSpecification(
+				monitoringType,
+				monitoringTimes,
+				maturity,
+				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
+		);
+	}
+
+	private boolean isMonitoringTime(final double time) {
+		if(!usesDiscreteMonitoring() || monitoringTimes == null) {
+			return false;
+		}
+
+		final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
+		for(final double monitoringTime : monitoringTimes) {
+			if(Math.abs(monitoringTime - time) <= tolerance) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/*
+	 * ============================================
 	 * INTERNAL CONSTRAINTS
 	 * ============================================
 	 */
@@ -1156,6 +1797,11 @@ public class DoubleBarrierOption implements
 		if(!isOutOption()) {
 			return false;
 		}
+
+		if(usesDiscreteMonitoring()) {
+			return false;
+		}
+
 		final double underlyingLevel = stateVariables[0];
 		return underlyingLevel <= lowerBarrier || underlyingLevel >= upperBarrier;
 	}
@@ -1195,15 +1841,28 @@ public class DoubleBarrierOption implements
 	private SpaceTimeDiscretization getValuationSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
 		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
 
-		if(!exercise.isBermudan()) {
+		if(!exercise.isBermudan() && !usesDiscreteMonitoring()) {
 			return base;
 		}
 
-		final TimeDiscretization refinedTimeDiscretization =
-				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
-						base.getTimeDiscretization(),
-						exercise
-				);
+		TimeDiscretization refinedTimeDiscretization = base.getTimeDiscretization();
+
+		if(exercise.isBermudan()) {
+			refinedTimeDiscretization =
+					FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+							refinedTimeDiscretization,
+							exercise
+					);
+		}
+
+		if(usesDiscreteMonitoring()) {
+			refinedTimeDiscretization =
+					DiscreteMonitoringSupport.refineTimeDiscretizationWithMonitoring(
+							refinedTimeDiscretization,
+							maturity,
+							monitoringTimes
+					);
+		}
 
 		if(base.getNumberOfSpaceGrids() == 1) {
 			return new SpaceTimeDiscretization(
@@ -1353,6 +2012,24 @@ public class DoubleBarrierOption implements
 	 */
 	public Exercise getExercise() {
 		return exercise;
+	}
+
+	/**
+	 * Returns the monitoring type.
+	 *
+	 * @return The monitoring type.
+	 */
+	public MonitoringType getMonitoringType() {
+		return monitoringType;
+	}
+
+	/**
+	 * Returns the monitoring times.
+	 *
+	 * @return The monitoring times, or {@code null} for continuous monitoring.
+	 */
+	public double[] getMonitoringTimes() {
+		return monitoringTimes == null ? null : monitoringTimes.clone();
 	}
 
 	/*
@@ -1680,7 +2357,6 @@ public class DoubleBarrierOption implements
 					upperTrace
 			);
 		}
-
 	}
 
 	private static final class DoubleBarrierPreHitSabrModel

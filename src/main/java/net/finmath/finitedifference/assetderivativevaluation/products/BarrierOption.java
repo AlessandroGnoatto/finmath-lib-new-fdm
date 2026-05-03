@@ -48,7 +48,7 @@ import net.finmath.time.TimeDiscretization;
  *   <li>for discrete monitored knock-ins with Bermudan/American exercise, only the activated state carries exercise rights; the pre-hit state is always solved as a European continuation problem,</li>
  *   <li>other 2D knock-in options fall back to in-out parity.</li>
  * </ul>
- *
+ * 
  * @author Alessandro Gnoatto
  */
 public class BarrierOption implements
@@ -82,9 +82,20 @@ public class BarrierOption implements
 	private final MonitoringType monitoringType;
 	private final double[] monitoringTimes;
 
-	private transient double[][] discreteKnockInActivatedSurface;
-	private transient SpaceTimeDiscretization discreteKnockInActivatedDiscretization;
-	private transient boolean discreteKnockInEventMode;
+	private static final class DiscreteKnockInEventState {
+
+		private final double[][] activatedSurface;
+		private final SpaceTimeDiscretization activatedDiscretization;
+
+		private DiscreteKnockInEventState(
+				final double[][] activatedSurface,
+				final SpaceTimeDiscretization activatedDiscretization) {
+			this.activatedSurface = activatedSurface;
+			this.activatedDiscretization = activatedDiscretization;
+		}
+	}
+
+	private transient ThreadLocal<java.util.ArrayDeque<DiscreteKnockInEventState>> discreteKnockInEventStateStack;
 
 	public BarrierOption(
 			final String underlyingName,
@@ -325,6 +336,39 @@ public class BarrierOption implements
 		this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType, exercise);
 	}
 
+	private ThreadLocal<java.util.ArrayDeque<DiscreteKnockInEventState>> getDiscreteKnockInEventStateStack() {
+		if(discreteKnockInEventStateStack == null) {
+			discreteKnockInEventStateStack = ThreadLocal.withInitial(java.util.ArrayDeque::new);
+		}
+		return discreteKnockInEventStateStack;
+	}
+
+	private void pushDiscreteKnockInEventState(final DiscreteKnockInEventState state) {
+		getDiscreteKnockInEventStateStack().get().push(state);
+	}
+
+	private void popDiscreteKnockInEventState() {
+		final java.util.ArrayDeque<DiscreteKnockInEventState> stack =
+				getDiscreteKnockInEventStateStack().get();
+
+		if(stack.isEmpty()) {
+			throw new IllegalStateException("No discrete knock-in event state to pop.");
+		}
+
+		stack.pop();
+
+		if(stack.isEmpty()) {
+			getDiscreteKnockInEventStateStack().remove();
+		}
+	}
+
+	private DiscreteKnockInEventState getCurrentDiscreteKnockInEventState() {
+		final java.util.ArrayDeque<DiscreteKnockInEventState> stack =
+				getDiscreteKnockInEventStateStack().get();
+
+		return stack.isEmpty() ? null : stack.peek();
+	}
+
 	@Override
 	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
 		final double[][] values = getValues(model);
@@ -388,27 +432,22 @@ public class BarrierOption implements
 			final double[] valuesAfterEvent,
 			final FiniteDifferenceEquityModel model) {
 
-		if(!(usesDiscreteMonitoring() && !isOutOption())) {
+		if(!usesDiscreteMonitoring() || isOutOption()) {
 			return valuesAfterEvent;
 		}
 
-		if(!discreteKnockInEventMode) {
+		final DiscreteKnockInEventState state = getCurrentDiscreteKnockInEventState();
+		if(state == null) {
 			return valuesAfterEvent;
-		}
-
-		if(discreteKnockInActivatedSurface == null || discreteKnockInActivatedDiscretization == null) {
-			throw new IllegalStateException(
-					"Discrete knock-in event condition requires an activated vanilla surface."
-			);
 		}
 
 		final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
 		if(dims == 1) {
-			return applyDiscreteKnockInEvent1D(time, valuesAfterEvent, model);
+			return applyDiscreteKnockInEvent1D(time, valuesAfterEvent, model, state);
 		}
 		if(dims == 2) {
-			return applyDiscreteKnockInEvent2D(time, valuesAfterEvent, model);
+			return applyDiscreteKnockInEvent2D(time, valuesAfterEvent, model, state);
 		}
 
 		throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
@@ -417,7 +456,8 @@ public class BarrierOption implements
 	private double[] applyDiscreteKnockInEvent1D(
 			final double time,
 			final double[] valuesAfterEvent,
-			final FiniteDifferenceEquityModel model) {
+			final FiniteDifferenceEquityModel model,
+			final DiscreteKnockInEventState state) {
 
 		final double[] xGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		if(valuesAfterEvent.length != xGrid.length) {
@@ -426,7 +466,7 @@ public class BarrierOption implements
 			);
 		}
 
-		final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model);
+		final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model, state);
 		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
 
 		for(int i = 0; i < xGrid.length; i++) {
@@ -441,7 +481,8 @@ public class BarrierOption implements
 	private double[] applyDiscreteKnockInEvent2D(
 			final double time,
 			final double[] valuesAfterEvent,
-			final FiniteDifferenceEquityModel model) {
+			final FiniteDifferenceEquityModel model,
+			final DiscreteKnockInEventState state) {
 
 		final double[] x0Grid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		final double[] x1Grid = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
@@ -452,7 +493,7 @@ public class BarrierOption implements
 			);
 		}
 
-		final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model);
+		final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model, state);
 		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
 
 		for(int j = 0; j < x1Grid.length; j++) {
@@ -637,9 +678,13 @@ public class BarrierOption implements
 		final double[][] activatedVanillaValues =
 				createActivatedVanillaProduct(getActivatedExercise()).getValues(effectiveModel);
 
-		discreteKnockInActivatedSurface = activatedVanillaValues;
-		discreteKnockInActivatedDiscretization = effectiveModel.getSpaceTimeDiscretization();
-		discreteKnockInEventMode = true;
+		final DiscreteKnockInEventState state =
+				new DiscreteKnockInEventState(
+						activatedVanillaValues,
+						effectiveModel.getSpaceTimeDiscretization()
+				);
+
+		pushDiscreteKnockInEventState(state);
 
 		try {
 			final FDMSolver solver = createSolver(
@@ -657,7 +702,7 @@ public class BarrierOption implements
 			);
 		}
 		finally {
-			clearDiscreteKnockInEventCache();
+			popDiscreteKnockInEventState();
 		}
 	}
 
@@ -687,9 +732,13 @@ public class BarrierOption implements
 		final double[][] activatedVanillaValues =
 				createActivatedVanillaProduct(getActivatedExercise()).getValues(effectiveModel);
 
-		discreteKnockInActivatedSurface = activatedVanillaValues;
-		discreteKnockInActivatedDiscretization = effectiveModel.getSpaceTimeDiscretization();
-		discreteKnockInEventMode = true;
+		final DiscreteKnockInEventState state =
+				new DiscreteKnockInEventState(
+						activatedVanillaValues,
+						effectiveModel.getSpaceTimeDiscretization()
+				);
+
+		pushDiscreteKnockInEventState(state);
 
 		try {
 			final FDMSolver solver = createSolver(
@@ -712,7 +761,7 @@ public class BarrierOption implements
 			);
 		}
 		finally {
-			clearDiscreteKnockInEventCache();
+			popDiscreteKnockInEventState();
 		}
 	}
 
@@ -801,12 +850,6 @@ public class BarrierOption implements
 
 	private Exercise getPreHitExercise() {
 		return new EuropeanExercise(maturity);
-	}
-
-	private void clearDiscreteKnockInEventCache() {
-		discreteKnockInActivatedSurface = null;
-		discreteKnockInActivatedDiscretization = null;
-		discreteKnockInEventMode = false;
 	}
 
 	private BarrierPreHitSpecification createPreHitSpecification(
@@ -1493,13 +1536,14 @@ public class BarrierOption implements
 
 	private double[] getDiscreteKnockInActivatedVectorAt(
 			final double time,
-			final FiniteDifferenceEquityModel model) {
+			final FiniteDifferenceEquityModel model,
+			final DiscreteKnockInEventState state) {
 
 		return DiscreteKnockInActivationSupport.getActivatedVectorAt(
 				time,
 				maturity,
-				discreteKnockInActivatedSurface,
-				discreteKnockInActivatedDiscretization,
+				state.activatedSurface,
+				state.activatedDiscretization,
 				model,
 				GRID_TOLERANCE
 		);
