@@ -1,12 +1,17 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import net.finmath.finitedifference.FiniteDifferenceExerciseUtil;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.ActiveBoundaryProviderFactory;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.internal.ActivatedVectorEventState;
 import net.finmath.finitedifference.assetderivativevaluation.products.internal.DiscreteKnockInActivationSupport;
 import net.finmath.finitedifference.assetderivativevaluation.products.internal.DiscreteMonitoringSupport;
+import net.finmath.finitedifference.assetderivativevaluation.products.internal.ProductEventStateStack;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;
@@ -48,7 +53,7 @@ import net.finmath.time.TimeDiscretization;
  *   <li>for discrete monitored knock-ins with Bermudan/American exercise, only the activated state carries exercise rights; the pre-hit state is always solved as a European continuation problem,</li>
  *   <li>other 2D knock-in options fall back to in-out parity.</li>
  * </ul>
- * 
+ *
  * @author Alessandro Gnoatto
  */
 public class BarrierOption implements
@@ -82,20 +87,7 @@ public class BarrierOption implements
 	private final MonitoringType monitoringType;
 	private final double[] monitoringTimes;
 
-	private static final class DiscreteKnockInEventState {
-
-		private final double[][] activatedSurface;
-		private final SpaceTimeDiscretization activatedDiscretization;
-
-		private DiscreteKnockInEventState(
-				final double[][] activatedSurface,
-				final SpaceTimeDiscretization activatedDiscretization) {
-			this.activatedSurface = activatedSurface;
-			this.activatedDiscretization = activatedDiscretization;
-		}
-	}
-
-	private transient ThreadLocal<java.util.ArrayDeque<DiscreteKnockInEventState>> discreteKnockInEventStateStack;
+	private transient ProductEventStateStack<ActivatedVectorEventState> activatedVectorEventStateStack;
 
 	public BarrierOption(
 			final String underlyingName,
@@ -336,37 +328,52 @@ public class BarrierOption implements
 		this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType, exercise);
 	}
 
-	private ThreadLocal<java.util.ArrayDeque<DiscreteKnockInEventState>> getDiscreteKnockInEventStateStack() {
-		if(discreteKnockInEventStateStack == null) {
-			discreteKnockInEventStateStack = ThreadLocal.withInitial(java.util.ArrayDeque::new);
-		}
-		return discreteKnockInEventStateStack;
-	}
-
-	private void pushDiscreteKnockInEventState(final DiscreteKnockInEventState state) {
-		getDiscreteKnockInEventStateStack().get().push(state);
-	}
-
-	private void popDiscreteKnockInEventState() {
-		final java.util.ArrayDeque<DiscreteKnockInEventState> stack =
-				getDiscreteKnockInEventStateStack().get();
-
-		if(stack.isEmpty()) {
-			throw new IllegalStateException("No discrete knock-in event state to pop.");
+	private ProductEventStateStack<ActivatedVectorEventState> getActivatedVectorEventStateStack() {
+		if(activatedVectorEventStateStack == null) {
+			activatedVectorEventStateStack = new ProductEventStateStack<>();
 		}
 
-		stack.pop();
-
-		if(stack.isEmpty()) {
-			getDiscreteKnockInEventStateStack().remove();
-		}
+		return activatedVectorEventStateStack;
 	}
 
-	private DiscreteKnockInEventState getCurrentDiscreteKnockInEventState() {
-		final java.util.ArrayDeque<DiscreteKnockInEventState> stack =
-				getDiscreteKnockInEventStateStack().get();
+	private ActivatedVectorEventState createActivatedVectorEventState(
+			final FiniteDifferenceEquityModel effectiveModel,
+			final double[][] activatedSurface) {
 
-		return stack.isEmpty() ? null : stack.peek();
+		return new ActivatedVectorEventState(
+				buildActivatedVectorsAtEventTimes(effectiveModel, activatedSurface),
+				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
+		);
+	}
+
+	private Map<Double, double[]> buildActivatedVectorsAtEventTimes(
+			final FiniteDifferenceEquityModel effectiveModel,
+			final double[][] activatedSurface) {
+
+		final Map<Double, double[]> activatedVectorsAtEventTimes = new HashMap<>();
+
+		if(monitoringTimes == null) {
+			return activatedVectorsAtEventTimes;
+		}
+
+		final SpaceTimeDiscretization activatedDiscretization =
+				effectiveModel.getSpaceTimeDiscretization();
+
+		for(final double eventTime : monitoringTimes) {
+			activatedVectorsAtEventTimes.put(
+					eventTime,
+					DiscreteKnockInActivationSupport.getActivatedVectorAt(
+							eventTime,
+							maturity,
+							activatedSurface,
+							activatedDiscretization,
+							effectiveModel,
+							GRID_TOLERANCE
+					).clone()
+			);
+		}
+
+		return activatedVectorsAtEventTimes;
 	}
 
 	@Override
@@ -436,7 +443,9 @@ public class BarrierOption implements
 			return valuesAfterEvent;
 		}
 
-		final DiscreteKnockInEventState state = getCurrentDiscreteKnockInEventState();
+		final ActivatedVectorEventState state =
+				getActivatedVectorEventStateStack().currentOrNull();
+
 		if(state == null) {
 			return valuesAfterEvent;
 		}
@@ -457,7 +466,7 @@ public class BarrierOption implements
 			final double time,
 			final double[] valuesAfterEvent,
 			final FiniteDifferenceEquityModel model,
-			final DiscreteKnockInEventState state) {
+			final ActivatedVectorEventState state) {
 
 		final double[] xGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		if(valuesAfterEvent.length != xGrid.length) {
@@ -466,7 +475,7 @@ public class BarrierOption implements
 			);
 		}
 
-		final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model, state);
+		final double[] activatedVector = state.getActivatedVector(time);
 		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
 
 		for(int i = 0; i < xGrid.length; i++) {
@@ -482,7 +491,7 @@ public class BarrierOption implements
 			final double time,
 			final double[] valuesAfterEvent,
 			final FiniteDifferenceEquityModel model,
-			final DiscreteKnockInEventState state) {
+			final ActivatedVectorEventState state) {
 
 		final double[] x0Grid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 		final double[] x1Grid = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
@@ -493,7 +502,7 @@ public class BarrierOption implements
 			);
 		}
 
-		final double[] activatedVector = getDiscreteKnockInActivatedVectorAt(time, model, state);
+		final double[] activatedVector = state.getActivatedVector(time);
 		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
 
 		for(int j = 0; j < x1Grid.length; j++) {
@@ -678,15 +687,14 @@ public class BarrierOption implements
 		final double[][] activatedVanillaValues =
 				createActivatedVanillaProduct(getActivatedExercise()).getValues(effectiveModel);
 
-		final DiscreteKnockInEventState state =
-				new DiscreteKnockInEventState(
-						activatedVanillaValues,
-						effectiveModel.getSpaceTimeDiscretization()
-				);
+		try(ProductEventStateStack.Scope ignored =
+				getActivatedVectorEventStateStack().push(
+						createActivatedVectorEventState(
+								effectiveModel,
+								activatedVanillaValues
+						)
+				)) {
 
-		pushDiscreteKnockInEventState(state);
-
-		try {
 			final FDMSolver solver = createSolver(
 					effectiveModel,
 					this,
@@ -700,9 +708,6 @@ public class BarrierOption implements
 							effectiveModel.getSpaceTimeDiscretization()
 					)
 			);
-		}
-		finally {
-			popDiscreteKnockInEventState();
 		}
 	}
 
@@ -732,15 +737,14 @@ public class BarrierOption implements
 		final double[][] activatedVanillaValues =
 				createActivatedVanillaProduct(getActivatedExercise()).getValues(effectiveModel);
 
-		final DiscreteKnockInEventState state =
-				new DiscreteKnockInEventState(
-						activatedVanillaValues,
-						effectiveModel.getSpaceTimeDiscretization()
-				);
+		try(ProductEventStateStack.Scope ignored =
+				getActivatedVectorEventStateStack().push(
+						createActivatedVectorEventState(
+								effectiveModel,
+								activatedVanillaValues
+						)
+				)) {
 
-		pushDiscreteKnockInEventState(state);
-
-		try {
 			final FDMSolver solver = createSolver(
 					effectiveModel,
 					this,
@@ -759,9 +763,6 @@ public class BarrierOption implements
 					maturity,
 					(x0, x1) -> 0.0
 			);
-		}
-		finally {
-			popDiscreteKnockInEventState();
 		}
 	}
 
@@ -1531,21 +1532,6 @@ public class BarrierOption implements
 				monitoringTimes,
 				maturity,
 				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
-		);
-	}
-
-	private double[] getDiscreteKnockInActivatedVectorAt(
-			final double time,
-			final FiniteDifferenceEquityModel model,
-			final DiscreteKnockInEventState state) {
-
-		return DiscreteKnockInActivationSupport.getActivatedVectorAt(
-				time,
-				maturity,
-				state.activatedSurface,
-				state.activatedDiscretization,
-				model,
-				GRID_TOLERANCE
 		);
 	}
 

@@ -1,6 +1,5 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
-import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,7 +8,9 @@ import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDi
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMSabrModel;
 import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDifferenceEquityModel;
+import net.finmath.finitedifference.assetderivativevaluation.products.internal.ActivatedVectorEventState;
 import net.finmath.finitedifference.assetderivativevaluation.products.internal.DiscreteMonitoringSupport;
+import net.finmath.finitedifference.assetderivativevaluation.products.internal.ProductEventStateStack;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.finitedifference.grids.Grid;
@@ -135,16 +136,7 @@ public class DoubleBarrierOption implements
 	private final MonitoringType monitoringType;
 	private final double[] monitoringTimes;
 
-	private static final class DiscreteKnockInEventState {
-
-		private final Map<Double, double[]> activatedVectorsAtEventTimes;
-
-		private DiscreteKnockInEventState(final Map<Double, double[]> activatedVectorsAtEventTimes) {
-			this.activatedVectorsAtEventTimes = activatedVectorsAtEventTimes;
-		}
-	}
-
-	private transient ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> discreteKnockInEventStateStack;
+	private transient ProductEventStateStack<ActivatedVectorEventState> activatedVectorEventStateStack;
 
 	/**
 	 * Creates a double-barrier option.
@@ -589,34 +581,35 @@ public class DoubleBarrierOption implements
 		);
 	}
 
-	private ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> getDiscreteKnockInEventStateStack() {
-		if(discreteKnockInEventStateStack == null) {
-			discreteKnockInEventStateStack = ThreadLocal.withInitial(ArrayDeque::new);
-		}
-		return discreteKnockInEventStateStack;
-	}
-
-	private void pushDiscreteKnockInEventState(final DiscreteKnockInEventState state) {
-		getDiscreteKnockInEventStateStack().get().push(state);
-	}
-
-	private void popDiscreteKnockInEventState() {
-		final ArrayDeque<DiscreteKnockInEventState> stack = getDiscreteKnockInEventStateStack().get();
-
-		if(stack.isEmpty()) {
-			throw new IllegalStateException("No discrete knock-in event state to pop.");
+	private ProductEventStateStack<ActivatedVectorEventState> getActivatedVectorEventStateStack() {
+		if(activatedVectorEventStateStack == null) {
+			activatedVectorEventStateStack = new ProductEventStateStack<>();
 		}
 
-		stack.pop();
-
-		if(stack.isEmpty()) {
-			getDiscreteKnockInEventStateStack().remove();
-		}
+		return activatedVectorEventStateStack;
 	}
 
-	private DiscreteKnockInEventState getCurrentDiscreteKnockInEventState() {
-		final ArrayDeque<DiscreteKnockInEventState> stack = getDiscreteKnockInEventStateStack().get();
-		return stack.isEmpty() ? null : stack.peek();
+	private ActivatedVectorEventState createActivatedVectorEventState(
+			final FiniteDifferenceEquityModel effectiveModel,
+			final FiniteDifferenceEquityProduct activatedProduct) {
+
+		return new ActivatedVectorEventState(
+				buildActivatedVectorsAtEventTimes(effectiveModel, activatedProduct),
+				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
+		);
+	}
+
+	private ActivatedVectorEventState getCurrentActivatedVectorEventState() {
+		final ActivatedVectorEventState state =
+				getActivatedVectorEventStateStack().currentOrNull();
+
+		if(state == null) {
+			throw new IllegalStateException(
+					"Discrete knock-in event condition requires cached activated continuation data."
+			);
+		}
+
+		return state;
 	}
 
 	/**
@@ -877,13 +870,11 @@ public class DoubleBarrierOption implements
 		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
 		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
 
-		final DiscreteKnockInEventState eventState = new DiscreteKnockInEventState(
-				buildActivatedVectorsAtEventTimes(effectiveModel, activatedProduct)
-		);
+		try(ProductEventStateStack.Scope ignored =
+				getActivatedVectorEventStateStack().push(
+						createActivatedVectorEventState(effectiveModel, activatedProduct)
+				)) {
 
-		pushDiscreteKnockInEventState(eventState);
-
-		try {
 			final FDMSolver solver = FDMSolverFactory.createSolver(
 					effectiveModel,
 					this,
@@ -893,9 +884,6 @@ public class DoubleBarrierOption implements
 
 			final double[] zeroTerminal = buildZeroTerminalValues(effectiveModel.getSpaceTimeDiscretization());
 			return solver.getValues(maturity, zeroTerminal);
-		}
-		finally {
-			popDiscreteKnockInEventState();
 		}
 	}
 
@@ -965,13 +953,11 @@ public class DoubleBarrierOption implements
 		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
 		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
 
-		final DiscreteKnockInEventState eventState = new DiscreteKnockInEventState(
-				buildActivatedVectorsAtEventTimes(effectiveModel, activatedProduct)
-		);
+		try(ProductEventStateStack.Scope ignored =
+				getActivatedVectorEventStateStack().push(
+						createActivatedVectorEventState(effectiveModel, activatedProduct)
+				)) {
 
-		pushDiscreteKnockInEventState(eventState);
-
-		try {
 			final FDMSolver solver = FDMSolverFactory.createSolver(
 					effectiveModel,
 					this,
@@ -980,9 +966,6 @@ public class DoubleBarrierOption implements
 			);
 
 			return solver.getValues(maturity, assetValue -> 0.0);
-		}
-		finally {
-			popDiscreteKnockInEventState();
 		}
 	}
 
@@ -1574,12 +1557,7 @@ public class DoubleBarrierOption implements
 			}
 		}
 		else {
-			final DiscreteKnockInEventState eventState = getCurrentDiscreteKnockInEventState();
-
-			if(eventState == null) {
-				throw new IllegalStateException(
-						"Discrete knock-in event condition requires thread-local activated continuation data.");
-			}
+			final ActivatedVectorEventState eventState = getCurrentActivatedVectorEventState();
 
 			if(dims == 1) {
 				return applyDiscreteInEvent1D(
@@ -1630,35 +1608,34 @@ public class DoubleBarrierOption implements
 
 		final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
 		final FiniteDifferenceEquityProduct activatedProduct = createActivatedVanillaProduct();
-		final double[] activatedValuesAtEvaluationTime = activatedProduct.getValue(evaluationTime, effectiveModel);
+
+		final Map<Double, double[]> activatedVectorsAtEventTimes = new HashMap<>();
+		activatedVectorsAtEventTimes.put(
+				evaluationTime,
+				activatedProduct.getValue(evaluationTime, effectiveModel).clone()
+		);
+
+		final ActivatedVectorEventState eventState = new ActivatedVectorEventState(
+				activatedVectorsAtEventTimes,
+				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
+		);
 
 		if(dims == 1) {
-			final double[] spotGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-			final double[] adjustedValues = valuesAtEvaluationTime.clone();
-
-			for(int i = 0; i < spotGrid.length; i++) {
-				if(isKnockedIn(spotGrid[i])) {
-					adjustedValues[i] = activatedValuesAtEvaluationTime[i];
-				}
-			}
-
-			return adjustedValues;
+			return applyDiscreteInEvent1D(
+					evaluationTime,
+					valuesAtEvaluationTime,
+					model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+					eventState
+			);
 		}
 		else if(dims == 2) {
-			final double[] x0 = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-			final double[] x1 = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
-			final double[] adjustedValues = valuesAtEvaluationTime.clone();
-
-			for(int j = 0; j < x1.length; j++) {
-				for(int i = 0; i < x0.length; i++) {
-					if(isKnockedIn(x0[i])) {
-						final int k = flatten(i, j, x0.length);
-						adjustedValues[k] = activatedValuesAtEvaluationTime[k];
-					}
-				}
-			}
-
-			return adjustedValues;
+			return applyDiscreteInEvent2D(
+					evaluationTime,
+					valuesAtEvaluationTime,
+					model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid(),
+					model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid(),
+					eventState
+			);
 		}
 
 		return valuesAtEvaluationTime;
@@ -1701,9 +1678,9 @@ public class DoubleBarrierOption implements
 			final double time,
 			final double[] valuesAfterEvent,
 			final double[] spotGrid,
-			final DiscreteKnockInEventState eventState) {
+			final ActivatedVectorEventState eventState) {
 
-		final double[] activatedVector = getActivatedVectorForEventTime(time, eventState);
+		final double[] activatedVector = eventState.getActivatedVector(time);
 		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
 
 		for(int i = 0; i < spotGrid.length; i++) {
@@ -1720,36 +1697,21 @@ public class DoubleBarrierOption implements
 			final double[] valuesAfterEvent,
 			final double[] x0,
 			final double[] x1,
-			final DiscreteKnockInEventState eventState) {
+			final ActivatedVectorEventState eventState) {
 
-		final double[] activatedVector = getActivatedVectorForEventTime(time, eventState);
+		final double[] activatedVector = eventState.getActivatedVector(time);
 		final double[] valuesBeforeEvent = valuesAfterEvent.clone();
 
 		for(int j = 0; j < x1.length; j++) {
 			for(int i = 0; i < x0.length; i++) {
 				if(isKnockedIn(x0[i])) {
-					valuesBeforeEvent[flatten(i, j, x0.length)] = activatedVector[flatten(i, j, x0.length)];
+					valuesBeforeEvent[flatten(i, j, x0.length)] =
+							activatedVector[flatten(i, j, x0.length)];
 				}
 			}
 		}
 
 		return valuesBeforeEvent;
-	}
-
-	private double[] getActivatedVectorForEventTime(
-			final double time,
-			final DiscreteKnockInEventState eventState) {
-
-		final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
-
-		for(final Map.Entry<Double, double[]> entry : eventState.activatedVectorsAtEventTimes.entrySet()) {
-			if(Math.abs(entry.getKey() - time) <= tolerance) {
-				return entry.getValue();
-			}
-		}
-
-		throw new IllegalArgumentException(
-				"No cached activated continuation vector found for monitoring time " + time + ".");
 	}
 
 	private boolean usesDiscreteMonitoring() {
@@ -1766,17 +1728,11 @@ public class DoubleBarrierOption implements
 	}
 
 	private boolean isMonitoringTime(final double time) {
-		if(!usesDiscreteMonitoring() || monitoringTimes == null) {
-			return false;
-		}
-
-		final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
-		for(final double monitoringTime : monitoringTimes) {
-			if(Math.abs(monitoringTime - time) <= tolerance) {
-				return true;
-			}
-		}
-		return false;
+		return DiscreteMonitoringSupport.isMonitoringTime(
+				time,
+				monitoringTimes,
+				DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE
+		);
 	}
 
 	/*
