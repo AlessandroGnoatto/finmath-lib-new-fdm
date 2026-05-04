@@ -5,7 +5,6 @@ import net.finmath.finitedifference.assetderivativevaluation.products.DoubleBarr
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
-import net.finmath.modelling.products.DoubleBarrierType;
 
 /**
  * Boundary conditions for {@link DoubleBarrierBinaryOption} under

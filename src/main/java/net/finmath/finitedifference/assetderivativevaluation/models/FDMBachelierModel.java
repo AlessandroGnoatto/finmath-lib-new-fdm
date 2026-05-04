@@ -1,7 +1,5 @@
 package net.finmath.finitedifference.assetderivativevaluation.models;
 
-import java.time.LocalDate;
-
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FDBoundaryFactory;
 import net.finmath.finitedifference.assetderivativevaluation.boundaries.FiniteDifferenceBoundary;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;

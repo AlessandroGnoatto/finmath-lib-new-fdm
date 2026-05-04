@@ -2,7 +2,6 @@ package net.finmath.finitedifference.assetderivativevaluation.boundaries;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMMultiAssetBlackScholesModel;
 import net.finmath.finitedifference.assetderivativevaluation.products.DigitalBasketOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.DigitalBasketOption.BasketDigitalType;
 import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDifferenceEquityProduct;
 import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
