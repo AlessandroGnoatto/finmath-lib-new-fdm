@@ -12,29 +12,37 @@ import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationEntit
 import net.finmath.marketdata.model.curves.CurveInterpolation.InterpolationMethod;
 import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
+import net.finmath.marketdata.model.volatilities.ConstantLocalVolatility;
+import net.finmath.marketdata.model.volatilities.LocalVolatility;
 
 /**
- * Finite difference model for option pricing under the Black–Scholes framework
+ * Finite difference model for option pricing under the Black-Scholes framework
  * for European and American options.
  *
+ * <p>
+ * The model supports both the classical constant-volatility Black-Scholes case
+ * and the local-volatility case. Constant volatility is represented internally
+ * as a {@link ConstantLocalVolatility}.
+ * </p>
+ *
  * @author Alessandro Gnoatto (this version)
- * @author Christian Fries, Ralph Rudd, Jörg Kienitz (original version)
+ * @author Christian Fries, Ralph Rudd, Jorg Kienitz (original version)
  */
 public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 
 	private final double initialValue;
 	private final DiscountCurve riskFreeCurve;
-	private final double volatility;
+	private final LocalVolatility volatility;
 	private final DiscountCurve dividendYieldCurve;
 	private final SpaceTimeDiscretization spaceTimeDiscretization;
 
 	/**
-	 * Constructs a Black–Scholes finite difference model for option pricing.
+	 * Constructs a Black-Scholes finite difference model for option pricing.
 	 *
-	 * @param initialValue            Initial spot price.
-	 * @param riskFreeCurve           Risk-free discount curve.
-	 * @param dividendYieldCurve      Dividend yield discount curve.
-	 * @param volatility              Constant volatility of the underlying asset.
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeCurve Risk-free discount curve.
+	 * @param dividendYieldCurve Dividend yield discount curve.
+	 * @param volatility Constant volatility of the underlying asset.
 	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
 	 */
 	public FDMBlackScholesModel(
@@ -42,6 +50,31 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 			final DiscountCurve riskFreeCurve,
 			final DiscountCurve dividendYieldCurve,
 			final double volatility,
+			final SpaceTimeDiscretization spaceTimeDiscretization) {
+
+		this(
+				initialValue,
+				riskFreeCurve,
+				dividendYieldCurve,
+				new ConstantLocalVolatility(volatility),
+				spaceTimeDiscretization
+		);
+	}
+
+	/**
+	 * Constructs a local-volatility finite difference model for option pricing.
+	 *
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeCurve Risk-free discount curve.
+	 * @param dividendYieldCurve Dividend yield discount curve.
+	 * @param volatility Local volatility function.
+	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+	 */
+	public FDMBlackScholesModel(
+			final double initialValue,
+			final DiscountCurve riskFreeCurve,
+			final DiscountCurve dividendYieldCurve,
+			final LocalVolatility volatility,
 			final SpaceTimeDiscretization spaceTimeDiscretization) {
 
 		this.initialValue = initialValue;
@@ -52,18 +85,41 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 	}
 
 	/**
-	 * Constructs a Black–Scholes finite difference model for option pricing without
+	 * Constructs a Black-Scholes finite difference model for option pricing without
 	 * dividend yield.
 	 *
-	 * @param initialValue            Initial spot price.
-	 * @param riskFreeCurve           Risk-free discount curve.
-	 * @param volatility              Constant volatility of the underlying asset.
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeCurve Risk-free discount curve.
+	 * @param volatility Constant volatility of the underlying asset.
 	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
 	 */
 	public FDMBlackScholesModel(
 			final double initialValue,
 			final DiscountCurve riskFreeCurve,
 			final double volatility,
+			final SpaceTimeDiscretization spaceTimeDiscretization) {
+
+		this(
+				initialValue,
+				riskFreeCurve,
+				new ConstantLocalVolatility(volatility),
+				spaceTimeDiscretization
+		);
+	}
+
+	/**
+	 * Constructs a local-volatility finite difference model for option pricing
+	 * without dividend yield.
+	 *
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeCurve Risk-free discount curve.
+	 * @param volatility Local volatility function.
+	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+	 */
+	public FDMBlackScholesModel(
+			final double initialValue,
+			final DiscountCurve riskFreeCurve,
+			final LocalVolatility volatility,
 			final SpaceTimeDiscretization spaceTimeDiscretization) {
 
 		this.initialValue = initialValue;
@@ -92,12 +148,12 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 	}
 
 	/**
-	 * Constructs a Black–Scholes finite difference model for option pricing.
+	 * Constructs a Black-Scholes finite difference model for option pricing.
 	 *
-	 * @param initialValue            Initial spot price.
-	 * @param riskFreeRate            Constant risk-free rate.
-	 * @param dividendYieldRate       Constant dividend yield rate.
-	 * @param volatility              Constant volatility of the underlying asset.
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeRate Constant risk-free rate.
+	 * @param dividendYieldRate Constant dividend yield rate.
+	 * @param volatility Constant volatility of the underlying asset.
 	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
 	 */
 	public FDMBlackScholesModel(
@@ -105,6 +161,31 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 			final double riskFreeRate,
 			final double dividendYieldRate,
 			final double volatility,
+			final SpaceTimeDiscretization spaceTimeDiscretization) {
+
+		this(
+				initialValue,
+				riskFreeRate,
+				dividendYieldRate,
+				new ConstantLocalVolatility(volatility),
+				spaceTimeDiscretization
+		);
+	}
+
+	/**
+	 * Constructs a local-volatility finite difference model for option pricing.
+	 *
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeRate Constant risk-free rate.
+	 * @param dividendYieldRate Constant dividend yield rate.
+	 * @param volatility Local volatility function.
+	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+	 */
+	public FDMBlackScholesModel(
+			final double initialValue,
+			final double riskFreeRate,
+			final double dividendYieldRate,
+			final LocalVolatility volatility,
 			final SpaceTimeDiscretization spaceTimeDiscretization) {
 
 		this.initialValue = initialValue;
@@ -150,18 +231,41 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 	}
 
 	/**
-	 * Constructs a Black–Scholes finite difference model for option pricing without
+	 * Constructs a Black-Scholes finite difference model for option pricing without
 	 * dividend yield.
 	 *
-	 * @param initialValue            Initial spot price.
-	 * @param riskFreeRate            Constant risk-free rate.
-	 * @param volatility              Constant volatility of the underlying asset.
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeRate Constant risk-free rate.
+	 * @param volatility Constant volatility of the underlying asset.
 	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
 	 */
 	public FDMBlackScholesModel(
 			final double initialValue,
 			final double riskFreeRate,
 			final double volatility,
+			final SpaceTimeDiscretization spaceTimeDiscretization) {
+
+		this(
+				initialValue,
+				riskFreeRate,
+				new ConstantLocalVolatility(volatility),
+				spaceTimeDiscretization
+		);
+	}
+
+	/**
+	 * Constructs a local-volatility finite difference model for option pricing
+	 * without dividend yield.
+	 *
+	 * @param initialValue Initial spot price.
+	 * @param riskFreeRate Constant risk-free rate.
+	 * @param volatility Local volatility function.
+	 * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+	 */
+	public FDMBlackScholesModel(
+			final double initialValue,
+			final double riskFreeRate,
+			final LocalVolatility volatility,
 			final SpaceTimeDiscretization spaceTimeDiscretization) {
 
 		this.initialValue = initialValue;
@@ -212,7 +316,7 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 	}
 
 	/**
-	 * Returns the initial value (spot) of the underlying.
+	 * Returns the initial value, i.e. the spot value, of the underlying.
 	 *
 	 * @return The initial value.
 	 */
@@ -221,10 +325,11 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 	}
 
 	@Override
-	public double[] getDrift(double time, double... stateVariables) {
+	public double[] getDrift(double time, final double... stateVariables) {
 		if(time == 0) {
 			time = 0.000001;
 		}
+
 		final double[] result = new double[1];
 
 		final double rF = getRiskFreeCurve().getDiscountFactor(time);
@@ -238,10 +343,36 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 	}
 
 	@Override
-	public double[][] getFactorLoading(double time, double... stateVariables) {
+	public double[][] getFactorLoading(final double time, final double... stateVariables) {
 		final double[][] result = new double[1][1];
-		result[0][0] = volatility * stateVariables[0];
+
+		final double assetValue = stateVariables[0];
+		result[0][0] = volatility.getValue(time, assetValue) * assetValue;
+
 		return result;
+	}
+
+	/**
+	 * Returns the volatility function.
+	 *
+	 * @return The local volatility function.
+	 */
+	public LocalVolatility getVolatility() {
+		return volatility;
+	}
+
+	/**
+	 * Returns the constant volatility if the model has been constructed with a
+	 * constant volatility.
+	 *
+	 * @return The constant volatility.
+	 */
+	public double getConstantVolatility() {
+		if(volatility instanceof ConstantLocalVolatility) {
+			return ((ConstantLocalVolatility) volatility).getVolatility();
+		}
+
+		throw new IllegalStateException("The model is not using a constant volatility.");
 	}
 
 	@Override
@@ -281,6 +412,7 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 	@Override
 	public FiniteDifferenceEquityModel getCloneWithModifiedSpaceTimeDiscretization(
 			final SpaceTimeDiscretization newSpaceTimeDiscretization) {
+
 		return new FDMBlackScholesModel(
 				initialValue,
 				riskFreeCurve,
