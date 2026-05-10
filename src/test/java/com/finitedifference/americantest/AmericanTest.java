@@ -45,7 +45,7 @@ public class AmericanTest {
 		//griglia con tasso di dividendo
 		final double forwardValueDividendYeld= initialValue*Math.exp((riskFreeRate-dividendYield) * optionMaturity);
 		final double varianceStockDividendYeld = Math.pow(initialValue, 2) * Math.exp(2 * (riskFreeRate-dividendYield) * optionMaturity)
-				* (Math.exp(Math.pow(volatility, 2) * optionMaturity) - 1);
+			 * (Math.exp(Math.pow(volatility, 2) * optionMaturity) - 1);
 
 		final double maximumStockPriceDividendYeld = forwardValueDividendYeld + numStandardDeviations*Math.sqrt(varianceStockDividendYeld);
 		final double minimumStockPriceDividendYeld = Math.max((forwardValueDividendYeld-numStandardDeviations*Math.sqrt(varianceStockDividendYeld)), 0);
@@ -55,7 +55,7 @@ public class AmericanTest {
 		//griglia senza tasso di dividendo
 		final double forwardValue = initialValue*Math.exp(riskFreeRate * optionMaturity);
 		final double varianceStock = Math.pow(initialValue, 2) * Math.exp(2 * riskFreeRate * optionMaturity)
-				* (Math.exp(Math.pow(volatility, 2) * optionMaturity) - 1);
+			 * (Math.exp(Math.pow(volatility, 2) * optionMaturity) - 1);
 		final double maximumStockPrice = forwardValue + numStandardDeviations*Math.sqrt(varianceStock);
 		final double minimumStockPrice = Math.max((forwardValue-numStandardDeviations*Math.sqrt(varianceStock)), 0);
 
@@ -65,14 +65,14 @@ public class AmericanTest {
 		//modello per opzioni americane
 		//con tasso di dividendo
 		TimeDiscretization uniformTimeDiscretization = new TimeDiscretizationFromArray(0.0,numTimesteps,1.0/numTimesteps);
-		
+
 		SpaceTimeDiscretization spaceTimeDiscretizationUniform = new SpaceTimeDiscretization(spaceGrid, uniformTimeDiscretization, theta, new double[] {initialValue});
-		
-        final FiniteDifferenceEquityModel modelAmericanYield = new FDMBlackScholesModel(
-        		initialValue, riskFreeRate, dividendYield, volatility,
-        		spaceTimeDiscretizationUniform);
-		
-		
+
+		final FiniteDifferenceEquityModel modelAmericanYield = new FDMBlackScholesModel(
+				initialValue, riskFreeRate, dividendYield, volatility,
+				spaceTimeDiscretizationUniform);
+
+
 		final FiniteDifferenceEquityProduct americanCallOptionYield = new AmericanOption(optionMaturity, optionStrike, CallOrPut.CALL);
 		final FiniteDifferenceEquityProduct americanPutOptionYield = new AmericanOption(optionMaturity, optionStrike, CallOrPut.PUT);
 
@@ -84,15 +84,15 @@ public class AmericanTest {
 		//modello per opzioni americane
 		//senza tasso di dividendo
 		final FiniteDifferenceEquityModel modelAmerican = new FDMBlackScholesModel(
-	        		initialValue, riskFreeRate, volatility,
-	        		spaceTimeDiscretizationUniform);
-		
+					initialValue, riskFreeRate, volatility,
+					spaceTimeDiscretizationUniform);
+
 		final FiniteDifferenceEquityProduct americanCallOption = new AmericanOption(optionMaturity, optionStrike, CallOrPut.CALL);
 		final FiniteDifferenceEquityProduct americanPutOption = new AmericanOption(optionMaturity, optionStrike, CallOrPut.PUT);
 
 		final double[] valueAmericanCall = americanCallOption.getValue(0.0, modelAmerican);
 		final double[] valueAmericanPut = americanPutOption.getValue(0.0, modelAmerican);
-		
+
 		final double[] americanCallPrices = java.util.Arrays.copyOfRange(valueAmericanCall, 1, valueAmericanCall.length-1);
 		final double[] americanPutPrices = java.util.Arrays.copyOfRange(valueAmericanPut, 1, valueAmericanPut.length-1);
 
@@ -100,8 +100,8 @@ public class AmericanTest {
 		//modello per opzioni europee
 		//senza tasso di dividendo
 		final FiniteDifferenceEquityModel modelEuropean = new FDMBlackScholesModel(
-        		initialValue, riskFreeRate, volatility,
-        		spaceTimeDiscretizationUniform);
+				initialValue, riskFreeRate, volatility,
+				spaceTimeDiscretizationUniform);
 		final FiniteDifferenceEquityProduct europeanCallOption = new EuropeanOption(optionMaturity, optionStrike, CallOrPut.CALL);
 		final FiniteDifferenceEquityProduct europeanPutOption = new EuropeanOption(optionMaturity, optionStrike, CallOrPut.PUT);
 
@@ -124,50 +124,50 @@ public class AmericanTest {
 		//benchmark opzione americana
 		TimeDiscretization times = new TimeDiscretizationFromArray(0.0, numTimesteps, optionMaturity/numTimesteps);
 		double[] exerciseTimesAmerican = times.getAsDoubleArray();
-		
+
 		double[] notionals = new double[exerciseTimesAmerican.length];
 		Arrays.fill(notionals, 1.0);
-		
+
 		double[] strikes = new double[exerciseTimesAmerican.length];
 		Arrays.fill(strikes, optionStrike);
-		
+
 		//parametri della simulazione
 		int numberOfPaths = 30000;
 		int seed = 1897;
-				
+
 		BrownianMotion ourDriver = new BrownianMotionFromMersenneRandomNumbers(times, 1, numberOfPaths, seed);
-		
+
 		final AbstractAssetMonteCarloProduct bermudanOption = new BermudanOption(exerciseTimesAmerican, notionals, strikes, ExerciseMethod.UPPER_BOUND_METHOD);
-		
-		//considero alcuni valori dello stock iniziale per cui calcolare e confrontare i prezzi 
+
+		//considero alcuni valori dello stock iniziale per cui calcolare e confrontare i prezzi
 		//dell'opzione americana e bermudiana
 		int[] indices = {stock.length / 4, stock.length / 2, stock.length-1};
 
 		for(int index : indices) {
 
-		    double S0 = stock[index];
-		    //processo di Black&Sholes
-		    MonteCarloBlackScholesModel blackScholesProcess = new MonteCarloBlackScholesModel(S0, riskFreeRate, volatility, ourDriver);
-		
-		    double bermudanValue = bermudanOption.getValue(blackScholesProcess);
+			double S0 = stock[index];
+			//processo di Black&Sholes
+			MonteCarloBlackScholesModel blackScholesProcess = new MonteCarloBlackScholesModel(S0, riskFreeRate, volatility, ourDriver);
 
-		    double americanFDMValue = americanCallPrices[index];
-		    
-		    double americanDividendFDMValue = americanCallPricesYield[index];
+			double bermudanValue = bermudanOption.getValue(blackScholesProcess);
 
-		    double europeanFDMValue = europeanCallPrices[index];
-		    
-		    double analyticalCallValue = analyticalCallOptionValue[index];
-		    
-		    System.out.println("S0 = " + S0);
-		    System.out.println("FDM American Call = " + americanFDMValue);
-		    System.out.println("FDM American Call Dividend = " + americanDividendFDMValue);
-		    System.out.println("Bermudan Call = " + bermudanValue);
-		    System.out.println("European Call = " + europeanFDMValue);
-		    System.out.println("Analytical Call = " + analyticalCallValue);
-		    System.out.println();
+			double americanFDMValue = americanCallPrices[index];
+
+			double americanDividendFDMValue = americanCallPricesYield[index];
+
+			double europeanFDMValue = europeanCallPrices[index];
+
+			double analyticalCallValue = analyticalCallOptionValue[index];
+
+			System.out.println("S0 = " + S0);
+			System.out.println("FDM American Call = " + americanFDMValue);
+			System.out.println("FDM American Call Dividend = " + americanDividendFDMValue);
+			System.out.println("Bermudan Call = " + bermudanValue);
+			System.out.println("European Call = " + europeanFDMValue);
+			System.out.println("Analytical Call = " + analyticalCallValue);
+			System.out.println();
 		}
-		 
+
 		System.out.print("Stock values:");
 		System.out.println(Arrays.toString(stock));
 		System.out.println();
@@ -179,7 +179,7 @@ public class AmericanTest {
 		System.out.print("American put option values (q = " + (dividendYield * 100) + "%)");
 		System.out.println(Arrays.toString(americanPutPricesYield));
 		System.out.println();
-		
+
 		System.out.print("American call option values ");
 		System.out.println(Arrays.toString(americanCallPrices));
 		System.out.println();
@@ -187,7 +187,7 @@ public class AmericanTest {
 		System.out.print("American put option values ");
 		System.out.println(Arrays.toString(americanPutPrices));
 		System.out.println();
-		
+
 		System.out.print("European call option values ");
 		System.out.println(Arrays.toString(europeanCallPrices));
 		System.out.println();
@@ -195,7 +195,7 @@ public class AmericanTest {
 		System.out.print("European put option values ");
 		System.out.println(Arrays.toString(europeanPutPrices));
 		System.out.println();
-		
+
 		System.out.print("Analytical call values: ");
 		System.out.println(Arrays.toString(analyticalCallOptionValue));
 	}

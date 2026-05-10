@@ -27,91 +27,91 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class EuropeanOptionVarianceGammaModelBoundary implements FiniteDifferenceBoundary {
 
-    /**
-     * The model.
-     */
-    private final FDMVarianceGammaModel model;
-    /**
-     * The epsilon.
-     */
-    private static final double EPSILON = 1E-6;
+	/**
+	 * The model.
+	 */
+	private final FDMVarianceGammaModel model;
+	/**
+	 * The epsilon.
+	 */
+	private static final double EPSILON = 1E-6;
 
-    /**
-     * Creates the boundary condition associated with a given
-     * {@link FDMVarianceGammaModel}.
-     *
-     * @param model The Variance Gamma model used to determine risk-free and
-     *              dividend discount factors.
-     */
-    public EuropeanOptionVarianceGammaModelBoundary(final FDMVarianceGammaModel model) {
-        this.model = model;
-    }
+	/**
+	 * Creates the boundary condition associated with a given
+	 * {@link FDMVarianceGammaModel}.
+	 *
+	 * @param model The Variance Gamma model used to determine risk-free and
+	 *              dividend discount factors.
+	 */
+	public EuropeanOptionVarianceGammaModelBoundary(final FDMVarianceGammaModel model) {
+		this.model = model;
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final EuropeanOption option = (EuropeanOption) product;
-        final CallOrPut sign = option.getCallOrPut();
+		final EuropeanOption option = (EuropeanOption) product;
+		final CallOrPut sign = option.getCallOrPut();
 
-        if (sign == CallOrPut.CALL) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        }
+		if (sign == CallOrPut.CALL) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		}
 
-        time = Math.max(time, EPSILON);
+		time = Math.max(time, EPSILON);
 
-        final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
-        final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
+		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
+		final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
 
-        final double strike = option.getStrike();
-        final double maturity = option.getMaturity();
+		final double strike = option.getStrike();
+		final double maturity = option.getMaturity();
 
-        return new BoundaryCondition[] {
-                StandardBoundaryCondition.dirichlet(
-                        strike * Math.exp(-riskFreeRate * (maturity - time))
-                )
-        };
-    }
+		return new BoundaryCondition[] {
+				StandardBoundaryCondition.dirichlet(
+						strike * Math.exp(-riskFreeRate * (maturity - time))
+				)
+		};
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final EuropeanOption option = (EuropeanOption) product;
-        final CallOrPut sign = option.getCallOrPut();
+		final EuropeanOption option = (EuropeanOption) product;
+		final CallOrPut sign = option.getCallOrPut();
 
-        if (sign == CallOrPut.PUT) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        }
+		if (sign == CallOrPut.PUT) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		}
 
-        time = Math.max(time, EPSILON);
+		time = Math.max(time, EPSILON);
 
-        final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
-        final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
+		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(time);
+		final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
 
-        final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(time);
-        final double dividendYieldRate = -Math.log(discountFactorDividend) / time;
+		final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(time);
+		final double dividendYieldRate = -Math.log(discountFactorDividend) / time;
 
-        final double strike = option.getStrike();
-        final double maturity = option.getMaturity();
-        final double stock = stateVariables[0];
+		final double strike = option.getStrike();
+		final double maturity = option.getMaturity();
+		final double stock = stateVariables[0];
 
-        final double dividendAdjustedStockPrice =
-                stock * Math.exp(-dividendYieldRate * (maturity - time));
+		final double dividendAdjustedStockPrice =
+				stock * Math.exp(-dividendYieldRate * (maturity - time));
 
-        return new BoundaryCondition[] {
-                StandardBoundaryCondition.dirichlet(
-                        dividendAdjustedStockPrice
-                        - strike * Math.exp(-riskFreeRate * (maturity - time))
-                )
-        };
-    }
+		return new BoundaryCondition[] {
+				StandardBoundaryCondition.dirichlet(
+						dividendAdjustedStockPrice
+						- strike * Math.exp(-riskFreeRate * (maturity - time))
+				)
+		};
+	}
 }

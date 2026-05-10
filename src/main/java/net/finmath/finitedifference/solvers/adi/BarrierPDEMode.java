@@ -13,14 +13,14 @@ package net.finmath.finitedifference.solvers.adi;
  */
 public enum BarrierPDEMode {
 
-    /**
-     * Standard direct pricing of a knock-out barrier PDE.
-     */
-    OUT_STANDARD,
+	/**
+	 * Standard direct pricing of a knock-out barrier PDE.
+	 */
+	OUT_STANDARD,
 
-    /**
-     * Pre-hit continuation PDE for a direct knock-in formulation.
-     * The barrier is treated as an interface carrying the activated trace.
-     */
-    IN_PRE_HIT
+	/**
+	 * Pre-hit continuation PDE for a direct knock-in formulation.
+	 * The barrier is treated as an interface carrying the activated trace.
+	 */
+	IN_PRE_HIT
 }

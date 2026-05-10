@@ -98,7 +98,7 @@ public class BondTest {
 		for(int periodIndex = 0; periodIndex < schedule.getNumberOfPeriods(); periodIndex++) {
 			final double paymentTime = schedule.getPayment(periodIndex);
 			analyticValue += fixedCouponBond.getCashflow(periodIndex)
-					* model.getDiscountBond(0.0, paymentTime, INITIAL_STATE);
+				 * model.getDiscountBond(0.0, paymentTime, INITIAL_STATE);
 		}
 
 		assertEquals(analyticValue, pdeValue, FIXED_COUPON_TOLERANCE);

@@ -21,106 +21,106 @@ import net.finmath.modelling.products.CallOrPut;
  * @author Alessandro Gnoatto
  */
 public class BarrierOptionBachelierModelBoundary
-        implements FiniteDifferenceBoundary {
+		implements FiniteDifferenceBoundary {
 
-    /**
-     * The epsilon.
-     */
-    private static final double EPSILON = 1E-6;
+	/**
+	 * The epsilon.
+	 */
+	private static final double EPSILON = 1E-6;
 
-    /**
-     * The model.
-     */
-    private final FDMBachelierModel model;
+	/**
+	 * The model.
+	 */
+	private final FDMBachelierModel model;
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     */
-    public BarrierOptionBachelierModelBoundary(final FDMBachelierModel model) {
-        this.model = model;
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 */
+	public BarrierOptionBachelierModelBoundary(final FDMBachelierModel model) {
+		this.model = model;
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final BarrierOption option = (BarrierOption) product;
-        final BarrierType barrierType = option.getBarrierType();
-        final CallOrPut sign = option.getCallOrPut();
+		final BarrierOption option = (BarrierOption) product;
+		final BarrierType barrierType = option.getBarrierType();
+		final CallOrPut sign = option.getCallOrPut();
 
-        if (barrierType == BarrierType.DOWN_OUT) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(option.getRebate())
-            };
-        }
+		if (barrierType == BarrierType.DOWN_OUT) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(option.getRebate())
+			};
+		}
 
-        if (sign == CallOrPut.CALL) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        } else {
-            time = Math.max(time, EPSILON);
+		if (sign == CallOrPut.CALL) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		} else {
+			time = Math.max(time, EPSILON);
 
-            final double discountFactorRiskFree =
-                    model.getRiskFreeCurve().getDiscountFactor(time);
-            final double riskFreeRate =
-                    -Math.log(discountFactorRiskFree) / time;
+			final double discountFactorRiskFree =
+					model.getRiskFreeCurve().getDiscountFactor(time);
+			final double riskFreeRate =
+					-Math.log(discountFactorRiskFree) / time;
 
-            final double strike = option.getStrike();
-            final double maturity = option.getMaturity();
+			final double strike = option.getStrike();
+			final double maturity = option.getMaturity();
 
-            final double value =
-                    strike * Math.exp(-riskFreeRate * (maturity - time));
+			final double value =
+					strike * Math.exp(-riskFreeRate * (maturity - time));
 
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(value)
-            };
-        }
-    }
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
+		}
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final BarrierOption option = (BarrierOption) product;
-        final BarrierType barrierType = option.getBarrierType();
-        final CallOrPut sign = option.getCallOrPut();
+		final BarrierOption option = (BarrierOption) product;
+		final BarrierType barrierType = option.getBarrierType();
+		final CallOrPut sign = option.getCallOrPut();
 
-        if (barrierType == BarrierType.UP_OUT) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(option.getRebate())
-            };
-        }
+		if (barrierType == BarrierType.UP_OUT) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(option.getRebate())
+			};
+		}
 
-        if (sign == CallOrPut.CALL) {
-            time = Math.max(time, EPSILON);
+		if (sign == CallOrPut.CALL) {
+			time = Math.max(time, EPSILON);
 
-            final double discountFactorRiskFree =
-                    model.getRiskFreeCurve().getDiscountFactor(time);
-            final double riskFreeRate =
-                    -Math.log(discountFactorRiskFree) / time;
+			final double discountFactorRiskFree =
+					model.getRiskFreeCurve().getDiscountFactor(time);
+			final double riskFreeRate =
+					-Math.log(discountFactorRiskFree) / time;
 
-            final double strike = option.getStrike();
-            final double maturity = option.getMaturity();
-            final double stateVariable = stateVariables[0];
+			final double strike = option.getStrike();
+			final double maturity = option.getMaturity();
+			final double stateVariable = stateVariables[0];
 
-            final double value =
-                    stateVariable - strike * Math.exp(-riskFreeRate * (maturity - time));
+			final double value =
+					stateVariable - strike * Math.exp(-riskFreeRate * (maturity - time));
 
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(value)
-            };
-        } else {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        }
-    }
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
+		} else {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		}
+	}
 
 }

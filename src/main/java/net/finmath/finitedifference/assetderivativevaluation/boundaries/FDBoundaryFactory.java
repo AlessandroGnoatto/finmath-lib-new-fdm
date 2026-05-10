@@ -33,55 +33,55 @@ import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDiff
  */
 public final class FDBoundaryFactory {
 
-    /**
-     * Creates a {@link FiniteDifferenceBoundary} corresponding to the
-     * given model and product.
-     *
-     * @param model   The finite difference model.
-     * @param product The finite difference product.
-     * @return The corresponding boundary implementation.
-     * @throws IllegalArgumentException If the boundary class cannot be created.
-     */
-    public static FiniteDifferenceBoundary createBoundary(
-            final FiniteDifferenceModel model,
-            final FiniteDifferenceEquityProduct product) {
+	/**
+	 * Creates a {@link FiniteDifferenceBoundary} corresponding to the
+	 * given model and product.
+	 *
+	 * @param model   The finite difference model.
+	 * @param product The finite difference product.
+	 * @return The corresponding boundary implementation.
+	 * @throws IllegalArgumentException If the boundary class cannot be created.
+	 */
+	public static FiniteDifferenceBoundary createBoundary(
+			final FiniteDifferenceModel model,
+			final FiniteDifferenceEquityProduct product) {
 
-        try {
+		try {
 
-            final String productSimpleName =
-                    product.getClass().getSimpleName();
-            final String modelSimpleName =
-                    model.getClass().getSimpleName();
+			final String productSimpleName =
+					product.getClass().getSimpleName();
+			final String modelSimpleName =
+					model.getClass().getSimpleName();
 
-            final String modelCoreName =
-                    modelSimpleName.replace("FDM", "");
+			final String modelCoreName =
+					modelSimpleName.replace("FDM", "");
 
-            final String boundarySimpleName =
-                    productSimpleName
-                            + modelCoreName
-                            + "Boundary";
+			final String boundarySimpleName =
+					productSimpleName
+							+ modelCoreName
+							+ "Boundary";
 
-            final String packageName =
-                    FDBoundaryFactory.class.getPackageName();
-            final String boundaryClassName =
-                    packageName + "." + boundarySimpleName;
+			final String packageName =
+					FDBoundaryFactory.class.getPackageName();
+			final String boundaryClassName =
+					packageName + "." + boundarySimpleName;
 
-            final Class<?> boundaryClass =
-                    Class.forName(boundaryClassName);
+			final Class<?> boundaryClass =
+					Class.forName(boundaryClassName);
 
-            final var constructor =
-                    boundaryClass.getConstructor(model.getClass());
+			final var constructor =
+					boundaryClass.getConstructor(model.getClass());
 
-            return (FiniteDifferenceBoundary)
-                    constructor.newInstance(model);
+			return (FiniteDifferenceBoundary)
+					constructor.newInstance(model);
 
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalArgumentException(
-                    "Cannot create boundary for model type "
-                            + model.getClass()
-                            + " and product type "
-                            + product.getClass(),
-                    e);
-        }
-    }
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalArgumentException(
+					"Cannot create boundary for model type "
+							+ model.getClass()
+							+ " and product type "
+							+ product.getClass(),
+					e);
+		}
+	}
 }

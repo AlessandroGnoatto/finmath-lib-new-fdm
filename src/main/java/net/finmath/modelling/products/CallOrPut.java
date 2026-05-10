@@ -7,30 +7,30 @@ package net.finmath.modelling.products;
  * @author Alessandro Gnoatto
  */
 public enum CallOrPut {
-    /**
-     * The call.
-     */
-    CALL(1),
-    /**
-     * The put.
-     */
-    PUT(-1);
+	/**
+	 * The call.
+	 */
+	CALL(1),
+	/**
+	 * The put.
+	 */
+	PUT(-1);
 
-    /**
-     * The value.
-     */
-    private final int value;
+	/**
+	 * The value.
+	 */
+	private final int value;
 
-    CallOrPut(final int value) {
-        this.value = value;
-    }
+	CallOrPut(final int value) {
+		this.value = value;
+	}
 
-    /**
-     * Returns the sign associated to an option.
-     * @return 1 for a call and -1 for a put.
-     */
-    public int toInteger() {
-        return value;
-    }
+	/**
+	 * Returns the sign associated to an option.
+	 * @return 1 for a call and -1 for a put.
+	 */
+	public int toInteger() {
+		return value;
+	}
 
 }

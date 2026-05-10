@@ -194,8 +194,8 @@ public class BarrierOptionBlackScholesAmericanKnockInTest {
 				SPOT * Math.exp((RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY);
 		final double variance =
 				SPOT * SPOT
-				* Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
-				* (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
+			 * Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
+			 * (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
 
 		final double sMin = Math.max(forward - 6.0 * Math.sqrt(variance), 0.0);
 		final double sMax = forward + 6.0 * Math.sqrt(variance);

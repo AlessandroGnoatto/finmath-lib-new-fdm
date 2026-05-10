@@ -29,99 +29,99 @@ import net.finmath.modelling.products.BarrierType;
  */
 public class TouchOptionSabrModelBoundary implements FiniteDifferenceBoundary {
 
-    /**
-     * The epsilon.
-     */
-    private static final double EPSILON = 1E-6;
+	/**
+	 * The epsilon.
+	 */
+	private static final double EPSILON = 1E-6;
 
-    /**
-     * The model.
-     */
-    private final FDMSabrModel model;
+	/**
+	 * The model.
+	 */
+	private final FDMSabrModel model;
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     */
-    public TouchOptionSabrModelBoundary(final FDMSabrModel model) {
-        this.model = model;
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 */
+	public TouchOptionSabrModelBoundary(final FDMSabrModel model) {
+		this.model = model;
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final TouchOption option = (TouchOption) product;
-        final BarrierType barrierType = option.getBarrierType();
+		final TouchOption option = (TouchOption) product;
+		final BarrierType barrierType = option.getBarrierType();
 
-        time = Math.max(time, EPSILON);
+		time = Math.max(time, EPSILON);
 
-        final BoundaryCondition[] result = new BoundaryCondition[2];
+		final BoundaryCondition[] result = new BoundaryCondition[2];
 
-        /*
-         * Spot lower boundary.
-         *
-         * DOWN_OUT no-touch: knocked out -> 0.
-         * Otherwise: discounted expiry cash.
-         */
-        if (barrierType == BarrierType.DOWN_OUT) {
-            result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        } else {
-            result[0] = StandardBoundaryCondition.dirichlet(
-                    getDiscountedCashValue(option, time)
-            );
-        }
+		/*
+		 * Spot lower boundary.
+		 *
+		 * DOWN_OUT no-touch: knocked out -> 0.
+		 * Otherwise: discounted expiry cash.
+		 */
+		if (barrierType == BarrierType.DOWN_OUT) {
+			result[0] = StandardBoundaryCondition.dirichlet(0.0);
+		} else {
+			result[0] = StandardBoundaryCondition.dirichlet(
+					getDiscountedCashValue(option, time)
+			);
+		}
 
-        /* Alpha lower boundary left free. */
-        result[1] = StandardBoundaryCondition.none();
+		/* Alpha lower boundary left free. */
+		result[1] = StandardBoundaryCondition.none();
 
-        return result;
-    }
+		return result;
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final TouchOption option = (TouchOption) product;
-        final BarrierType barrierType = option.getBarrierType();
+		final TouchOption option = (TouchOption) product;
+		final BarrierType barrierType = option.getBarrierType();
 
-        time = Math.max(time, EPSILON);
+		time = Math.max(time, EPSILON);
 
-        final BoundaryCondition[] result = new BoundaryCondition[2];
+		final BoundaryCondition[] result = new BoundaryCondition[2];
 
-        /*
-         * Spot upper boundary.
-         *
-         * UP_OUT no-touch: knocked out -> 0.
-         * Otherwise: discounted expiry cash.
-         */
-        if (barrierType == BarrierType.UP_OUT) {
-            result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        } else {
-            result[0] = StandardBoundaryCondition.dirichlet(
-                    getDiscountedCashValue(option, time)
-            );
-        }
+		/*
+		 * Spot upper boundary.
+		 *
+		 * UP_OUT no-touch: knocked out -> 0.
+		 * Otherwise: discounted expiry cash.
+		 */
+		if (barrierType == BarrierType.UP_OUT) {
+			result[0] = StandardBoundaryCondition.dirichlet(0.0);
+		} else {
+			result[0] = StandardBoundaryCondition.dirichlet(
+					getDiscountedCashValue(option, time)
+			);
+		}
 
-        /* Alpha upper boundary left free. */
-        result[1] = StandardBoundaryCondition.none();
+		/* Alpha upper boundary left free. */
+		result[1] = StandardBoundaryCondition.none();
 
-        return result;
-    }
+		return result;
+	}
 
-    private double getDiscountedCashValue(final TouchOption option, final double evaluationTime) {
-        if (evaluationTime >= option.getMaturity()) {
-            return option.getPayoffAmount();
-        }
+	private double getDiscountedCashValue(final TouchOption option, final double evaluationTime) {
+		if (evaluationTime >= option.getMaturity()) {
+			return option.getPayoffAmount();
+		}
 
-        final double dfTime = model.getRiskFreeCurve().getDiscountFactor(evaluationTime);
-        final double dfMat = model.getRiskFreeCurve().getDiscountFactor(option.getMaturity());
+		final double dfTime = model.getRiskFreeCurve().getDiscountFactor(evaluationTime);
+		final double dfMat = model.getRiskFreeCurve().getDiscountFactor(option.getMaturity());
 
-        return option.getPayoffAmount() * dfMat / dfTime;
-    }
+		return option.getPayoffAmount() * dfMat / dfTime;
+	}
 }

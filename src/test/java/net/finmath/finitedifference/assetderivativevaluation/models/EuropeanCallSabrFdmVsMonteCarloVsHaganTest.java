@@ -206,7 +206,7 @@ public class EuropeanCallSabrFdmVsMonteCarloVsHaganTest {
 						RHO
 				);
 
-		
+
 		final EulerSchemeFromProcessModel mcProcess =
 				new EulerSchemeFromProcessModel(mcSabrModel, brownianMotion);
 

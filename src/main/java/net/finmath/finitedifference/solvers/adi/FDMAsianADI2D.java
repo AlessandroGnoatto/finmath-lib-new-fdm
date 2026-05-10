@@ -84,197 +84,197 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMAsianADI2D extends AbstractADI2D {
 
-    /**
-     * Creates the lifted two-dimensional ADI solver for arithmetic Asian
-     * products.
-     *
-     * @param model The finite-difference model.
-     * @param product The product to be valued.
-     * @param spaceTimeDiscretization The space-time discretization.
-     * @param exercise The exercise specification.
-     */
-    public FDMAsianADI2D(
-            final FiniteDifferenceEquityModel model,
-            final FiniteDifferenceEquityProduct product,
-            final SpaceTimeDiscretization spaceTimeDiscretization,
-            final Exercise exercise) {
-        super(model, product, spaceTimeDiscretization, exercise);
-    }
+	/**
+	 * Creates the lifted two-dimensional ADI solver for arithmetic Asian
+	 * products.
+	 *
+	 * @param model The finite-difference model.
+	 * @param product The product to be valued.
+	 * @param spaceTimeDiscretization The space-time discretization.
+	 * @param exercise The exercise specification.
+	 */
+	public FDMAsianADI2D(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceEquityProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise) {
+		super(model, product, spaceTimeDiscretization, exercise);
+	}
 
-    /**
-     * Applies the explicit operator part {@code A0}.
-     *
-     * <p>
-     * For the lifted arithmetic Asian PDE, {@code A0} contains only the
-     * discounting term
-     * <i>-r u</i>.
-     * </p>
-     *
-     * @param u Current solution vector.
-     * @param time Current running time.
-     * @return Explicit contribution of {@code A0}.
-     */
-    @Override
-    protected double[] applyA0Explicit(final double[] u, final double time) {
-        final double[] out = new double[n];
+	/**
+	 * Applies the explicit operator part {@code A0}.
+	 *
+	 * <p>
+	 * For the lifted arithmetic Asian PDE, {@code A0} contains only the
+	 * discounting term
+	 * <i>-r u</i>.
+	 * </p>
+	 *
+	 * @param u Current solution vector.
+	 * @param time Current running time.
+	 * @return Explicit contribution of {@code A0}.
+	 */
+	@Override
+	protected double[] applyA0Explicit(final double[] u, final double time) {
+		final double[] out = new double[n];
 
-        final double tSafe = Math.max(time, 1E-10);
-        final double discountFactor = model.getRiskFreeCurve().getDiscountFactor(tSafe);
-        final double r = -Math.log(discountFactor) / tSafe;
+		final double tSafe = Math.max(time, 1E-10);
+		final double discountFactor = model.getRiskFreeCurve().getDiscountFactor(tSafe);
+		final double r = -Math.log(discountFactor) / tSafe;
 
-        for (int j = 0; j < n1; j++) {
-            for (int i = 0; i < n0; i++) {
-                out[flatten(i, j)] = -r * u[flatten(i, j)];
-            }
-        }
+		for (int j = 0; j < n1; j++) {
+			for (int i = 0; i < n0; i++) {
+				out[flatten(i, j)] = -r * u[flatten(i, j)];
+			}
+		}
 
-        return out;
-    }
+		return out;
+	}
 
-    /**
-     * Applies the explicit transport operator {@code A2 u = S u_I}.
-     *
-     * <p>
-     * The derivative in the integral direction is approximated by forward
-     * upwinding:
-     * </p>
-     *
-     * <p>
-     * <i>u_I(S_i,I_j) \approx (u_{i,j+1} - u_{i,j}) / (I_{j+1} - I_j)</i>.
-     * </p>
-     *
-     * <p>
-     * This is the appropriate upwind choice in time-to-maturity coordinates for
-     * the
-     * transport equation induced by <i>dI_t = S_t dt</i>.
-     * </p>
-     *
-     * @param u Current solution vector.
-     * @param time Current running time.
-     * @return Explicit contribution of {@code A2}.
-     */
-    @Override
-    protected double[] applyA2Explicit(final double[] u, final double time) {
-        final double[] out = new double[n];
+	/**
+	 * Applies the explicit transport operator {@code A2 u = S u_I}.
+	 *
+	 * <p>
+	 * The derivative in the integral direction is approximated by forward
+	 * upwinding:
+	 * </p>
+	 *
+	 * <p>
+	 * <i>u_I(S_i,I_j) \approx (u_{i,j+1} - u_{i,j}) / (I_{j+1} - I_j)</i>.
+	 * </p>
+	 *
+	 * <p>
+	 * This is the appropriate upwind choice in time-to-maturity coordinates for
+	 * the
+	 * transport equation induced by <i>dI_t = S_t dt</i>.
+	 * </p>
+	 *
+	 * @param u Current solution vector.
+	 * @param time Current running time.
+	 * @return Explicit contribution of {@code A2}.
+	 */
+	@Override
+	protected double[] applyA2Explicit(final double[] u, final double time) {
+		final double[] out = new double[n];
 
-        for (int i = 0; i < n0; i++) {
-            final double s = x0Grid[i];
+		for (int i = 0; i < n0; i++) {
+			final double s = x0Grid[i];
 
-            for (int j = 0; j < n1 - 1; j++) {
-                final double dIUp = x1Grid[j + 1] - x1Grid[j];
-                out[flatten(i, j)] = s * (u[flatten(i, j + 1)] - u[flatten(i, j)]) / dIUp;
-            }
+			for (int j = 0; j < n1 - 1; j++) {
+				final double dIUp = x1Grid[j + 1] - x1Grid[j];
+				out[flatten(i, j)] = s * (u[flatten(i, j + 1)] - u[flatten(i, j)]) / dIUp;
+			}
 
-            out[flatten(i, n1 - 1)] = 0.0;
-        }
+			out[flatten(i, n1 - 1)] = 0.0;
+		}
 
-        return out;
-    }
+		return out;
+	}
 
-    /**
-     * Solves the implicit systems in the integral direction.
-     *
-     * <p>
-     * For each fixed spot index, the second-direction system corresponds to the
-     * transport
-     * discretization
-     * </p>
-     *
-     * <p>
-     * <i>(1 + \lambda_j) v_j - \lambda_j v_{j+1} = rhs_j</i>,
-     * </p>
-     *
-     * <p>
-     * where <i>\lambda_j = \theta \Delta \tau S / (I_{j+1} - I_j)</i>.
-     * </p>
-     *
-     * <p>
-     * The upper integral boundary is the inflow side and is imposed if it is
-     * Dirichlet.
-     * The lower integral boundary is overwritten only when an explicit
-     * Dirichlet condition
-     * is provided.
-     * </p>
-     *
-     * @param rhs Right-hand side vector.
-     * @param time Current running time.
-     * @param dt Time-step size.
-     * @return Updated solution vector.
-     */
-    @Override
-    protected double[] solveSecondDirectionLines(
-            final double[] rhs,
-            final double time,
-            final double dt) {
+	/**
+	 * Solves the implicit systems in the integral direction.
+	 *
+	 * <p>
+	 * For each fixed spot index, the second-direction system corresponds to the
+	 * transport
+	 * discretization
+	 * </p>
+	 *
+	 * <p>
+	 * <i>(1 + \lambda_j) v_j - \lambda_j v_{j+1} = rhs_j</i>,
+	 * </p>
+	 *
+	 * <p>
+	 * where <i>\lambda_j = \theta \Delta \tau S / (I_{j+1} - I_j)</i>.
+	 * </p>
+	 *
+	 * <p>
+	 * The upper integral boundary is the inflow side and is imposed if it is
+	 * Dirichlet.
+	 * The lower integral boundary is overwritten only when an explicit
+	 * Dirichlet condition
+	 * is provided.
+	 * </p>
+	 *
+	 * @param rhs Right-hand side vector.
+	 * @param time Current running time.
+	 * @param dt Time-step size.
+	 * @return Updated solution vector.
+	 */
+	@Override
+	protected double[] solveSecondDirectionLines(
+			final double[] rhs,
+			final double time,
+			final double dt) {
 
-        final double[] out = rhs.clone();
+		final double[] out = rhs.clone();
 
-        for (int i = 0; i < n0; i++) {
-            final double s = x0Grid[i];
+		for (int i = 0; i < n0; i++) {
+			final double s = x0Grid[i];
 
-            final TridiagonalMatrix m = new TridiagonalMatrix(n1);
-            final double[] lineRhs = new double[n1];
+			final TridiagonalMatrix m = new TridiagonalMatrix(n1);
+			final double[] lineRhs = new double[n1];
 
-            for (int j = 0; j < n1; j++) {
-                lineRhs[j] = rhs[flatten(i, j)];
-            }
+			for (int j = 0; j < n1; j++) {
+				lineRhs[j] = rhs[flatten(i, j)];
+			}
 
-            /*
-             * PDE rows for j = 0,...,n1-2:
-             *
-             * (1 + lambda_j) v_j - lambda_j v_{j+1} = rhs_j
-             */
-            for (int j = 0; j < n1 - 1; j++) {
-                final double dIUp = x1Grid[j + 1] - x1Grid[j];
-                final double lambda = theta * dt * s / dIUp;
+			/*
+			 * PDE rows for j = 0,...,n1-2:
+			 *
+			 * (1 + lambda_j) v_j - lambda_j v_{j+1} = rhs_j
+			 */
+			for (int j = 0; j < n1 - 1; j++) {
+				final double dIUp = x1Grid[j + 1] - x1Grid[j];
+				final double lambda = theta * dt * s / dIUp;
 
-                m.lower[j] = 0.0;
-                m.diag[j] = 1.0 + lambda;
-                m.upper[j] = -lambda;
-            }
+				m.lower[j] = 0.0;
+				m.diag[j] = 1.0 + lambda;
+				m.upper[j] = -lambda;
+			}
 
-            /*
-             * Last row: default identity, then overwrite only if upper boundary
-             * is Dirichlet.
-             */
-            m.lower[n1 - 1] = 0.0;
-            m.diag[n1 - 1] = 1.0;
-            m.upper[n1 - 1] = 0.0;
+			/*
+			 * Last row: default identity, then overwrite only if upper boundary
+			 * is Dirichlet.
+			 */
+			m.lower[n1 - 1] = 0.0;
+			m.diag[n1 - 1] = 1.0;
+			m.upper[n1 - 1] = 0.0;
 
-            /*
-             * Upper I boundary is the inflow side.
-             */
-            final net.finmath.finitedifference.boundaries.BoundaryCondition[] upperConditions =
-                    model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[i], x1Grid[n1 - 1]);
+			/*
+			 * Upper I boundary is the inflow side.
+			 */
+			final net.finmath.finitedifference.boundaries.BoundaryCondition[] upperConditions =
+					model.getBoundaryConditionsAtUpperBoundary(product, time, x0Grid[i], x1Grid[n1 - 1]);
 
-            if (upperConditions != null
-                    && upperConditions.length > 1
-                    && upperConditions[1] != null
-                    && upperConditions[1].isDirichlet()) {
-                overwriteBoundaryRow(m, lineRhs, n1 - 1, upperConditions[1].getValue());
-            }
+			if (upperConditions != null
+					&& upperConditions.length > 1
+					&& upperConditions[1] != null
+					&& upperConditions[1].isDirichlet()) {
+				overwriteBoundaryRow(m, lineRhs, n1 - 1, upperConditions[1].getValue());
+			}
 
-            /*
-             * Lower I boundary: overwrite ONLY if explicitly Dirichlet.
-             * For AsianOption it is NONE, so row 0 remains a PDE row.
-             */
-            final net.finmath.finitedifference.boundaries.BoundaryCondition[] lowerConditions =
-                    model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i], x1Grid[0]);
+			/*
+			 * Lower I boundary: overwrite ONLY if explicitly Dirichlet.
+			 * For AsianOption it is NONE, so row 0 remains a PDE row.
+			 */
+			final net.finmath.finitedifference.boundaries.BoundaryCondition[] lowerConditions =
+					model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i], x1Grid[0]);
 
-            if (lowerConditions != null
-                    && lowerConditions.length > 1
-                    && lowerConditions[1] != null
-                    && lowerConditions[1].isDirichlet()) {
-                overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[1].getValue());
-            }
+			if (lowerConditions != null
+					&& lowerConditions.length > 1
+					&& lowerConditions[1] != null
+					&& lowerConditions[1].isDirichlet()) {
+				overwriteBoundaryRow(m, lineRhs, 0, lowerConditions[1].getValue());
+			}
 
-            final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
+			final double[] solved = ThomasSolver.solve(m.lower, m.diag, m.upper, lineRhs);
 
-            for (int j = 0; j < n1; j++) {
-                out[flatten(i, j)] = solved[j];
-            }
-        }
+			for (int j = 0; j < n1; j++) {
+				out[flatten(i, j)] = solved[j];
+			}
+		}
 
-        return out;
-    }
+		return out;
+	}
 }

@@ -5,7 +5,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import net.finmath.finitedifference.assetderivativevaluation.models.MertonJumpComponent;
 
 /**
  * Unit tests for {@link MertonJumpComponent}.

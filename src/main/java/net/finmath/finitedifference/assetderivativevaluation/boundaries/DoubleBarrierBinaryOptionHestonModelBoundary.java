@@ -36,110 +36,110 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
  */
 public class DoubleBarrierBinaryOptionHestonModelBoundary implements FiniteDifferenceBoundary {
 
-    /**
-     * The epsilon.
-     */
-    private static final double EPSILON = 1E-6;
+	/**
+	 * The epsilon.
+	 */
+	private static final double EPSILON = 1E-6;
 
-    /**
-     * The model.
-     */
-    private final FDMHestonModel model;
+	/**
+	 * The model.
+	 */
+	private final FDMHestonModel model;
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     */
-    public DoubleBarrierBinaryOptionHestonModelBoundary(final FDMHestonModel model) {
-        this.model = model;
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 */
+	public DoubleBarrierBinaryOptionHestonModelBoundary(final FDMHestonModel model) {
+		this.model = model;
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceEquityProduct product,
-            final double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceEquityProduct product,
+			final double time,
+			final double... stateVariables) {
 
-        final DoubleBarrierBinaryOption option = (DoubleBarrierBinaryOption) product;
-        final double value = getLowerBoundaryValue(option, time);
+		final DoubleBarrierBinaryOption option = (DoubleBarrierBinaryOption) product;
+		final double value = getLowerBoundaryValue(option, time);
 
-        return new BoundaryCondition[] {
-                StandardBoundaryCondition.dirichlet(value),
-                StandardBoundaryCondition.none()
-        };
-    }
+		return new BoundaryCondition[] {
+				StandardBoundaryCondition.dirichlet(value),
+				StandardBoundaryCondition.none()
+		};
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceEquityProduct product,
-            final double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceEquityProduct product,
+			final double time,
+			final double... stateVariables) {
 
-        final DoubleBarrierBinaryOption option = (DoubleBarrierBinaryOption) product;
-        final double value = getUpperBoundaryValue(option, time);
+		final DoubleBarrierBinaryOption option = (DoubleBarrierBinaryOption) product;
+		final double value = getUpperBoundaryValue(option, time);
 
-        return new BoundaryCondition[] {
-                StandardBoundaryCondition.dirichlet(value),
-                StandardBoundaryCondition.none()
-        };
-    }
+		return new BoundaryCondition[] {
+				StandardBoundaryCondition.dirichlet(value),
+				StandardBoundaryCondition.none()
+		};
+	}
 
-    private double getLowerBoundaryValue(
-            final DoubleBarrierBinaryOption option,
-            final double time) {
+	private double getLowerBoundaryValue(
+			final DoubleBarrierBinaryOption option,
+			final double time) {
 
-        switch (option.getDoubleBarrierType()) {
-        case KNOCK_OUT:
-            return 0.0;
-        case KNOCK_IN:
-            return getDiscountedCashValue(option, time);
-        case KIKO:
-            return getDiscountedCashValue(option, time);
-        case KOKI:
-            return 0.0;
-        default:
-            throw new IllegalArgumentException("Unsupported double barrier type.");
-        }
-    }
+		switch (option.getDoubleBarrierType()) {
+		case KNOCK_OUT:
+			return 0.0;
+		case KNOCK_IN:
+			return getDiscountedCashValue(option, time);
+		case KIKO:
+			return getDiscountedCashValue(option, time);
+		case KOKI:
+			return 0.0;
+		default:
+			throw new IllegalArgumentException("Unsupported double barrier type.");
+		}
+	}
 
-    private double getUpperBoundaryValue(
-            final DoubleBarrierBinaryOption option,
-            final double time) {
+	private double getUpperBoundaryValue(
+			final DoubleBarrierBinaryOption option,
+			final double time) {
 
-        switch (option.getDoubleBarrierType()) {
-        case KNOCK_OUT:
-            return 0.0;
-        case KNOCK_IN:
-            return getDiscountedCashValue(option, time);
-        case KIKO:
-            return 0.0;
-        case KOKI:
-            return getDiscountedCashValue(option, time);
-        default:
-            throw new IllegalArgumentException("Unsupported double barrier type.");
-        }
-    }
+		switch (option.getDoubleBarrierType()) {
+		case KNOCK_OUT:
+			return 0.0;
+		case KNOCK_IN:
+			return getDiscountedCashValue(option, time);
+		case KIKO:
+			return 0.0;
+		case KOKI:
+			return getDiscountedCashValue(option, time);
+		default:
+			throw new IllegalArgumentException("Unsupported double barrier type.");
+		}
+	}
 
-    private double getDiscountedCashValue(
-            final DoubleBarrierBinaryOption option,
-            final double time) {
+	private double getDiscountedCashValue(
+			final DoubleBarrierBinaryOption option,
+			final double time) {
 
-        if (option.getCashPayoff() == 0.0) {
-            return 0.0;
-        }
+		if (option.getCashPayoff() == 0.0) {
+			return 0.0;
+		}
 
-        final double effectiveTime = Math.max(time, EPSILON);
+		final double effectiveTime = Math.max(time, EPSILON);
 
-        if (effectiveTime >= option.getMaturity()) {
-            return option.getCashPayoff();
-        }
+		if (effectiveTime >= option.getMaturity()) {
+			return option.getCashPayoff();
+		}
 
-        final double discountFactorAtTime =
-                model.getRiskFreeCurve().getDiscountFactor(effectiveTime);
-        final double discountFactorAtMaturity =
-                model.getRiskFreeCurve().getDiscountFactor(option.getMaturity());
+		final double discountFactorAtTime =
+				model.getRiskFreeCurve().getDiscountFactor(effectiveTime);
+		final double discountFactorAtMaturity =
+				model.getRiskFreeCurve().getDiscountFactor(option.getMaturity());
 
-        return option.getCashPayoff() * discountFactorAtMaturity / discountFactorAtTime;
-    }
+		return option.getCashPayoff() * discountFactorAtMaturity / discountFactorAtTime;
+	}
 }

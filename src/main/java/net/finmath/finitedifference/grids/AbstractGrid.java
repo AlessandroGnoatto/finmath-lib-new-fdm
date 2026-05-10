@@ -14,14 +14,14 @@ import java.util.Arrays;
  */
 public abstract class AbstractGrid implements Grid {
 
-    /**
-     * Returns the interior grid, excluding the first and the last entry.
-     *
-     * @return An array containing the interior grid points.
-     */
-    @Override
-    public double[] getInteriorGrid() {
-        final double[] fullGrid = getGrid();
-        return Arrays.copyOfRange(fullGrid, 1, fullGrid.length - 1);
-    }
+	/**
+	 * Returns the interior grid, excluding the first and the last entry.
+	 *
+	 * @return An array containing the interior grid points.
+	 */
+	@Override
+	public double[] getInteriorGrid() {
+		final double[] fullGrid = getGrid();
+		return Arrays.copyOfRange(fullGrid, 1, fullGrid.length - 1);
+	}
 }

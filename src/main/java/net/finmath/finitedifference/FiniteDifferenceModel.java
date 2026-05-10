@@ -17,15 +17,15 @@ import net.finmath.modelling.Model;
  */
 public interface FiniteDifferenceModel extends Model {
 
-    /**
-     * Returns the space-time discretization used by this finite difference
-     * model.
-     * <p>
-     * The discretization defines the grid in both time and space
-     * on which the PDE approximation is constructed.
-     * </p>
-     *
-     * @return The {@link SpaceTimeDiscretization} used by this model.
-     */
-    SpaceTimeDiscretization getSpaceTimeDiscretization();
+	/**
+	 * Returns the space-time discretization used by this finite difference
+	 * model.
+	 * <p>
+	 * The discretization defines the grid in both time and space
+	 * on which the PDE approximation is constructed.
+	 * </p>
+	 *
+	 * @return The {@link SpaceTimeDiscretization} used by this model.
+	 */
+	SpaceTimeDiscretization getSpaceTimeDiscretization();
 }

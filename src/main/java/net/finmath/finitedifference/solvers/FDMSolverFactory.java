@@ -84,248 +84,248 @@ import net.finmath.modelling.Exercise;
  */
 public final class FDMSolverFactory {
 
-    private FDMSolverFactory() {
-        // Utility class
-    }
+	private FDMSolverFactory() {
+		// Utility class
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     * @param product The value.
-     * @param spaceTimeDiscretization The value.
-     * @param exercise The value.
-     * @return The value.
-     */
-    public static FDMSolver createSolver(
-            final FiniteDifferenceEquityModel model,
-            final FiniteDifferenceEquityProduct product,
-            final SpaceTimeDiscretization spaceTimeDiscretization,
-            final Exercise exercise) {
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 * @param product The value.
+	 * @param spaceTimeDiscretization The value.
+	 * @param exercise The value.
+	 * @return The value.
+	 */
+	public static FDMSolver createSolver(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceEquityProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise) {
 
-        if (isOneDimensionalJumpModel(model)) {
-            return new FDMThetaMethod1DJump(
-                    model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMMultiAssetBlackScholesModel) {
-            return createMultiAssetBlackScholesSolver(
-                    (FDMMultiAssetBlackScholesModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMBlackScholesModel
-                || model instanceof FDMCevModel
-                || model instanceof FDMBachelierModel) {
-            return new FDMThetaMethod1D(
-                    model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMBatesModel) {
-            return new FDMBatesADI2D(
-                    (FDMBatesModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMHestonModel) {
-            return new FDMHestonADI2D(
-                    (FDMHestonModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMSabrModel) {
-            return new FDMSabrADI2D(
-                    (FDMSabrModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else {
-            throw new IllegalArgumentException(
-                    "Unsupported model type: " + model.getClass().getName());
-        }
-    }
+		if (isOneDimensionalJumpModel(model)) {
+			return new FDMThetaMethod1DJump(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMMultiAssetBlackScholesModel) {
+			return createMultiAssetBlackScholesSolver(
+					(FDMMultiAssetBlackScholesModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMBlackScholesModel
+				|| model instanceof FDMCevModel
+				|| model instanceof FDMBachelierModel) {
+			return new FDMThetaMethod1D(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMBatesModel) {
+			return new FDMBatesADI2D(
+					(FDMBatesModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMHestonModel) {
+			return new FDMHestonADI2D(
+					(FDMHestonModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMSabrModel) {
+			return new FDMSabrADI2D(
+					(FDMSabrModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else {
+			throw new IllegalArgumentException(
+					"Unsupported model type: " + model.getClass().getName());
+		}
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     * @param product The value.
-     * @param spaceTimeDiscretization The value.
-     * @param exercise The value.
-     * @param barrierMode The value.
-     * @param preHitSpecification The value.
-     * @return The value.
-     */
-    public static FDMSolver createSolver(
-            final FiniteDifferenceEquityModel model,
-            final FiniteDifferenceEquityProduct product,
-            final SpaceTimeDiscretization spaceTimeDiscretization,
-            final Exercise exercise,
-            final BarrierPDEMode barrierMode,
-            final BarrierPreHitSpecification preHitSpecification) {
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 * @param product The value.
+	 * @param spaceTimeDiscretization The value.
+	 * @param exercise The value.
+	 * @param barrierMode The value.
+	 * @param preHitSpecification The value.
+	 * @return The value.
+	 */
+	public static FDMSolver createSolver(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceEquityProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise,
+			final BarrierPDEMode barrierMode,
+			final BarrierPreHitSpecification preHitSpecification) {
 
-        if (isOneDimensionalJumpModel(model)) {
-            return new FDMThetaMethod1DJump(
-                    model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMMultiAssetBlackScholesModel) {
-            if (barrierMode != null) {
-                throw new IllegalArgumentException(
-                        "Barrier-specific solver modes are not implemented for MultiAssetBlackScholesModel.");
-            }
+		if (isOneDimensionalJumpModel(model)) {
+			return new FDMThetaMethod1DJump(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMMultiAssetBlackScholesModel) {
+			if (barrierMode != null) {
+				throw new IllegalArgumentException(
+						"Barrier-specific solver modes are not implemented for MultiAssetBlackScholesModel.");
+			}
 
-            return createMultiAssetBlackScholesSolver(
-                    (FDMMultiAssetBlackScholesModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMBlackScholesModel
-                || model instanceof FDMCevModel
-                || model instanceof FDMBachelierModel) {
-            return new FDMThetaMethod1D(
-                    model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMBatesModel) {
-            /*
-             * Barrier-specific Bates handling is not implemented yet.
-             * For the time being, ignore barrierMode and return the vanilla
-             * Bates solver.
-             */
-            return new FDMBatesADI2D(
-                    (FDMBatesModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (model instanceof FDMHestonModel) {
-            if (barrierMode == null) {
-                return new FDMHestonADI2D(
-                        (FDMHestonModel) model,
-                        product,
-                        spaceTimeDiscretization,
-                        exercise
-                );
-            }
+			return createMultiAssetBlackScholesSolver(
+					(FDMMultiAssetBlackScholesModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMBlackScholesModel
+				|| model instanceof FDMCevModel
+				|| model instanceof FDMBachelierModel) {
+			return new FDMThetaMethod1D(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMBatesModel) {
+			/*
+			 * Barrier-specific Bates handling is not implemented yet.
+			 * For the time being, ignore barrierMode and return the vanilla
+			 * Bates solver.
+			 */
+			return new FDMBatesADI2D(
+					(FDMBatesModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (model instanceof FDMHestonModel) {
+			if (barrierMode == null) {
+				return new FDMHestonADI2D(
+						(FDMHestonModel) model,
+						product,
+						spaceTimeDiscretization,
+						exercise
+				);
+			}
 
-            return new FDMBarrierHestonADI2D(
-                    (FDMHestonModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise,
-                    barrierMode,
-                    preHitSpecification
-            );
-        } else if (model instanceof FDMSabrModel) {
-            if (barrierMode == null) {
-                return new FDMSabrADI2D(
-                        (FDMSabrModel) model,
-                        product,
-                        spaceTimeDiscretization,
-                        exercise
-                );
-            }
+			return new FDMBarrierHestonADI2D(
+					(FDMHestonModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise,
+					barrierMode,
+					preHitSpecification
+			);
+		} else if (model instanceof FDMSabrModel) {
+			if (barrierMode == null) {
+				return new FDMSabrADI2D(
+						(FDMSabrModel) model,
+						product,
+						spaceTimeDiscretization,
+						exercise
+				);
+			}
 
-            return new FDMBarrierSabrADI2D(
-                    (FDMSabrModel) model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise,
-                    barrierMode,
-                    preHitSpecification
-            );
-        } else {
-            throw new IllegalArgumentException(
-                    "Unsupported model type: " + model.getClass().getName());
-        }
-    }
+			return new FDMBarrierSabrADI2D(
+					(FDMSabrModel) model,
+					product,
+					spaceTimeDiscretization,
+					exercise,
+					barrierMode,
+					preHitSpecification
+			);
+		} else {
+			throw new IllegalArgumentException(
+					"Unsupported model type: " + model.getClass().getName());
+		}
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     * @param product The value.
-     * @param exercise The value.
-     * @return The value.
-     */
-    public static FDMSolver createSolver(
-            final FiniteDifferenceEquityModel model,
-            final FiniteDifferenceEquityProduct product,
-            final Exercise exercise) {
-        return createSolver(model, product, model.getSpaceTimeDiscretization(), exercise);
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 * @param product The value.
+	 * @param exercise The value.
+	 * @return The value.
+	 */
+	public static FDMSolver createSolver(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceEquityProduct product,
+			final Exercise exercise) {
+		return createSolver(model, product, model.getSpaceTimeDiscretization(), exercise);
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     * @param product The value.
-     * @param exercise The value.
-     * @param barrierMode The value.
-     * @param preHitSpecification The value.
-     * @return The value.
-     */
-    public static FDMSolver createSolver(
-            final FiniteDifferenceEquityModel model,
-            final FiniteDifferenceEquityProduct product,
-            final Exercise exercise,
-            final BarrierPDEMode barrierMode,
-            final BarrierPreHitSpecification preHitSpecification) {
-        return createSolver(
-                model,
-                product,
-                model.getSpaceTimeDiscretization(),
-                exercise,
-                barrierMode,
-                preHitSpecification
-        );
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 * @param product The value.
+	 * @param exercise The value.
+	 * @param barrierMode The value.
+	 * @param preHitSpecification The value.
+	 * @return The value.
+	 */
+	public static FDMSolver createSolver(
+			final FiniteDifferenceEquityModel model,
+			final FiniteDifferenceEquityProduct product,
+			final Exercise exercise,
+			final BarrierPDEMode barrierMode,
+			final BarrierPreHitSpecification preHitSpecification) {
+		return createSolver(
+				model,
+				product,
+				model.getSpaceTimeDiscretization(),
+				exercise,
+				barrierMode,
+				preHitSpecification
+		);
+	}
 
-    private static FDMSolver createMultiAssetBlackScholesSolver(
-            final FDMMultiAssetBlackScholesModel model,
-            final FiniteDifferenceEquityProduct product,
-            final SpaceTimeDiscretization spaceTimeDiscretization,
-            final Exercise exercise) {
+	private static FDMSolver createMultiAssetBlackScholesSolver(
+			final FDMMultiAssetBlackScholesModel model,
+			final FiniteDifferenceEquityProduct product,
+			final SpaceTimeDiscretization spaceTimeDiscretization,
+			final Exercise exercise) {
 
-        final int dimension = spaceTimeDiscretization.getNumberOfSpaceGrids();
+		final int dimension = spaceTimeDiscretization.getNumberOfSpaceGrids();
 
-        if (dimension == 1) {
-            return new FDMThetaMethod1D(
-                    model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else if (dimension == 2) {
-            return new FDMMultiAssetBlackScholesADI2D(
-                    model,
-                    product,
-                    spaceTimeDiscretization,
-                    exercise
-            );
-        } else {
-            throw new IllegalArgumentException(
-                    "MultiAssetBlackScholesModel is currently supported only in dimensions 1 and 2.");
-        }
-    }
+		if (dimension == 1) {
+			return new FDMThetaMethod1D(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else if (dimension == 2) {
+			return new FDMMultiAssetBlackScholesADI2D(
+					model,
+					product,
+					spaceTimeDiscretization,
+					exercise
+			);
+		} else {
+			throw new IllegalArgumentException(
+					"MultiAssetBlackScholesModel is currently supported only in dimensions 1 and 2.");
+		}
+	}
 
-    private static boolean isOneDimensionalJumpModel(final FiniteDifferenceEquityModel model) {
-        return model.getJumpComponent().isPresent()
-                && model.getInitialValue() != null
-                && model.getInitialValue().length == 1;
-    }
+	private static boolean isOneDimensionalJumpModel(final FiniteDifferenceEquityModel model) {
+		return model.getJumpComponent().isPresent()
+				&& model.getInitialValue() != null
+				&& model.getInitialValue().length == 1;
+	}
 }

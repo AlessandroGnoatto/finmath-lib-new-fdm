@@ -369,8 +369,8 @@ public class OptionOnBondTest {
 
 		final double bondVolatilitySquared =
 				model.getShortRateConditionalVariance(currentTime, exerciseDate)
-				* model.getB(exerciseDate, bondMaturity)
-				* model.getB(exerciseDate, bondMaturity);
+			 * model.getB(exerciseDate, bondMaturity)
+			 * model.getB(exerciseDate, bondMaturity);
 
 		if(bondVolatilitySquared <= TIME_TOLERANCE) {
 			final double forwardBondPrice = discountBondToMaturity / discountBondToExercise;

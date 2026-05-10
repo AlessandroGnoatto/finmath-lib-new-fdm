@@ -66,240 +66,240 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class BestOfOption implements FiniteDifferenceEquityProduct {
 
-    /**
-     * The first underlying name.
-     */
-    private final String firstUnderlyingName;
-    /**
-     * The second underlying name.
-     */
-    private final String secondUnderlyingName;
-    /**
-     * The maturity.
-     */
-    private final double maturity;
-    /**
-     * The strike.
-     */
-    private final double strike;
-    /**
-     * The call or put.
-     */
-    private final CallOrPut callOrPut;
-    /**
-     * The exercise.
-     */
-    private final Exercise exercise;
+	/**
+	 * The first underlying name.
+	 */
+	private final String firstUnderlyingName;
+	/**
+	 * The second underlying name.
+	 */
+	private final String secondUnderlyingName;
+	/**
+	 * The maturity.
+	 */
+	private final double maturity;
+	/**
+	 * The strike.
+	 */
+	private final double strike;
+	/**
+	 * The call or put.
+	 */
+	private final CallOrPut callOrPut;
+	/**
+	 * The exercise.
+	 */
+	private final Exercise exercise;
 
-    /**
-     * Creates a European best-of option for two named underlyings.
-     *
-     * @param firstUnderlyingName Name of the first underlying.
-     * @param secondUnderlyingName Name of the second underlying.
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPut Option type.
-     */
-    public BestOfOption(
-            final String firstUnderlyingName,
-            final String secondUnderlyingName,
-            final double maturity,
-            final double strike,
-            final CallOrPut callOrPut) {
+	/**
+	 * Creates a European best-of option for two named underlyings.
+	 *
+	 * @param firstUnderlyingName Name of the first underlying.
+	 * @param secondUnderlyingName Name of the second underlying.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPut Option type.
+	 */
+	public BestOfOption(
+			final String firstUnderlyingName,
+			final String secondUnderlyingName,
+			final double maturity,
+			final double strike,
+			final CallOrPut callOrPut) {
 
-        if (callOrPut == null) {
-            throw new IllegalArgumentException("callOrPut must not be null.");
-        }
-        if (maturity < 0.0) {
-            throw new IllegalArgumentException("maturity must be non-negative.");
-        }
+		if (callOrPut == null) {
+			throw new IllegalArgumentException("callOrPut must not be null.");
+		}
+		if (maturity < 0.0) {
+			throw new IllegalArgumentException("maturity must be non-negative.");
+		}
 
-        this.firstUnderlyingName = firstUnderlyingName;
-        this.secondUnderlyingName = secondUnderlyingName;
-        this.maturity = maturity;
-        this.strike = strike;
-        this.callOrPut = callOrPut;
-        this.exercise = new EuropeanExercise(maturity);
-    }
+		this.firstUnderlyingName = firstUnderlyingName;
+		this.secondUnderlyingName = secondUnderlyingName;
+		this.maturity = maturity;
+		this.strike = strike;
+		this.callOrPut = callOrPut;
+		this.exercise = new EuropeanExercise(maturity);
+	}
 
-    /**
-     * Creates a European best-of option for two named underlyings.
-     *
-     * @param firstUnderlyingName Name of the first underlying.
-     * @param secondUnderlyingName Name of the second underlying.
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
-     *        and {@code -1.0} corresponds to a put.
-     */
-    public BestOfOption(
-            final String firstUnderlyingName,
-            final String secondUnderlyingName,
-            final double maturity,
-            final double strike,
-            final double callOrPutSign) {
-        this(
-                firstUnderlyingName,
-                secondUnderlyingName,
-                maturity,
-                strike,
-                mapCallOrPut(callOrPutSign)
-        );
-    }
+	/**
+	 * Creates a European best-of option for two named underlyings.
+	 *
+	 * @param firstUnderlyingName Name of the first underlying.
+	 * @param secondUnderlyingName Name of the second underlying.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
+	 *        and {@code -1.0} corresponds to a put.
+	 */
+	public BestOfOption(
+			final String firstUnderlyingName,
+			final String secondUnderlyingName,
+			final double maturity,
+			final double strike,
+			final double callOrPutSign) {
+		this(
+				firstUnderlyingName,
+				secondUnderlyingName,
+				maturity,
+				strike,
+				mapCallOrPut(callOrPutSign)
+		);
+	}
 
-    /**
-     * Creates a European best-of option with unnamed underlyings.
-     *
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPut Option type.
-     */
-    public BestOfOption(
-            final double maturity,
-            final double strike,
-            final CallOrPut callOrPut) {
-        this(null, null, maturity, strike, callOrPut);
-    }
+	/**
+	 * Creates a European best-of option with unnamed underlyings.
+	 *
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPut Option type.
+	 */
+	public BestOfOption(
+			final double maturity,
+			final double strike,
+			final CallOrPut callOrPut) {
+		this(null, null, maturity, strike, callOrPut);
+	}
 
-    /**
-     * Creates a European best-of option with unnamed underlyings.
-     *
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
-     *        and {@code -1.0} corresponds to a put.
-     */
-    public BestOfOption(
-            final double maturity,
-            final double strike,
-            final double callOrPutSign) {
-        this(null, null, maturity, strike, mapCallOrPut(callOrPutSign));
-    }
+	/**
+	 * Creates a European best-of option with unnamed underlyings.
+	 *
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
+	 *        and {@code -1.0} corresponds to a put.
+	 */
+	public BestOfOption(
+			final double maturity,
+			final double strike,
+			final double callOrPutSign) {
+		this(null, null, maturity, strike, mapCallOrPut(callOrPutSign));
+	}
 
-    @Override
-    public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
-        validateModel(model);
+	@Override
+	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
+		validateModel(model);
 
-        final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
-        return solver.getValue(
-                evaluationTime,
-                maturity,
-                this::terminalPayoff
-        );
-    }
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
+		return solver.getValue(
+				evaluationTime,
+				maturity,
+				this::terminalPayoff
+		);
+	}
 
-    @Override
-    public double[][] getValues(final FiniteDifferenceEquityModel model) {
-        validateModel(model);
+	@Override
+	public double[][] getValues(final FiniteDifferenceEquityModel model) {
+		validateModel(model);
 
-        final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
-        return solver.getValues(
-                maturity,
-                this::terminalPayoff
-        );
-    }
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
+		return solver.getValues(
+				maturity,
+				this::terminalPayoff
+		);
+	}
 
-    /**
-     * Returns the terminal payoff.
-     *
-     * @param firstAssetValue Value of the first asset.
-     * @param secondAssetValue Value of the second asset.
-     * @return The terminal payoff.
-     */
-    private double terminalPayoff(final double firstAssetValue, final double secondAssetValue) {
-        final double bestOfValue = Math.max(firstAssetValue, secondAssetValue);
-        return Math.max(callOrPut.toInteger() * (bestOfValue - strike), 0.0);
-    }
+	/**
+	 * Returns the terminal payoff.
+	 *
+	 * @param firstAssetValue Value of the first asset.
+	 * @param secondAssetValue Value of the second asset.
+	 * @return The terminal payoff.
+	 */
+	private double terminalPayoff(final double firstAssetValue, final double secondAssetValue) {
+		final double bestOfValue = Math.max(firstAssetValue, secondAssetValue);
+		return Math.max(callOrPut.toInteger() * (bestOfValue - strike), 0.0);
+	}
 
-    /**
-     * Validates model compatibility.
-     *
-     * @param model The finite-difference model.
-     */
-    private void validateModel(final FiniteDifferenceEquityModel model) {
-        if (model == null) {
-            throw new IllegalArgumentException("model must not be null.");
-        }
+	/**
+	 * Validates model compatibility.
+	 *
+	 * @param model The finite-difference model.
+	 */
+	private void validateModel(final FiniteDifferenceEquityModel model) {
+		if (model == null) {
+			throw new IllegalArgumentException("model must not be null.");
+		}
 
-        if (model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() != 2) {
-            throw new IllegalArgumentException(
-                    "BestOfOption currently requires a two-dimensional space discretization.");
-        }
+		if (model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() != 2) {
+			throw new IllegalArgumentException(
+					"BestOfOption currently requires a two-dimensional space discretization.");
+		}
 
-        if (model.getInitialValue() == null || model.getInitialValue().length != 2) {
-            throw new IllegalArgumentException(
-                    "BestOfOption currently requires a two-dimensional model state.");
-        }
-    }
+		if (model.getInitialValue() == null || model.getInitialValue().length != 2) {
+			throw new IllegalArgumentException(
+					"BestOfOption currently requires a two-dimensional model state.");
+		}
+	}
 
-    /**
-     * Maps the sign convention to the option type.
-     *
-     * @param sign Option sign.
-     * @return The corresponding option type.
-     */
-    private static CallOrPut mapCallOrPut(final double sign) {
-        if (sign == 1.0) {
-            return CallOrPut.CALL;
-        }
-        if (sign == -1.0) {
-            return CallOrPut.PUT;
-        }
-        throw new IllegalArgumentException("Unknown option type.");
-    }
+	/**
+	 * Maps the sign convention to the option type.
+	 *
+	 * @param sign Option sign.
+	 * @return The corresponding option type.
+	 */
+	private static CallOrPut mapCallOrPut(final double sign) {
+		if (sign == 1.0) {
+			return CallOrPut.CALL;
+		}
+		if (sign == -1.0) {
+			return CallOrPut.PUT;
+		}
+		throw new IllegalArgumentException("Unknown option type.");
+	}
 
-    /**
-     * Returns the name of the first underlying.
-     *
-     * @return The name of the first underlying, or {@code null} if unspecified.
-     */
-    public String getFirstUnderlyingName() {
-        return firstUnderlyingName;
-    }
+	/**
+	 * Returns the name of the first underlying.
+	 *
+	 * @return The name of the first underlying, or {@code null} if unspecified.
+	 */
+	public String getFirstUnderlyingName() {
+		return firstUnderlyingName;
+	}
 
-    /**
-     * Returns the name of the second underlying.
-     *
-     * @return The name of the second underlying, or {@code null} if
-     *     unspecified.
-     */
-    public String getSecondUnderlyingName() {
-        return secondUnderlyingName;
-    }
+	/**
+	 * Returns the name of the second underlying.
+	 *
+	 * @return The name of the second underlying, or {@code null} if
+	 *     unspecified.
+	 */
+	public String getSecondUnderlyingName() {
+		return secondUnderlyingName;
+	}
 
-    /**
-     * Returns the maturity.
-     *
-     * @return The maturity.
-     */
-    public double getMaturity() {
-        return maturity;
-    }
+	/**
+	 * Returns the maturity.
+	 *
+	 * @return The maturity.
+	 */
+	public double getMaturity() {
+		return maturity;
+	}
 
-    /**
-     * Returns the strike.
-     *
-     * @return The strike.
-     */
-    public double getStrike() {
-        return strike;
-    }
+	/**
+	 * Returns the strike.
+	 *
+	 * @return The strike.
+	 */
+	public double getStrike() {
+		return strike;
+	}
 
-    /**
-     * Returns the option type.
-     *
-     * @return The option type.
-     */
-    public CallOrPut getCallOrPut() {
-        return callOrPut;
-    }
+	/**
+	 * Returns the option type.
+	 *
+	 * @return The option type.
+	 */
+	public CallOrPut getCallOrPut() {
+		return callOrPut;
+	}
 
-    /**
-     * Returns the exercise specification.
-     *
-     * @return The exercise specification.
-     */
-    public Exercise getExercise() {
-        return exercise;
-    }
+	/**
+	 * Returns the exercise specification.
+	 *
+	 * @return The exercise specification.
+	 */
+	public Exercise getExercise() {
+		return exercise;
+	}
 }

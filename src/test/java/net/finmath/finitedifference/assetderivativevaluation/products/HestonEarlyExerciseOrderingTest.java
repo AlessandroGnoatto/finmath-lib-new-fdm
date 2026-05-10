@@ -7,9 +7,6 @@ import java.time.LocalDate;
 import org.junit.Test;
 
 import net.finmath.finitedifference.assetderivativevaluation.models.FDMHestonModel;
-import net.finmath.finitedifference.assetderivativevaluation.products.AmericanOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.BermudanOption;
-import net.finmath.finitedifference.assetderivativevaluation.products.EuropeanOption;
 import net.finmath.finitedifference.grids.Grid;
 import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
 import net.finmath.finitedifference.grids.UniformGrid;

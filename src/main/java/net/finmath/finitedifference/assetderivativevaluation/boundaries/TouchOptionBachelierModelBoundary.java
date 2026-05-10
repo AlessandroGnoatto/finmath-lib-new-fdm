@@ -12,77 +12,77 @@ import net.finmath.modelling.products.BarrierType;
  */
 public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBoundary {
 
-    /**
-     * The epsilon.
-     */
-    private static final double EPSILON = 1E-6;
+	/**
+	 * The epsilon.
+	 */
+	private static final double EPSILON = 1E-6;
 
-    /**
-     * The model.
-     */
-    private final FDMBachelierModel model;
+	/**
+	 * The model.
+	 */
+	private final FDMBachelierModel model;
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     */
-    public TouchOptionBachelierModelBoundary(final FDMBachelierModel model) {
-        this.model = model;
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 */
+	public TouchOptionBachelierModelBoundary(final FDMBachelierModel model) {
+		this.model = model;
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final TouchOption option = (TouchOption) product;
-        final BarrierType barrierType = option.getBarrierType();
+		final TouchOption option = (TouchOption) product;
+		final BarrierType barrierType = option.getBarrierType();
 
-        if (barrierType == BarrierType.DOWN_OUT) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        }
+		if (barrierType == BarrierType.DOWN_OUT) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		}
 
-        time = Math.max(time, EPSILON);
+		time = Math.max(time, EPSILON);
 
-        return new BoundaryCondition[] {
-                StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
-        };
-    }
+		return new BoundaryCondition[] {
+				StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
+		};
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final TouchOption option = (TouchOption) product;
-        final BarrierType barrierType = option.getBarrierType();
+		final TouchOption option = (TouchOption) product;
+		final BarrierType barrierType = option.getBarrierType();
 
-        if (barrierType == BarrierType.UP_OUT) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        }
+		if (barrierType == BarrierType.UP_OUT) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		}
 
-        time = Math.max(time, EPSILON);
+		time = Math.max(time, EPSILON);
 
-        return new BoundaryCondition[] {
-                StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
-        };
-    }
+		return new BoundaryCondition[] {
+				StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
+		};
+	}
 
-    private double getDiscountedCashValue(final TouchOption option, final double time) {
-        if (time >= option.getMaturity()) {
-            return option.getPayoffAmount();
-        }
+	private double getDiscountedCashValue(final TouchOption option, final double time) {
+		if (time >= option.getMaturity()) {
+			return option.getPayoffAmount();
+		}
 
-        final double dfTime = model.getRiskFreeCurve().getDiscountFactor(time);
-        final double dfMat = model.getRiskFreeCurve().getDiscountFactor(option.getMaturity());
+		final double dfTime = model.getRiskFreeCurve().getDiscountFactor(time);
+		final double dfMat = model.getRiskFreeCurve().getDiscountFactor(option.getMaturity());
 
-        return option.getPayoffAmount() * dfMat / dfTime;
-    }
+		return option.getPayoffAmount() * dfMat / dfTime;
+	}
 }

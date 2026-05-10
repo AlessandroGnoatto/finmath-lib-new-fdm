@@ -15,31 +15,31 @@ import net.finmath.finitedifference.interestrate.products.FiniteDifferenceIntere
  */
 public interface FiniteDifferenceInterestRateBoundary {
 
-    /**
-     * Returns the boundary conditions at the lower boundary.
-     *
-     * @param product The product being valued.
-     * @param time The running time.
-     * @param stateVariables The state variables specifying the boundary
-     *     location.
-     * @return The lower-boundary conditions by dimension.
-     */
-    BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            FiniteDifferenceInterestRateProduct product,
-            double time,
-            double... stateVariables);
+	/**
+	 * Returns the boundary conditions at the lower boundary.
+	 *
+	 * @param product The product being valued.
+	 * @param time The running time.
+	 * @param stateVariables The state variables specifying the boundary
+	 *     location.
+	 * @return The lower-boundary conditions by dimension.
+	 */
+	BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			FiniteDifferenceInterestRateProduct product,
+			double time,
+			double... stateVariables);
 
-    /**
-     * Returns the boundary conditions at the upper boundary.
-     *
-     * @param product The product being valued.
-     * @param time The running time.
-     * @param stateVariables The state variables specifying the boundary
-     *     location.
-     * @return The upper-boundary conditions by dimension.
-     */
-    BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            FiniteDifferenceInterestRateProduct product,
-            double time,
-            double... stateVariables);
+	/**
+	 * Returns the boundary conditions at the upper boundary.
+	 *
+	 * @param product The product being valued.
+	 * @param time The running time.
+	 * @param stateVariables The state variables specifying the boundary
+	 *     location.
+	 * @return The upper-boundary conditions by dimension.
+	 */
+	BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			FiniteDifferenceInterestRateProduct product,
+			double time,
+			double... stateVariables);
 }

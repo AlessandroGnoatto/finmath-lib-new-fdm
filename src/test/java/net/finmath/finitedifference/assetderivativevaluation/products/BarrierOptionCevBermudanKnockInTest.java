@@ -220,8 +220,8 @@ public class BarrierOptionCevBermudanKnockInTest {
 				SPOT * Math.exp((RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY);
 		final double varianceProxy =
 				SPOT * SPOT
-				* Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
-				* (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
+			 * Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
+			 * (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
 
 		final double sMin = Math.max(forward - 6.0 * Math.sqrt(varianceProxy), 0.0);
 		final double sMax = forward + 6.0 * Math.sqrt(varianceProxy);

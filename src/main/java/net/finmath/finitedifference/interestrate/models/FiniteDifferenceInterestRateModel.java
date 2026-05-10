@@ -86,184 +86,184 @@ import net.finmath.marketdata.model.AnalyticModel;
  */
 public interface FiniteDifferenceInterestRateModel extends FiniteDifferenceModel {
 
-    /**
-     * Returns the analytic multi-curve model used as the initial condition of
-     * the
-     * stochastic term-structure model.
-     *
-     * <p>
-     * The returned {@link AnalyticModel} is assumed to contain the bootstrapped
-     * market curves used to anchor the model to the observed initial term
-     * structure.
-     * </p>
-     *
-     * @return The initial analytic multi-curve model.
-     */
-    AnalyticModel getAnalyticModel();
+	/**
+	 * Returns the analytic multi-curve model used as the initial condition of
+	 * the
+	 * stochastic term-structure model.
+	 *
+	 * <p>
+	 * The returned {@link AnalyticModel} is assumed to contain the bootstrapped
+	 * market curves used to anchor the model to the observed initial term
+	 * structure.
+	 * </p>
+	 *
+	 * @return The initial analytic multi-curve model.
+	 */
+	AnalyticModel getAnalyticModel();
 
-    /**
-     * Returns the initial value of the Markovian state variables.
-     *
-     * @return The initial state vector.
-     */
-    double[] getInitialValue();
+	/**
+	 * Returns the initial value of the Markovian state variables.
+	 *
+	 * @return The initial state vector.
+	 */
+	double[] getInitialValue();
 
-    /**
-     * Returns the drift vector of the Markovian state process.
-     *
-     * <p>
-     * This method provides the deterministic part of the state dynamics
-     * </p>
-     *
-     * <p>
-     * <i>
-     * dX_t = \mu(t,X_t)\,dt + \lambda(t,X_t)\,dW_t.
-     * </i>
-     * </p>
-     *
-     * @param time The current time.
-     * @param stateVariables The current state vector.
-     * @return The drift vector at the given state.
-     */
-    double[] getDrift(double time, double... stateVariables);
+	/**
+	 * Returns the drift vector of the Markovian state process.
+	 *
+	 * <p>
+	 * This method provides the deterministic part of the state dynamics
+	 * </p>
+	 *
+	 * <p>
+	 * <i>
+	 * dX_t = \mu(t,X_t)\,dt + \lambda(t,X_t)\,dW_t.
+	 * </i>
+	 * </p>
+	 *
+	 * @param time The current time.
+	 * @param stateVariables The current state vector.
+	 * @return The drift vector at the given state.
+	 */
+	double[] getDrift(double time, double... stateVariables);
 
-    /**
-     * Returns the factor-loading matrix of the Markovian state process.
-     *
-     * <p>
-     * If {@code d} denotes the state dimension and {@code m} the Brownian
-     * dimension, then the returned array has shape {@code d x m}.
-     * </p>
-     *
-     * @param time The current time.
-     * @param stateVariables The current state vector.
-     * @return The factor-loading matrix at the given state.
-     */
-    double[][] getFactorLoading(double time, double... stateVariables);
+	/**
+	 * Returns the factor-loading matrix of the Markovian state process.
+	 *
+	 * <p>
+	 * If {@code d} denotes the state dimension and {@code m} the Brownian
+	 * dimension, then the returned array has shape {@code d x m}.
+	 * </p>
+	 *
+	 * @param time The current time.
+	 * @param stateVariables The current state vector.
+	 * @return The factor-loading matrix at the given state.
+	 */
+	double[][] getFactorLoading(double time, double... stateVariables);
 
-    /**
-     * Returns the value at time {@code time} of the discount bond maturing at
-     * {@code maturity}, conditional on the current model state.
-     *
-     * <p>
-     * In a multi-curve setting this method refers to the discounting curve.
-     * </p>
-     *
-     * @param time The evaluation time.
-     * @param maturity The maturity of the discount bond.
-     * @param stateVariables The current state vector.
-     * @return The discount bond value.
-     */
-    double getDiscountBond(double time, double maturity, double... stateVariables);
+	/**
+	 * Returns the value at time {@code time} of the discount bond maturing at
+	 * {@code maturity}, conditional on the current model state.
+	 *
+	 * <p>
+	 * In a multi-curve setting this method refers to the discounting curve.
+	 * </p>
+	 *
+	 * @param time The evaluation time.
+	 * @param maturity The maturity of the discount bond.
+	 * @param stateVariables The current state vector.
+	 * @return The discount bond value.
+	 */
+	double getDiscountBond(double time, double maturity, double... stateVariables);
 
-    /**
-     * Returns the simply compounded forward rate associated with a given
-     * forwarding curve and accrual period.
-     *
-     * <p>
-     * This is the finite-difference analogue of the Monte Carlo
-     * {@code getLibor(...)} philosophy. The forwarding curve is identified
-     * explicitly because, in a multi-curve framework, it is in general distinct
-     * from the discount curve.
-     * </p>
-     *
-     * @param forwardCurveName The name of the forwarding curve.
-     * @param time The evaluation time.
-     * @param periodStart The start of the accrual period.
-     * @param periodEnd The end of the accrual period.
-     * @param stateVariables The current state vector.
-     * @return The forward rate for the specified accrual period.
-     */
-    double getForwardRate(
-            String forwardCurveName,
-            double time,
-            double periodStart,
-            double periodEnd,
-            double... stateVariables);
+	/**
+	 * Returns the simply compounded forward rate associated with a given
+	 * forwarding curve and accrual period.
+	 *
+	 * <p>
+	 * This is the finite-difference analogue of the Monte Carlo
+	 * {@code getLibor(...)} philosophy. The forwarding curve is identified
+	 * explicitly because, in a multi-curve framework, it is in general distinct
+	 * from the discount curve.
+	 * </p>
+	 *
+	 * @param forwardCurveName The name of the forwarding curve.
+	 * @param time The evaluation time.
+	 * @param periodStart The start of the accrual period.
+	 * @param periodEnd The end of the accrual period.
+	 * @param stateVariables The current state vector.
+	 * @return The forward rate for the specified accrual period.
+	 */
+	double getForwardRate(
+			String forwardCurveName,
+			double time,
+			double periodStart,
+			double periodEnd,
+			double... stateVariables);
 
-    /**
-     * Alias for {@link #getForwardRate(String, double, double, double,
-     * double...)}
-     * using the Monte Carlo terminology.
-     *
-     * @param forwardCurveName The name of the forwarding curve.
-     * @param time The evaluation time.
-     * @param periodStart The start of the accrual period.
-     * @param periodEnd The end of the accrual period.
-     * @param stateVariables The current state vector.
-     * @return The forward rate for the specified accrual period.
-     */
-    default double getLibor(
-            final String forwardCurveName,
-            final double time,
-            final double periodStart,
-            final double periodEnd,
-            final double... stateVariables) {
-        return getForwardRate(forwardCurveName, time, periodStart, periodEnd, stateVariables);
-    }
+	/**
+	 * Alias for {@link #getForwardRate(String, double, double, double,
+	 * double...)}
+	 * using the Monte Carlo terminology.
+	 *
+	 * @param forwardCurveName The name of the forwarding curve.
+	 * @param time The evaluation time.
+	 * @param periodStart The start of the accrual period.
+	 * @param periodEnd The end of the accrual period.
+	 * @param stateVariables The current state vector.
+	 * @return The forward rate for the specified accrual period.
+	 */
+	default double getLibor(
+			final String forwardCurveName,
+			final double time,
+			final double periodStart,
+			final double periodEnd,
+			final double... stateVariables) {
+		return getForwardRate(forwardCurveName, time, periodStart, periodEnd, stateVariables);
+	}
 
-    /**
-     * Returns a clone of the model using a modified space-time discretization.
-     *
-     * @param spaceTimeDiscretization The new space-time discretization.
-     * @return A clone with the modified discretization.
-     */
-    FiniteDifferenceInterestRateModel getCloneWithModifiedSpaceTimeDiscretization(
-            SpaceTimeDiscretization spaceTimeDiscretization);
+	/**
+	 * Returns a clone of the model using a modified space-time discretization.
+	 *
+	 * @param spaceTimeDiscretization The new space-time discretization.
+	 * @return A clone with the modified discretization.
+	 */
+	FiniteDifferenceInterestRateModel getCloneWithModifiedSpaceTimeDiscretization(
+			SpaceTimeDiscretization spaceTimeDiscretization);
 
-    /**
-     * Returns the lower-boundary conditions for the current product and state.
-     *
-     * <p>
-     * The default implementation returns
-     * {@link StandardBoundaryCondition#none()} in every spatial direction.
-     * </p>
-     *
-     * @param product The product being priced.
-     * @param time The current time.
-     * @param stateVariables The current boundary state.
-     * @return Boundary conditions at the lower boundary.
-     */
-    default BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceInterestRateProduct product,
-            final double time,
-            final double... stateVariables) {
+	/**
+	 * Returns the lower-boundary conditions for the current product and state.
+	 *
+	 * <p>
+	 * The default implementation returns
+	 * {@link StandardBoundaryCondition#none()} in every spatial direction.
+	 * </p>
+	 *
+	 * @param product The product being priced.
+	 * @param time The current time.
+	 * @param stateVariables The current boundary state.
+	 * @return Boundary conditions at the lower boundary.
+	 */
+	default BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceInterestRateProduct product,
+			final double time,
+			final double... stateVariables) {
 
-        final int numberOfSpaceGrids = getSpaceTimeDiscretization().getNumberOfSpaceGrids();
-        final BoundaryCondition[] boundaryConditions = new BoundaryCondition[numberOfSpaceGrids];
+		final int numberOfSpaceGrids = getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+		final BoundaryCondition[] boundaryConditions = new BoundaryCondition[numberOfSpaceGrids];
 
-        for (int i = 0; i < numberOfSpaceGrids; i++) {
-            boundaryConditions[i] = StandardBoundaryCondition.none();
-        }
+		for (int i = 0; i < numberOfSpaceGrids; i++) {
+			boundaryConditions[i] = StandardBoundaryCondition.none();
+		}
 
-        return boundaryConditions;
-    }
+		return boundaryConditions;
+	}
 
-    /**
-     * Returns the upper-boundary conditions for the current product and state.
-     *
-     * <p>
-     * The default implementation returns
-     * {@link StandardBoundaryCondition#none()} in every spatial direction.
-     * </p>
-     *
-     * @param product The product being priced.
-     * @param time The current time.
-     * @param stateVariables The current boundary state.
-     * @return Boundary conditions at the upper boundary.
-     */
-    default BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceInterestRateProduct product,
-            final double time,
-            final double... stateVariables) {
+	/**
+	 * Returns the upper-boundary conditions for the current product and state.
+	 *
+	 * <p>
+	 * The default implementation returns
+	 * {@link StandardBoundaryCondition#none()} in every spatial direction.
+	 * </p>
+	 *
+	 * @param product The product being priced.
+	 * @param time The current time.
+	 * @param stateVariables The current boundary state.
+	 * @return Boundary conditions at the upper boundary.
+	 */
+	default BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceInterestRateProduct product,
+			final double time,
+			final double... stateVariables) {
 
-        final int numberOfSpaceGrids = getSpaceTimeDiscretization().getNumberOfSpaceGrids();
-        final BoundaryCondition[] boundaryConditions = new BoundaryCondition[numberOfSpaceGrids];
+		final int numberOfSpaceGrids = getSpaceTimeDiscretization().getNumberOfSpaceGrids();
+		final BoundaryCondition[] boundaryConditions = new BoundaryCondition[numberOfSpaceGrids];
 
-        for (int i = 0; i < numberOfSpaceGrids; i++) {
-            boundaryConditions[i] = StandardBoundaryCondition.none();
-        }
+		for (int i = 0; i < numberOfSpaceGrids; i++) {
+			boundaryConditions[i] = StandardBoundaryCondition.none();
+		}
 
-        return boundaryConditions;
-    }
+		return boundaryConditions;
+	}
 }

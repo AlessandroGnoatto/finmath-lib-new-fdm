@@ -110,7 +110,7 @@ public class TouchOptionDiscreteMonitoringTest {
 
 		final double expectedActivatedValue =
 				PAYOFF
-				* model.getRiskFreeCurve().getDiscountFactor(MATURITY)
+			 * model.getRiskFreeCurve().getDiscountFactor(MATURITY)
 				/ model.getRiskFreeCurve().getDiscountFactor(monitoringTime);
 
 		assertEquals(expectedActivatedValue, valuesBeforeEvent[0], PRICE_TOLERANCE);
@@ -176,17 +176,17 @@ public class TouchOptionDiscreteMonitoringTest {
 				FINE_MONITORING_TIMES
 		);
 
-		
+
 		final TouchOption continuous = new TouchOption(
-		        null,
-		        MATURITY,
-		        barrier,
-		        BarrierType.DOWN_OUT,
-		        PAYOFF,
-		        TouchSettlementTiming.AT_EXPIRY,
-		        new EuropeanExercise(MATURITY),
-		        MonitoringType.CONTINUOUS,
-		        null
+				null,
+				MATURITY,
+				barrier,
+				BarrierType.DOWN_OUT,
+				PAYOFF,
+				TouchSettlementTiming.AT_EXPIRY,
+				new EuropeanExercise(MATURITY),
+				MonitoringType.CONTINUOUS,
+				null
 		);
 
 		final double coarseValue = extractValueAtSpot(coarseDiscrete.getValue(0.0, model), model, S0);
@@ -226,15 +226,15 @@ public class TouchOptionDiscreteMonitoringTest {
 		);
 
 		final TouchOption continuous = new TouchOption(
-		        null,
-		        MATURITY,
-		        barrier,
-		        BarrierType.DOWN_IN,
-		        PAYOFF,
-		        TouchSettlementTiming.AT_EXPIRY,
-		        new EuropeanExercise(MATURITY),
-		        MonitoringType.CONTINUOUS,
-		        null
+				null,
+				MATURITY,
+				barrier,
+				BarrierType.DOWN_IN,
+				PAYOFF,
+				TouchSettlementTiming.AT_EXPIRY,
+				new EuropeanExercise(MATURITY),
+				MonitoringType.CONTINUOUS,
+				null
 		);
 
 		final double coarseValue = extractValueAtSpot(coarseDiscrete.getValue(0.0, model), model, S0);
@@ -274,15 +274,15 @@ public class TouchOptionDiscreteMonitoringTest {
 		);
 
 		final TouchOption continuous = new TouchOption(
-		        null,
-		        MATURITY,
-		        barrier,
-		        BarrierType.UP_OUT,
-		        PAYOFF,
-		        TouchSettlementTiming.AT_EXPIRY,
-		        new EuropeanExercise(MATURITY),
-		        MonitoringType.CONTINUOUS,
-		        null
+				null,
+				MATURITY,
+				barrier,
+				BarrierType.UP_OUT,
+				PAYOFF,
+				TouchSettlementTiming.AT_EXPIRY,
+				new EuropeanExercise(MATURITY),
+				MonitoringType.CONTINUOUS,
+				null
 		);
 
 		final double coarseValue = extractValueAtSpot(coarseDiscrete.getValue(0.0, model), model, S0);
@@ -322,15 +322,15 @@ public class TouchOptionDiscreteMonitoringTest {
 		);
 
 		final TouchOption continuous = new TouchOption(
-		        null,
-		        MATURITY,
-		        barrier,
-		        BarrierType.UP_IN,
-		        PAYOFF,
-		        TouchSettlementTiming.AT_EXPIRY,
-		        new EuropeanExercise(MATURITY),
-		        MonitoringType.CONTINUOUS,
-		        null
+				null,
+				MATURITY,
+				barrier,
+				BarrierType.UP_IN,
+				PAYOFF,
+				TouchSettlementTiming.AT_EXPIRY,
+				new EuropeanExercise(MATURITY),
+				MonitoringType.CONTINUOUS,
+				null
 		);
 
 		final double coarseValue = extractValueAtSpot(coarseDiscrete.getValue(0.0, model), model, S0);
@@ -374,33 +374,33 @@ public class TouchOptionDiscreteMonitoringTest {
 	}
 
 	private FDMBlackScholesModel createMinimalModelWithGrid(
-	        final FDMBlackScholesModel template,
-	        final double[] gridNodes) {
+			final FDMBlackScholesModel template,
+			final double[] gridNodes) {
 
-	    final double deltaT = MATURITY / NUMBER_OF_TIME_STEPS;
-	    final TimeDiscretization timeDiscretization =
-	            new TimeDiscretizationFromArray(0.0, NUMBER_OF_TIME_STEPS, deltaT);
+		final double deltaT = MATURITY / NUMBER_OF_TIME_STEPS;
+		final TimeDiscretization timeDiscretization =
+				new TimeDiscretizationFromArray(0.0, NUMBER_OF_TIME_STEPS, deltaT);
 
-	    final Grid spaceGrid = new UniformGrid(
-	            gridNodes.length - 1,
-	            gridNodes[0],
-	            gridNodes[gridNodes.length - 1]
-	    );
+		final Grid spaceGrid = new UniformGrid(
+				gridNodes.length - 1,
+				gridNodes[0],
+				gridNodes[gridNodes.length - 1]
+		);
 
-	    final SpaceTimeDiscretization discretization = new SpaceTimeDiscretization(
-	            spaceGrid,
-	            timeDiscretization,
-	            THETA,
-	            new double[] { S0 }
-	    );
+		final SpaceTimeDiscretization discretization = new SpaceTimeDiscretization(
+				spaceGrid,
+				timeDiscretization,
+				THETA,
+				new double[] { S0 }
+		);
 
-	    return new FDMBlackScholesModel(
-	            template.getInitialValue()[0],
-	            template.getRiskFreeCurve(),
-	            template.getDividendYieldCurve(),
-	            SIGMA,
-	            discretization
-	    );
+		return new FDMBlackScholesModel(
+				template.getInitialValue()[0],
+				template.getRiskFreeCurve(),
+				template.getDividendYieldCurve(),
+				SIGMA,
+				discretization
+		);
 	}
 
 	private Grid createTouchGrid(final double barrier, final BarrierType barrierType) {

@@ -56,7 +56,7 @@ public final class BlackScholesSurfaceUtilitiesPlotDemo {
 	 * Runs the demo.
 	 *
 	 * @param args Command-line arguments, ignored.
-	 * @throws Exception 
+	 * @throws Exception
 	 */
 	public static void main(final String[] args) throws Exception {
 

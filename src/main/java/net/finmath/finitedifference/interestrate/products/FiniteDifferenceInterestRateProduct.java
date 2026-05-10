@@ -59,79 +59,79 @@ import net.finmath.finitedifference.interestrate.models.FiniteDifferenceInterest
  * @author Alessandro Gnoatto
  */
 public interface FiniteDifferenceInterestRateProduct
-    extends FiniteDifferenceProduct<FiniteDifferenceInterestRateModel> {
+	extends FiniteDifferenceProduct<FiniteDifferenceInterestRateModel> {
 
-    @Override
-    default Class<FiniteDifferenceInterestRateModel> getModelClass() {
-        return FiniteDifferenceInterestRateModel.class;
-    }
+	@Override
+	default Class<FiniteDifferenceInterestRateModel> getModelClass() {
+		return FiniteDifferenceInterestRateModel.class;
+	}
 
-    /**
-     * Returns the event times of the product.
-     *
-     * <p>
-     * Event times are the dates where the backward induction may have to apply
-     * a
-     * jump or another event condition, for example because of coupon accrual,
-     * coupon payment, fixing, exercise, callability, or redemption.
-     * </p>
-     *
-     * <p>
-     * Products without intermediate events may return an empty array.
-     * </p>
-     *
-     * @return The event times of the product.
-     */
-    default double[] getEventTimes() {
-        return new double[0];
-    }
+	/**
+	 * Returns the event times of the product.
+	 *
+	 * <p>
+	 * Event times are the dates where the backward induction may have to apply
+	 * a
+	 * jump or another event condition, for example because of coupon accrual,
+	 * coupon payment, fixing, exercise, callability, or redemption.
+	 * </p>
+	 *
+	 * <p>
+	 * Products without intermediate events may return an empty array.
+	 * </p>
+	 *
+	 * @return The event times of the product.
+	 */
+	default double[] getEventTimes() {
+		return new double[0];
+	}
 
-    /**
-     * Applies the event condition at a given event time.
-     *
-     * <p>
-     * The input array {@code valuesAfterEvent} represents the continuation
-     * values
-     * immediately after the event time, that is
-     * </p>
-     *
-     * <p>
-     * <i>
-     * V(t^{+},x).
-     * </i>
-     * </p>
-     *
-     * <p>
-     * The returned array represents the values immediately before the event
-     * time,
-     * that is
-     * </p>
-     *
-     * <p>
-     * <i>
-     * V(t^{-},x).
-     * </i>
-     * </p>
-     *
-     * <p>
-     * The ordering of the entries must match the state-space ordering of the
-     * underlying finite-difference model.
-     * </p>
-     *
-     * <p>
-     * The default implementation leaves the continuation values unchanged.
-     * </p>
-     *
-     * @param time The event time.
-     * @param valuesAfterEvent The continuation values immediately after the
-     *     event.
-     * @param model The finite-difference interest-rate model.
-     * @return The values immediately before the event.
-     */
-    default double[] applyEventCondition(
-            final double time,
-            final double[] valuesAfterEvent,
-            final FiniteDifferenceInterestRateModel model) {
-        return valuesAfterEvent;
-    }
+	/**
+	 * Applies the event condition at a given event time.
+	 *
+	 * <p>
+	 * The input array {@code valuesAfterEvent} represents the continuation
+	 * values
+	 * immediately after the event time, that is
+	 * </p>
+	 *
+	 * <p>
+	 * <i>
+	 * V(t^{+},x).
+	 * </i>
+	 * </p>
+	 *
+	 * <p>
+	 * The returned array represents the values immediately before the event
+	 * time,
+	 * that is
+	 * </p>
+	 *
+	 * <p>
+	 * <i>
+	 * V(t^{-},x).
+	 * </i>
+	 * </p>
+	 *
+	 * <p>
+	 * The ordering of the entries must match the state-space ordering of the
+	 * underlying finite-difference model.
+	 * </p>
+	 *
+	 * <p>
+	 * The default implementation leaves the continuation values unchanged.
+	 * </p>
+	 *
+	 * @param time The event time.
+	 * @param valuesAfterEvent The continuation values immediately after the
+	 *     event.
+	 * @param model The finite-difference interest-rate model.
+	 * @return The values immediately before the event.
+	 */
+	default double[] applyEventCondition(
+			final double time,
+			final double[] valuesAfterEvent,
+			final FiniteDifferenceInterestRateModel model) {
+		return valuesAfterEvent;
+	}
 }

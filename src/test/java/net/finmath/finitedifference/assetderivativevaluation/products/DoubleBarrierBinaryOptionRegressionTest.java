@@ -103,7 +103,7 @@ public class DoubleBarrierBinaryOptionRegressionTest {
 		runBlackScholesAnalyticComparison(DoubleBarrierType.KNOCK_OUT);
 	}
 
-	
+
 	/*
 	 * ============================================================
 	 * KI + KO ~= DISCOUNTED CASH PAYOFF

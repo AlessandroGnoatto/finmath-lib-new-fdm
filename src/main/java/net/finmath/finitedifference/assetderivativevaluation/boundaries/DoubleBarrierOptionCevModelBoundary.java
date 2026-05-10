@@ -21,98 +21,98 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class DoubleBarrierOptionCevModelBoundary implements FiniteDifferenceBoundary {
 
-    /**
-     * The epsilon.
-     */
-    private static final double EPSILON = 1E-6;
+	/**
+	 * The epsilon.
+	 */
+	private static final double EPSILON = 1E-6;
 
-    /**
-     * The model.
-     */
-    private final FDMCevModel model;
+	/**
+	 * The model.
+	 */
+	private final FDMCevModel model;
 
-    /**
-     * Performs the operation.
-     *
-     * @param model The value.
-     */
-    public DoubleBarrierOptionCevModelBoundary(final FDMCevModel model) {
-        this.model = model;
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param model The value.
+	 */
+	public DoubleBarrierOptionCevModelBoundary(final FDMCevModel model) {
+		this.model = model;
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final DoubleBarrierOption option = (DoubleBarrierOption) product;
-        final CallOrPut sign = option.getCallOrPut();
+		final DoubleBarrierOption option = (DoubleBarrierOption) product;
+		final CallOrPut sign = option.getCallOrPut();
 
-        if (sign == CallOrPut.CALL) {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        } else {
-            time = Math.max(time, EPSILON);
+		if (sign == CallOrPut.CALL) {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		} else {
+			time = Math.max(time, EPSILON);
 
-            final double discountFactorRiskFree =
-                    model.getRiskFreeCurve().getDiscountFactor(time);
-            final double riskFreeRate =
-                    -Math.log(discountFactorRiskFree) / time;
+			final double discountFactorRiskFree =
+					model.getRiskFreeCurve().getDiscountFactor(time);
+			final double riskFreeRate =
+					-Math.log(discountFactorRiskFree) / time;
 
-            final double strike = option.getStrike();
-            final double maturity = option.getMaturity();
+			final double strike = option.getStrike();
+			final double maturity = option.getMaturity();
 
-            final double value =
-                    strike * Math.exp(-riskFreeRate * (maturity - time));
+			final double value =
+					strike * Math.exp(-riskFreeRate * (maturity - time));
 
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(value)
-            };
-        }
-    }
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
+		}
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceEquityProduct product,
-            double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceEquityProduct product,
+			double time,
+			final double... stateVariables) {
 
-        final DoubleBarrierOption option = (DoubleBarrierOption) product;
-        final CallOrPut sign = option.getCallOrPut();
+		final DoubleBarrierOption option = (DoubleBarrierOption) product;
+		final CallOrPut sign = option.getCallOrPut();
 
-        if (sign == CallOrPut.CALL) {
-            time = Math.max(time, EPSILON);
+		if (sign == CallOrPut.CALL) {
+			time = Math.max(time, EPSILON);
 
-            final double discountFactorRiskFree =
-                    model.getRiskFreeCurve().getDiscountFactor(time);
-            final double riskFreeRate =
-                    -Math.log(discountFactorRiskFree) / time;
+			final double discountFactorRiskFree =
+					model.getRiskFreeCurve().getDiscountFactor(time);
+			final double riskFreeRate =
+					-Math.log(discountFactorRiskFree) / time;
 
-            final double discountFactorDividend =
-                    model.getDividendYieldCurve().getDiscountFactor(time);
-            final double dividendYieldRate =
-                    -Math.log(discountFactorDividend) / time;
+			final double discountFactorDividend =
+					model.getDividendYieldCurve().getDiscountFactor(time);
+			final double dividendYieldRate =
+					-Math.log(discountFactorDividend) / time;
 
-            final double strike = option.getStrike();
-            final double maturity = option.getMaturity();
-            final double stateVariable = stateVariables[0];
+			final double strike = option.getStrike();
+			final double maturity = option.getMaturity();
+			final double stateVariable = stateVariables[0];
 
-            final double dividendAdjustedStockPrice =
-                    stateVariable * Math.exp(-dividendYieldRate * (maturity - time));
+			final double dividendAdjustedStockPrice =
+					stateVariable * Math.exp(-dividendYieldRate * (maturity - time));
 
-            final double value =
-                    dividendAdjustedStockPrice
-                    - strike * Math.exp(-riskFreeRate * (maturity - time));
+			final double value =
+					dividendAdjustedStockPrice
+					- strike * Math.exp(-riskFreeRate * (maturity - time));
 
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(value)
-            };
-        } else {
-            return new BoundaryCondition[] {
-                    StandardBoundaryCondition.dirichlet(0.0)
-            };
-        }
-    }
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(value)
+			};
+		} else {
+			return new BoundaryCondition[] {
+					StandardBoundaryCondition.dirichlet(0.0)
+			};
+		}
+	}
 }

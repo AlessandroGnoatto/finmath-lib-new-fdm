@@ -169,8 +169,8 @@ public class DigitalOptionHestonTest {
 		final double forward = SPOT * Math.exp((RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY);
 		final double varianceProxy =
 				SPOT * SPOT
-				* Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
-				* (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
+			 * Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
+			 * (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
 
 		final double sMin = Math.max(forward - NUMBER_OF_STANDARD_DEVIATIONS * Math.sqrt(varianceProxy), 0.0);
 		final double sMax = forward + NUMBER_OF_STANDARD_DEVIATIONS * Math.sqrt(varianceProxy);
@@ -186,7 +186,7 @@ public class DigitalOptionHestonTest {
 		final Grid vGrid = new UniformGrid(
 				NUMBER_OF_SPACE_STEPS_V,
 				0.0,
-				vMax		
+				vMax
 		);
 
 		final SpaceTimeDiscretization spaceTime = new SpaceTimeDiscretization(

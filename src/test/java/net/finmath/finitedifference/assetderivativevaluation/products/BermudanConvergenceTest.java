@@ -37,8 +37,8 @@ public class BermudanConvergenceTest {
 				initialValue * Math.exp((riskFreeRate - dividendYield) * maturity);
 		final double variance =
 				initialValue * initialValue
-				* Math.exp(2.0 * (riskFreeRate - dividendYield) * maturity)
-				* (Math.exp(volatility * volatility * maturity) - 1.0);
+			 * Math.exp(2.0 * (riskFreeRate - dividendYield) * maturity)
+			 * (Math.exp(volatility * volatility * maturity) - 1.0);
 
 		final double maximumStockPrice =
 				forwardValue + numStandardDeviations * Math.sqrt(variance);

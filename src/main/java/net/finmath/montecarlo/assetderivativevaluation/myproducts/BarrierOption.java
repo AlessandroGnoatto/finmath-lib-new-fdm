@@ -35,247 +35,247 @@ import net.finmath.stochastic.Scalar;
  */
 public class BarrierOption extends AbstractAssetMonteCarloProduct {
 
-    /**
-     * The maturity.
-     */
-    private final double maturity;
-    /**
-     * The strike.
-     */
-    private final double strike;
-    /**
-     * The barrier.
-     */
-    private final double barrier;
-    /**
-     * The rebate.
-     */
-    private final double rebate;
-    /**
-     * The call or put.
-     */
-    private final CallOrPut callOrPut;
-    /**
-     * The barrier type.
-     */
-    private final BarrierType barrierType;
-    /**
-     * The underlying index.
-     */
-    private final int underlyingIndex;
+	/**
+	 * The maturity.
+	 */
+	private final double maturity;
+	/**
+	 * The strike.
+	 */
+	private final double strike;
+	/**
+	 * The barrier.
+	 */
+	private final double barrier;
+	/**
+	 * The rebate.
+	 */
+	private final double rebate;
+	/**
+	 * The call or put.
+	 */
+	private final CallOrPut callOrPut;
+	/**
+	 * The barrier type.
+	 */
+	private final BarrierType barrierType;
+	/**
+	 * The underlying index.
+	 */
+	private final int underlyingIndex;
 
-    /**
-     * Performs the operation.
-     *
-     * @param maturity The value.
-     * @param strike The value.
-     * @param barrier The value.
-     * @param rebate The value.
-     * @param callOrPut The value.
-     * @param barrierType The value.
-     */
-    public BarrierOption(
-            final double maturity,
-            final double strike,
-            final double barrier,
-            final double rebate,
-            final CallOrPut callOrPut,
-            final BarrierType barrierType) {
-        this(maturity, strike, barrier, rebate, callOrPut, barrierType, 0);
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param maturity The value.
+	 * @param strike The value.
+	 * @param barrier The value.
+	 * @param rebate The value.
+	 * @param callOrPut The value.
+	 * @param barrierType The value.
+	 */
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrier,
+			final double rebate,
+			final CallOrPut callOrPut,
+			final BarrierType barrierType) {
+		this(maturity, strike, barrier, rebate, callOrPut, barrierType, 0);
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param maturity The value.
-     * @param strike The value.
-     * @param barrier The value.
-     * @param rebate The value.
-     * @param callOrPut The value.
-     * @param barrierType The value.
-     * @param underlyingIndex The value.
-     */
-    public BarrierOption(
-            final double maturity,
-            final double strike,
-            final double barrier,
-            final double rebate,
-            final CallOrPut callOrPut,
-            final BarrierType barrierType,
-            final int underlyingIndex) {
-        super();
-        this.maturity = maturity;
-        this.strike = strike;
-        this.barrier = barrier;
-        this.rebate = rebate;
-        this.callOrPut = callOrPut;
-        this.barrierType = barrierType;
-        this.underlyingIndex = underlyingIndex;
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param maturity The value.
+	 * @param strike The value.
+	 * @param barrier The value.
+	 * @param rebate The value.
+	 * @param callOrPut The value.
+	 * @param barrierType The value.
+	 * @param underlyingIndex The value.
+	 */
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrier,
+			final double rebate,
+			final CallOrPut callOrPut,
+			final BarrierType barrierType,
+			final int underlyingIndex) {
+		super();
+		this.maturity = maturity;
+		this.strike = strike;
+		this.barrier = barrier;
+		this.rebate = rebate;
+		this.callOrPut = callOrPut;
+		this.barrierType = barrierType;
+		this.underlyingIndex = underlyingIndex;
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param maturity The value.
-     * @param strike The value.
-     * @param barrier The value.
-     * @param callOrPut The value.
-     * @param barrierType The value.
-     */
-    public BarrierOption(
-            final double maturity,
-            final double strike,
-            final double barrier,
-            final CallOrPut callOrPut,
-            final BarrierType barrierType) {
-        this(maturity, strike, barrier, 0.0, callOrPut, barrierType, 0);
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param maturity The value.
+	 * @param strike The value.
+	 * @param barrier The value.
+	 * @param callOrPut The value.
+	 * @param barrierType The value.
+	 */
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrier,
+			final CallOrPut callOrPut,
+			final BarrierType barrierType) {
+		this(maturity, strike, barrier, 0.0, callOrPut, barrierType, 0);
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param maturity The value.
-     * @param strike The value.
-     * @param barrier The value.
-     * @param callOrPut The value.
-     * @param barrierType The value.
-     * @param underlyingIndex The value.
-     */
-    public BarrierOption(
-            final double maturity,
-            final double strike,
-            final double barrier,
-            final CallOrPut callOrPut,
-            final BarrierType barrierType,
-            final int underlyingIndex) {
-        this(maturity, strike, barrier, 0.0, callOrPut, barrierType, underlyingIndex);
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param maturity The value.
+	 * @param strike The value.
+	 * @param barrier The value.
+	 * @param callOrPut The value.
+	 * @param barrierType The value.
+	 * @param underlyingIndex The value.
+	 */
+	public BarrierOption(
+			final double maturity,
+			final double strike,
+			final double barrier,
+			final CallOrPut callOrPut,
+			final BarrierType barrierType,
+			final int underlyingIndex) {
+		this(maturity, strike, barrier, 0.0, callOrPut, barrierType, underlyingIndex);
+	}
 
-    @Override
-    public RandomVariable getValue(final double evaluationTime, final AssetModelMonteCarloSimulationModel model)
-            throws CalculationException {
+	@Override
+	public RandomVariable getValue(final double evaluationTime, final AssetModelMonteCarloSimulationModel model)
+			throws CalculationException {
 
-        final int maturityIndex = model.getTimeIndex(maturity);
-        if (maturityIndex < 0) {
-            throw new IllegalArgumentException("Maturity " + maturity + " is not part of the model time discretization.");
-        }
+		final int maturityIndex = model.getTimeIndex(maturity);
+		if (maturityIndex < 0) {
+			throw new IllegalArgumentException("Maturity " + maturity + " is not part of the model time discretization.");
+		}
 
-        final RandomVariable underlyingAtMaturity = model.getAssetValue(maturityIndex, underlyingIndex);
+		final RandomVariable underlyingAtMaturity = model.getAssetValue(maturityIndex, underlyingIndex);
 
-        final RandomVariable payoff;
-        if (callOrPut == CallOrPut.CALL) {
-            payoff = underlyingAtMaturity.sub(strike).floor(0.0);
-        } else {
-            payoff = underlyingAtMaturity.sub(strike).mult(-1.0).floor(0.0);
-        }
+		final RandomVariable payoff;
+		if (callOrPut == CallOrPut.CALL) {
+			payoff = underlyingAtMaturity.sub(strike).floor(0.0);
+		} else {
+			payoff = underlyingAtMaturity.sub(strike).mult(-1.0).floor(0.0);
+		}
 
-        final RandomVariable value;
-        switch (barrierType) {
-        case DOWN_IN:
-        case UP_IN:
-            value = getKnockInValue(model, maturityIndex, payoff, evaluationTime);
-            break;
-        case DOWN_OUT:
-        case UP_OUT:
-            value = getKnockOutValue(model, maturityIndex, payoff, evaluationTime);
-            break;
-        default:
-            throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
-        }
+		final RandomVariable value;
+		switch (barrierType) {
+		case DOWN_IN:
+		case UP_IN:
+			value = getKnockInValue(model, maturityIndex, payoff, evaluationTime);
+			break;
+		case DOWN_OUT:
+		case UP_OUT:
+			value = getKnockOutValue(model, maturityIndex, payoff, evaluationTime);
+			break;
+		default:
+			throw new IllegalArgumentException("Unsupported barrier type: " + barrierType);
+		}
 
-        return value;
-    }
+		return value;
+	}
 
-    private RandomVariable getKnockInValue(
-            final AssetModelMonteCarloSimulationModel model,
-            final int maturityIndex,
-            final RandomVariable payoff,
-            final double evaluationTime) throws CalculationException {
+	private RandomVariable getKnockInValue(
+			final AssetModelMonteCarloSimulationModel model,
+			final int maturityIndex,
+			final RandomVariable payoff,
+			final double evaluationTime) throws CalculationException {
 
-        RandomVariable hitIndicator = new Scalar(0.0);
+		RandomVariable hitIndicator = new Scalar(0.0);
 
-        for (int timeIndex = 0; timeIndex <= maturityIndex; timeIndex++) {
-            final RandomVariable underlying = model.getAssetValue(timeIndex, underlyingIndex);
+		for (int timeIndex = 0; timeIndex <= maturityIndex; timeIndex++) {
+			final RandomVariable underlying = model.getAssetValue(timeIndex, underlyingIndex);
 
-            final RandomVariable hitThisStep;
-            switch (barrierType) {
-            case DOWN_IN:
-                hitThisStep = underlying.sub(barrier).choose(new Scalar(0.0), new Scalar(1.0));
-                break;
-            case UP_IN:
-                hitThisStep = underlying.sub(barrier).choose(new Scalar(1.0), new Scalar(0.0));
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported barrier type for knock-in payoff: " + barrierType);
-            }
+			final RandomVariable hitThisStep;
+			switch (barrierType) {
+			case DOWN_IN:
+				hitThisStep = underlying.sub(barrier).choose(new Scalar(0.0), new Scalar(1.0));
+				break;
+			case UP_IN:
+				hitThisStep = underlying.sub(barrier).choose(new Scalar(1.0), new Scalar(0.0));
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported barrier type for knock-in payoff: " + barrierType);
+			}
 
-            hitIndicator = hitIndicator.add(hitThisStep).cap(1.0);
-        }
+			hitIndicator = hitIndicator.add(hitThisStep).cap(1.0);
+		}
 
-        final RandomVariable optionPayoff =
-                hitIndicator.mult(payoff).add(hitIndicator.mult(-1.0).add(1.0).mult(rebate));
+		final RandomVariable optionPayoff =
+				hitIndicator.mult(payoff).add(hitIndicator.mult(-1.0).add(1.0).mult(rebate));
 
-        return discountToEvaluationTime(model, optionPayoff, maturity, evaluationTime);
-    }
+		return discountToEvaluationTime(model, optionPayoff, maturity, evaluationTime);
+	}
 
-    private RandomVariable getKnockOutValue(
-            final AssetModelMonteCarloSimulationModel model,
-            final int maturityIndex,
-            final RandomVariable payoff,
-            final double evaluationTime) throws CalculationException {
+	private RandomVariable getKnockOutValue(
+			final AssetModelMonteCarloSimulationModel model,
+			final int maturityIndex,
+			final RandomVariable payoff,
+			final double evaluationTime) throws CalculationException {
 
-        RandomVariable aliveIndicator = new Scalar(1.0);
-        RandomVariable discountedRebate = new Scalar(0.0);
+		RandomVariable aliveIndicator = new Scalar(1.0);
+		RandomVariable discountedRebate = new Scalar(0.0);
 
-        for (int timeIndex = 0; timeIndex <= maturityIndex; timeIndex++) {
-            final double time = model.getTime(timeIndex);
-            final RandomVariable underlying = model.getAssetValue(timeIndex, underlyingIndex);
+		for (int timeIndex = 0; timeIndex <= maturityIndex; timeIndex++) {
+			final double time = model.getTime(timeIndex);
+			final RandomVariable underlying = model.getAssetValue(timeIndex, underlyingIndex);
 
-            final RandomVariable hitThisStep;
-            switch (barrierType) {
-            case DOWN_OUT:
-                hitThisStep = underlying.sub(barrier).choose(new Scalar(0.0), new Scalar(1.0));
-                break;
-            case UP_OUT:
-                hitThisStep = underlying.sub(barrier).choose(new Scalar(1.0), new Scalar(0.0));
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported barrier type for knock-out payoff: " + barrierType);
-            }
+			final RandomVariable hitThisStep;
+			switch (barrierType) {
+			case DOWN_OUT:
+				hitThisStep = underlying.sub(barrier).choose(new Scalar(0.0), new Scalar(1.0));
+				break;
+			case UP_OUT:
+				hitThisStep = underlying.sub(barrier).choose(new Scalar(1.0), new Scalar(0.0));
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported barrier type for knock-out payoff: " + barrierType);
+			}
 
-            final RandomVariable firstHitThisStep = aliveIndicator.mult(hitThisStep);
+			final RandomVariable firstHitThisStep = aliveIndicator.mult(hitThisStep);
 
-            if (rebate != 0.0) {
-                final RandomVariable rebatePaidAtHit = firstHitThisStep.mult(rebate);
-                discountedRebate = discountedRebate.add(
-                        discountToEvaluationTime(model, rebatePaidAtHit, time, evaluationTime));
-            }
+			if (rebate != 0.0) {
+				final RandomVariable rebatePaidAtHit = firstHitThisStep.mult(rebate);
+				discountedRebate = discountedRebate.add(
+						discountToEvaluationTime(model, rebatePaidAtHit, time, evaluationTime));
+			}
 
-            aliveIndicator = aliveIndicator.mult(hitThisStep.mult(-1.0).add(1.0));
-        }
+			aliveIndicator = aliveIndicator.mult(hitThisStep.mult(-1.0).add(1.0));
+		}
 
-        final RandomVariable vanillaIfAlive =
-                discountToEvaluationTime(model, aliveIndicator.mult(payoff), maturity, evaluationTime);
+		final RandomVariable vanillaIfAlive =
+				discountToEvaluationTime(model, aliveIndicator.mult(payoff), maturity, evaluationTime);
 
-        return vanillaIfAlive.add(discountedRebate);
-    }
+		return vanillaIfAlive.add(discountedRebate);
+	}
 
-    private RandomVariable discountToEvaluationTime(
-            final AssetModelMonteCarloSimulationModel model,
-            final RandomVariable payoff,
-            final double paymentTime,
-            final double evaluationTime) throws CalculationException {
+	private RandomVariable discountToEvaluationTime(
+			final AssetModelMonteCarloSimulationModel model,
+			final RandomVariable payoff,
+			final double paymentTime,
+			final double evaluationTime) throws CalculationException {
 
-        final RandomVariable numeraireAtPayment = model.getNumeraire(paymentTime);
-        final RandomVariable monteCarloWeightsAtPayment = model.getMonteCarloWeights(paymentTime);
+		final RandomVariable numeraireAtPayment = model.getNumeraire(paymentTime);
+		final RandomVariable monteCarloWeightsAtPayment = model.getMonteCarloWeights(paymentTime);
 
-        RandomVariable value = payoff.div(numeraireAtPayment).mult(monteCarloWeightsAtPayment);
+		RandomVariable value = payoff.div(numeraireAtPayment).mult(monteCarloWeightsAtPayment);
 
-        final RandomVariable numeraireAtEvaluationTime = model.getNumeraire(evaluationTime);
-        final RandomVariable monteCarloWeightsAtEvaluationTime = model.getMonteCarloWeights(evaluationTime);
+		final RandomVariable numeraireAtEvaluationTime = model.getNumeraire(evaluationTime);
+		final RandomVariable monteCarloWeightsAtEvaluationTime = model.getMonteCarloWeights(evaluationTime);
 
-        value = value.mult(numeraireAtEvaluationTime).div(monteCarloWeightsAtEvaluationTime);
+		value = value.mult(numeraireAtEvaluationTime).div(monteCarloWeightsAtEvaluationTime);
 
-        return value;
-    }
+		return value;
+	}
 }

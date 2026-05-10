@@ -23,43 +23,43 @@ package net.finmath.finitedifference.solvers;
  */
 public class TridiagonalMatrix {
 
-    /**
-     * The lower diagonal of the matrix.
-     * <p>
-     * Entry {@code lower[i]} represents the coefficient below the main
-     * diagonal in row {@code i}. The value {@code lower[0]} is typically
-     * unused.
-     */
-    public final double[] lower;
+	/**
+	 * The lower diagonal of the matrix.
+	 * <p>
+	 * Entry {@code lower[i]} represents the coefficient below the main
+	 * diagonal in row {@code i}. The value {@code lower[0]} is typically
+	 * unused.
+	 */
+	public final double[] lower;
 
-    /**
-     * The main diagonal of the matrix.
-     * <p>
-     * Entry {@code diag[i]} represents the diagonal coefficient in row {@code
-     * i}.
-     */
-    public final double[] diag;
+	/**
+	 * The main diagonal of the matrix.
+	 * <p>
+	 * Entry {@code diag[i]} represents the diagonal coefficient in row {@code
+	 * i}.
+	 */
+	public final double[] diag;
 
-    /**
-     * The upper diagonal of the matrix.
-     * <p>
-     * Entry {@code upper[i]} represents the coefficient above the main
-     * diagonal in row {@code i}. The value {@code upper[n-1]} is typically
-     * unused.
-     */
-    public final double[] upper;
+	/**
+	 * The upper diagonal of the matrix.
+	 * <p>
+	 * Entry {@code upper[i]} represents the coefficient above the main
+	 * diagonal in row {@code i}. The value {@code upper[n-1]} is typically
+	 * unused.
+	 */
+	public final double[] upper;
 
-    /**
-     * Creates a tridiagonal matrix representation of dimension {@code n}.
-     * <p>
-     * All three diagonal arrays are initialized with length {@code n} and
-     * filled with zeros.
-     *
-     * @param n The dimension of the tridiagonal matrix.
-     */
-    public TridiagonalMatrix(final int n) {
-        this.lower = new double[n];
-        this.diag = new double[n];
-        this.upper = new double[n];
-    }
+	/**
+	 * Creates a tridiagonal matrix representation of dimension {@code n}.
+	 * <p>
+	 * All three diagonal arrays are initialized with length {@code n} and
+	 * filled with zeros.
+	 *
+	 * @param n The dimension of the tridiagonal matrix.
+	 */
+	public TridiagonalMatrix(final int n) {
+		this.lower = new double[n];
+		this.diag = new double[n];
+		this.upper = new double[n];
+	}
 }

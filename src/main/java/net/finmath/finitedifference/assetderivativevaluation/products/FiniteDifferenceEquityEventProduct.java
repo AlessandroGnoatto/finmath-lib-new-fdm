@@ -15,27 +15,27 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDiffer
  */
 public interface FiniteDifferenceEquityEventProduct extends FiniteDifferenceEquityProduct {
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    default double[] getEventTimes() {
-        return new double[0];
-    }
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	default double[] getEventTimes() {
+		return new double[0];
+	}
 
-    /**
-     * Performs the operation.
-     *
-     * @param time The value.
-     * @param valuesAfterEvent The value.
-     * @param model The value.
-     * @return The value.
-     */
-    default double[] applyEventCondition(
-            final double time,
-            final double[] valuesAfterEvent,
-            final FiniteDifferenceEquityModel model) {
-        return valuesAfterEvent;
-    }
+	/**
+	 * Performs the operation.
+	 *
+	 * @param time The value.
+	 * @param valuesAfterEvent The value.
+	 * @param model The value.
+	 * @return The value.
+	 */
+	default double[] applyEventCondition(
+			final double time,
+			final double[] valuesAfterEvent,
+			final FiniteDifferenceEquityModel model) {
+		return valuesAfterEvent;
+	}
 }

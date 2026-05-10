@@ -37,307 +37,307 @@ import net.finmath.time.TimeDiscretization;
  */
 public class AsianOption extends AbstractAssetMonteCarloProduct {
 
-    /**
-     * The maturity.
-     */
-    private final double maturity;
-    /**
-     * The strike.
-     */
-    private final double strike;
-    /**
-     * The times for averaging.
-     */
-    private final TimeDiscretization timesForAveraging;
-    /**
-     * The underlying index.
-     */
-    private final Integer underlyingIndex;
-    /**
-     * The call or put.
-     */
-    private final CallOrPut callOrPut;
-    /**
-     * The asian strike.
-     */
-    private final AsianStrike asianStrike;
+	/**
+	 * The maturity.
+	 */
+	private final double maturity;
+	/**
+	 * The strike.
+	 */
+	private final double strike;
+	/**
+	 * The times for averaging.
+	 */
+	private final TimeDiscretization timesForAveraging;
+	/**
+	 * The underlying index.
+	 */
+	private final Integer underlyingIndex;
+	/**
+	 * The call or put.
+	 */
+	private final CallOrPut callOrPut;
+	/**
+	 * The asian strike.
+	 */
+	private final AsianStrike asianStrike;
 
-    /**
-     * Legacy constructor, fully backward compatible.
-     * Creates a fixed-strike Asian call.
-     *
-     * @param maturity The maturity T.
-     * @param strike The strike K.
-     * @param timesForAveraging The times t_i used in the calculation of A(T).
-     * @param underlyingIndex The index of the asset S to be fetched from the
-     *     model.
-     */
-    public AsianOption(
-            final double maturity,
-            final double strike,
-            final TimeDiscretization timesForAveraging,
-            final Integer underlyingIndex) {
-        super();
-        this.maturity = maturity;
-        this.strike = strike;
-        this.timesForAveraging = timesForAveraging;
-        this.underlyingIndex = underlyingIndex;
-        this.callOrPut = CallOrPut.CALL;
-        this.asianStrike = AsianStrike.FIXED_STRIKE;
-    }
+	/**
+	 * Legacy constructor, fully backward compatible.
+	 * Creates a fixed-strike Asian call.
+	 *
+	 * @param maturity The maturity T.
+	 * @param strike The strike K.
+	 * @param timesForAveraging The times t_i used in the calculation of A(T).
+	 * @param underlyingIndex The index of the asset S to be fetched from the
+	 *     model.
+	 */
+	public AsianOption(
+			final double maturity,
+			final double strike,
+			final TimeDiscretization timesForAveraging,
+			final Integer underlyingIndex) {
+		super();
+		this.maturity = maturity;
+		this.strike = strike;
+		this.timesForAveraging = timesForAveraging;
+		this.underlyingIndex = underlyingIndex;
+		this.callOrPut = CallOrPut.CALL;
+		this.asianStrike = AsianStrike.FIXED_STRIKE;
+	}
 
-    /**
-     * Legacy constructor, fully backward compatible.
-     * Creates a fixed-strike Asian call.
-     *
-     * @param maturity The maturity T.
-     * @param strike The strike K.
-     * @param timesForAveraging The times t_i used in the calculation of A(T).
-     */
-    public AsianOption(
-            final double maturity,
-            final double strike,
-            final TimeDiscretization timesForAveraging) {
-        this(maturity, strike, timesForAveraging, 0);
-    }
+	/**
+	 * Legacy constructor, fully backward compatible.
+	 * Creates a fixed-strike Asian call.
+	 *
+	 * @param maturity The maturity T.
+	 * @param strike The strike K.
+	 * @param timesForAveraging The times t_i used in the calculation of A(T).
+	 */
+	public AsianOption(
+			final double maturity,
+			final double strike,
+			final TimeDiscretization timesForAveraging) {
+		this(maturity, strike, timesForAveraging, 0);
+	}
 
-    /**
-     * Constructor for fixed-strike Asian options.
-     *
-     * @param maturity The maturity T.
-     * @param strike The strike K.
-     * @param timesForAveraging The averaging times.
-     * @param underlyingIndex The underlying index.
-     * @param callOrPut Call or put.
-     */
-    public AsianOption(
-            final double maturity,
-            final double strike,
-            final TimeDiscretization timesForAveraging,
-            final Integer underlyingIndex,
-            final CallOrPut callOrPut) {
-        this(maturity, strike, timesForAveraging, underlyingIndex, callOrPut, AsianStrike.FIXED_STRIKE);
-    }
+	/**
+	 * Constructor for fixed-strike Asian options.
+	 *
+	 * @param maturity The maturity T.
+	 * @param strike The strike K.
+	 * @param timesForAveraging The averaging times.
+	 * @param underlyingIndex The underlying index.
+	 * @param callOrPut Call or put.
+	 */
+	public AsianOption(
+			final double maturity,
+			final double strike,
+			final TimeDiscretization timesForAveraging,
+			final Integer underlyingIndex,
+			final CallOrPut callOrPut) {
+		this(maturity, strike, timesForAveraging, underlyingIndex, callOrPut, AsianStrike.FIXED_STRIKE);
+	}
 
-    /**
-     * Constructor for fixed-strike Asian options.
-     *
-     * @param maturity The maturity T.
-     * @param strike The strike K.
-     * @param timesForAveraging The averaging times.
-     * @param callOrPut Call or put.
-     */
-    public AsianOption(
-            final double maturity,
-            final double strike,
-            final TimeDiscretization timesForAveraging,
-            final CallOrPut callOrPut) {
-        this(maturity, strike, timesForAveraging, 0, callOrPut, AsianStrike.FIXED_STRIKE);
-    }
+	/**
+	 * Constructor for fixed-strike Asian options.
+	 *
+	 * @param maturity The maturity T.
+	 * @param strike The strike K.
+	 * @param timesForAveraging The averaging times.
+	 * @param callOrPut Call or put.
+	 */
+	public AsianOption(
+			final double maturity,
+			final double strike,
+			final TimeDiscretization timesForAveraging,
+			final CallOrPut callOrPut) {
+		this(maturity, strike, timesForAveraging, 0, callOrPut, AsianStrike.FIXED_STRIKE);
+	}
 
-    /**
-     * General constructor for Asian options.
-     *
-     * For floating-strike options, strike is ignored and may be set to
-     * Double.NaN.
-     *
-     * @param maturity The maturity T.
-     * @param strike The strike K for fixed-strike options. Ignored for
-     *     floating-strike options.
-     * @param timesForAveraging The averaging times.
-     * @param underlyingIndex The underlying index.
-     * @param callOrPut Call or put.
-     * @param asianStrike Fixed or floating strike.
-     */
-    public AsianOption(
-            final double maturity,
-            final double strike,
-            final TimeDiscretization timesForAveraging,
-            final Integer underlyingIndex,
-            final CallOrPut callOrPut,
-            final AsianStrike asianStrike) {
-        super();
+	/**
+	 * General constructor for Asian options.
+	 *
+	 * For floating-strike options, strike is ignored and may be set to
+	 * Double.NaN.
+	 *
+	 * @param maturity The maturity T.
+	 * @param strike The strike K for fixed-strike options. Ignored for
+	 *     floating-strike options.
+	 * @param timesForAveraging The averaging times.
+	 * @param underlyingIndex The underlying index.
+	 * @param callOrPut Call or put.
+	 * @param asianStrike Fixed or floating strike.
+	 */
+	public AsianOption(
+			final double maturity,
+			final double strike,
+			final TimeDiscretization timesForAveraging,
+			final Integer underlyingIndex,
+			final CallOrPut callOrPut,
+			final AsianStrike asianStrike) {
+		super();
 
-        if (callOrPut == null) {
-            throw new IllegalArgumentException("callOrPut must not be null.");
-        }
-        if (asianStrike == null) {
-            throw new IllegalArgumentException("asianStrike must not be null.");
-        }
-        if (timesForAveraging == null) {
-            throw new IllegalArgumentException("timesForAveraging must not be null.");
-        }
-        if (asianStrike == AsianStrike.FIXED_STRIKE && Double.isNaN(strike)) {
-            throw new IllegalArgumentException("Strike must be specified for fixed-strike Asian options.");
-        }
+		if (callOrPut == null) {
+			throw new IllegalArgumentException("callOrPut must not be null.");
+		}
+		if (asianStrike == null) {
+			throw new IllegalArgumentException("asianStrike must not be null.");
+		}
+		if (timesForAveraging == null) {
+			throw new IllegalArgumentException("timesForAveraging must not be null.");
+		}
+		if (asianStrike == AsianStrike.FIXED_STRIKE && Double.isNaN(strike)) {
+			throw new IllegalArgumentException("Strike must be specified for fixed-strike Asian options.");
+		}
 
-        this.maturity = maturity;
-        this.strike = strike;
-        this.timesForAveraging = timesForAveraging;
-        this.underlyingIndex = underlyingIndex;
-        this.callOrPut = callOrPut;
-        this.asianStrike = asianStrike;
-    }
+		this.maturity = maturity;
+		this.strike = strike;
+		this.timesForAveraging = timesForAveraging;
+		this.underlyingIndex = underlyingIndex;
+		this.callOrPut = callOrPut;
+		this.asianStrike = asianStrike;
+	}
 
-    /**
-     * General constructor for Asian options.
-     *
-     * For floating-strike options, strike is ignored and may be set to
-     * Double.NaN.
-     *
-     * @param maturity The maturity T.
-     * @param strike The strike K for fixed-strike options. Ignored for
-     *     floating-strike options.
-     * @param timesForAveraging The averaging times.
-     * @param callOrPut Call or put.
-     * @param asianStrike Fixed or floating strike.
-     */
-    public AsianOption(
-            final double maturity,
-            final double strike,
-            final TimeDiscretization timesForAveraging,
-            final CallOrPut callOrPut,
-            final AsianStrike asianStrike) {
-        this(maturity, strike, timesForAveraging, 0, callOrPut, asianStrike);
-    }
+	/**
+	 * General constructor for Asian options.
+	 *
+	 * For floating-strike options, strike is ignored and may be set to
+	 * Double.NaN.
+	 *
+	 * @param maturity The maturity T.
+	 * @param strike The strike K for fixed-strike options. Ignored for
+	 *     floating-strike options.
+	 * @param timesForAveraging The averaging times.
+	 * @param callOrPut Call or put.
+	 * @param asianStrike Fixed or floating strike.
+	 */
+	public AsianOption(
+			final double maturity,
+			final double strike,
+			final TimeDiscretization timesForAveraging,
+			final CallOrPut callOrPut,
+			final AsianStrike asianStrike) {
+		this(maturity, strike, timesForAveraging, 0, callOrPut, asianStrike);
+	}
 
-    /**
-     * Convenience constructor for floating-strike Asian options.
-     *
-     * @param maturity The maturity T.
-     * @param timesForAveraging The averaging times.
-     * @param underlyingIndex The underlying index.
-     * @param callOrPut Call or put.
-     */
-    public AsianOption(
-            final double maturity,
-            final TimeDiscretization timesForAveraging,
-            final Integer underlyingIndex,
-            final CallOrPut callOrPut) {
-        this(maturity, Double.NaN, timesForAveraging, underlyingIndex, callOrPut, AsianStrike.FLOATING_STRIKE);
-    }
+	/**
+	 * Convenience constructor for floating-strike Asian options.
+	 *
+	 * @param maturity The maturity T.
+	 * @param timesForAveraging The averaging times.
+	 * @param underlyingIndex The underlying index.
+	 * @param callOrPut Call or put.
+	 */
+	public AsianOption(
+			final double maturity,
+			final TimeDiscretization timesForAveraging,
+			final Integer underlyingIndex,
+			final CallOrPut callOrPut) {
+		this(maturity, Double.NaN, timesForAveraging, underlyingIndex, callOrPut, AsianStrike.FLOATING_STRIKE);
+	}
 
-    /**
-     * Convenience constructor for floating-strike Asian options.
-     *
-     * @param maturity The maturity T.
-     * @param timesForAveraging The averaging times.
-     * @param callOrPut Call or put.
-     */
-    public AsianOption(
-            final double maturity,
-            final TimeDiscretization timesForAveraging,
-            final CallOrPut callOrPut) {
-        this(maturity, Double.NaN, timesForAveraging, 0, callOrPut, AsianStrike.FLOATING_STRIKE);
-    }
+	/**
+	 * Convenience constructor for floating-strike Asian options.
+	 *
+	 * @param maturity The maturity T.
+	 * @param timesForAveraging The averaging times.
+	 * @param callOrPut Call or put.
+	 */
+	public AsianOption(
+			final double maturity,
+			final TimeDiscretization timesForAveraging,
+			final CallOrPut callOrPut) {
+		this(maturity, Double.NaN, timesForAveraging, 0, callOrPut, AsianStrike.FLOATING_STRIKE);
+	}
 
-    @Override
-    public RandomVariable getValue(final double evaluationTime, final AssetModelMonteCarloSimulationModel model)
-            throws CalculationException {
+	@Override
+	public RandomVariable getValue(final double evaluationTime, final AssetModelMonteCarloSimulationModel model)
+			throws CalculationException {
 
-        /*RandomVariable average = model.getRandomVariableForConstant(0.0);
-        for (final double time : timesForAveraging) {
-            final RandomVariable underlying = model.getAssetValue(time, underlyingIndex);
-            average = average.add(underlying);
-        }
-        average = average.div(timesForAveraging.getNumberOfTimes());*/
+		/*RandomVariable average = model.getRandomVariableForConstant(0.0);
+		for (final double time : timesForAveraging) {
+			final RandomVariable underlying = model.getAssetValue(time, underlyingIndex);
+			average = average.add(underlying);
+		}
+		average = average.div(timesForAveraging.getNumberOfTimes());*/
 
-        RandomVariable integral = model.getRandomVariableForConstant(0.0);
+		RandomVariable integral = model.getRandomVariableForConstant(0.0);
 
-        for (int timeIndex = 0; timeIndex < timesForAveraging.getNumberOfTimes() - 1; timeIndex++) {
-            final double time = timesForAveraging.getTime(timeIndex);
-            final double nextTime = timesForAveraging.getTime(timeIndex + 1);
-            final double dt = nextTime - time;
+		for (int timeIndex = 0; timeIndex < timesForAveraging.getNumberOfTimes() - 1; timeIndex++) {
+			final double time = timesForAveraging.getTime(timeIndex);
+			final double nextTime = timesForAveraging.getTime(timeIndex + 1);
+			final double dt = nextTime - time;
 
-            final RandomVariable sLeft = model.getAssetValue(time, underlyingIndex);
-            final RandomVariable sRight = model.getAssetValue(nextTime, underlyingIndex);
+			final RandomVariable sLeft = model.getAssetValue(time, underlyingIndex);
+			final RandomVariable sRight = model.getAssetValue(nextTime, underlyingIndex);
 
-            integral = integral.add(sLeft.add(sRight).mult(0.5 * dt));
-        }
+			integral = integral.add(sLeft.add(sRight).mult(0.5 * dt));
+		}
 
-        final RandomVariable average = integral.div(maturity);
+		final RandomVariable average = integral.div(maturity);
 
-        final RandomVariable underlyingAtMaturity = model.getAssetValue(maturity, underlyingIndex);
+		final RandomVariable underlyingAtMaturity = model.getAssetValue(maturity, underlyingIndex);
 
-        RandomVariable values;
-        if (asianStrike == AsianStrike.FIXED_STRIKE) {
-            if (callOrPut == CallOrPut.CALL) {
-                values = average.sub(strike).floor(0.0);
-            } else {
-                values = average.mult(-1.0).add(strike).floor(0.0);
-            }
-        } else if (asianStrike == AsianStrike.FLOATING_STRIKE) {
-            if (callOrPut == CallOrPut.CALL) {
-                values = underlyingAtMaturity.sub(average).floor(0.0);
-            } else {
-                values = average.sub(underlyingAtMaturity).floor(0.0);
-            }
-        } else {
-            throw new IllegalArgumentException("Unsupported asian strike type.");
-        }
+		RandomVariable values;
+		if (asianStrike == AsianStrike.FIXED_STRIKE) {
+			if (callOrPut == CallOrPut.CALL) {
+				values = average.sub(strike).floor(0.0);
+			} else {
+				values = average.mult(-1.0).add(strike).floor(0.0);
+			}
+		} else if (asianStrike == AsianStrike.FLOATING_STRIKE) {
+			if (callOrPut == CallOrPut.CALL) {
+				values = underlyingAtMaturity.sub(average).floor(0.0);
+			} else {
+				values = average.sub(underlyingAtMaturity).floor(0.0);
+			}
+		} else {
+			throw new IllegalArgumentException("Unsupported asian strike type.");
+		}
 
-        final RandomVariable numeraireAtMaturity = model.getNumeraire(maturity);
-        final RandomVariable monteCarloWeights = model.getMonteCarloWeights(maturity);
-        values = values.div(numeraireAtMaturity).mult(monteCarloWeights);
+		final RandomVariable numeraireAtMaturity = model.getNumeraire(maturity);
+		final RandomVariable monteCarloWeights = model.getMonteCarloWeights(maturity);
+		values = values.div(numeraireAtMaturity).mult(monteCarloWeights);
 
-        final RandomVariable numeraireAtEvalTime = model.getNumeraire(evaluationTime);
-        final RandomVariable monteCarloWeightsAtEvalTime = model.getMonteCarloWeights(evaluationTime);
-        values = values.mult(numeraireAtEvalTime).div(monteCarloWeightsAtEvalTime);
+		final RandomVariable numeraireAtEvalTime = model.getNumeraire(evaluationTime);
+		final RandomVariable monteCarloWeightsAtEvalTime = model.getMonteCarloWeights(evaluationTime);
+		values = values.mult(numeraireAtEvalTime).div(monteCarloWeightsAtEvalTime);
 
-        return values;
-    }
+		return values;
+	}
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    public double getMaturity() {
-        return maturity;
-    }
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	public double getMaturity() {
+		return maturity;
+	}
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    public double getStrike() {
-        return strike;
-    }
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	public double getStrike() {
+		return strike;
+	}
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    public TimeDiscretization getTimesForAveraging() {
-        return timesForAveraging;
-    }
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	public TimeDiscretization getTimesForAveraging() {
+		return timesForAveraging;
+	}
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    public Integer getUnderlyingIndex() {
-        return underlyingIndex;
-    }
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	public Integer getUnderlyingIndex() {
+		return underlyingIndex;
+	}
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    public CallOrPut getCallOrPut() {
-        return callOrPut;
-    }
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	public CallOrPut getCallOrPut() {
+		return callOrPut;
+	}
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    public AsianStrike getAsianStrike() {
-        return asianStrike;
-    }
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	public AsianStrike getAsianStrike() {
+		return asianStrike;
+	}
 }

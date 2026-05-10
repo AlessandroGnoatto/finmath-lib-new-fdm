@@ -102,7 +102,7 @@ public class BarrierOptionDiscreteMonitoringKnockInTest {
 		assertTrue(fineValue <= vanillaValue + STRUCTURAL_TOLERANCE);
 		assertTrue(coarseValue >= -STRUCTURAL_TOLERANCE);
 	}
-	
+
 
 	@Test
 	public void testDiscreteUpInCallMonotonicityAgainstContinuousMonitoring() {

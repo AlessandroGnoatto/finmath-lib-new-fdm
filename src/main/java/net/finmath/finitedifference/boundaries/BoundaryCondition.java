@@ -12,40 +12,40 @@ package net.finmath.finitedifference.boundaries;
  */
 public interface BoundaryCondition {
 
-    /**
-     * Returns the type of boundary condition.
-     *
-     * @return The boundary condition type.
-     */
-    BoundaryConditionType getType();
+	/**
+	 * Returns the type of boundary condition.
+	 *
+	 * @return The boundary condition type.
+	 */
+	BoundaryConditionType getType();
 
-    /**
-     * Returns the boundary value.
-     *
-     * <p>
-     * This is used only when the type is {@link
-     * BoundaryConditionType#DIRICHLET}.
-     * </p>
-     *
-     * @return The boundary value.
-     */
-    double getValue();
+	/**
+	 * Returns the boundary value.
+	 *
+	 * <p>
+	 * This is used only when the type is {@link
+	 * BoundaryConditionType#DIRICHLET}.
+	 * </p>
+	 *
+	 * @return The boundary value.
+	 */
+	double getValue();
 
-    /**
-     * Returns true if the condition is of Dirichlet type.
-     *
-     * @return True if Dirichlet.
-     */
-    default boolean isDirichlet() {
-        return getType() == BoundaryConditionType.DIRICHLET;
-    }
+	/**
+	 * Returns true if the condition is of Dirichlet type.
+	 *
+	 * @return True if Dirichlet.
+	 */
+	default boolean isDirichlet() {
+		return getType() == BoundaryConditionType.DIRICHLET;
+	}
 
-    /**
-     * Returns true if no boundary row should be enforced.
-     *
-     * @return True if no boundary condition is imposed.
-     */
-    default boolean isNone() {
-        return getType() == BoundaryConditionType.NONE;
-    }
+	/**
+	 * Returns true if no boundary row should be enforced.
+	 *
+	 * @return True if no boundary condition is imposed.
+	 */
+	default boolean isNone() {
+		return getType() == BoundaryConditionType.NONE;
+	}
 }

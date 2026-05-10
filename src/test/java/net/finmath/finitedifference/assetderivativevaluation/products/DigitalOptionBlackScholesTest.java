@@ -549,8 +549,8 @@ public class DigitalOptionBlackScholesTest {
 				SPOT * Math.exp((RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY);
 		final double variance =
 				SPOT * SPOT
-				* Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
-				* (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
+			 * Math.exp(2.0 * (RISK_FREE_RATE - DIVIDEND_YIELD) * MATURITY)
+			 * (Math.exp(VOLATILITY * VOLATILITY * MATURITY) - 1.0);
 
 		final double sMin =
 				Math.max(forward - NUMBER_OF_STANDARD_DEVIATIONS * Math.sqrt(variance), 0.0);
@@ -629,8 +629,8 @@ public class DigitalOptionBlackScholesTest {
 		final double payoffUnit = Math.exp(-riskFreeRate * maturity);
 
 		return cashPayoff
-				* payoffUnit
-				* AnalyticFormulas.blackScholesDigitalOptionValue(
+			 * payoffUnit
+			 * AnalyticFormulas.blackScholesDigitalOptionValue(
 						forward,
 						0.0,
 						volatility,

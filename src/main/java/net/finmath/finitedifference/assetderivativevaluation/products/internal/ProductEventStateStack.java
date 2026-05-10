@@ -26,108 +26,108 @@ import java.util.ArrayDeque;
  */
 public final class ProductEventStateStack<T> {
 
-    /**
-     * The stack.
-     */
-    private transient ThreadLocal<ArrayDeque<T>> stack;
+	/**
+	 * The stack.
+	 */
+	private transient ThreadLocal<ArrayDeque<T>> stack;
 
-    /**
-     * Pushes a state object onto the current thread's stack.
-     *
-     * <p>
-     * The returned {@link Scope} closes over the pushed state. Calling
-     * {@link Scope#close()} pops the state again. This allows callers to use
-     * the
-     * following pattern:
-     * </p>
-     *
-     * <pre>
-     * try(ProductEventStateStack.Scope ignored = stack.push(state)) {
-     *     // perform valuation using state
-     * }
-     * </pre>
-     *
-     * @param state The state to push.
-     * @return A scope whose {@link Scope#close()} method pops the pushed state.
-     * @throws IllegalArgumentException Thrown if {@code state} is {@code null}.
-     */
-    public Scope push(final T state) {
-        if (state == null) {
-            throw new IllegalArgumentException("state must not be null.");
-        }
+	/**
+	 * Pushes a state object onto the current thread's stack.
+	 *
+	 * <p>
+	 * The returned {@link Scope} closes over the pushed state. Calling
+	 * {@link Scope#close()} pops the state again. This allows callers to use
+	 * the
+	 * following pattern:
+	 * </p>
+	 *
+	 * <pre>
+	 * try(ProductEventStateStack.Scope ignored = stack.push(state)) {
+	 *     // perform valuation using state
+	 * }
+	 * </pre>
+	 *
+	 * @param state The state to push.
+	 * @return A scope whose {@link Scope#close()} method pops the pushed state.
+	 * @throws IllegalArgumentException Thrown if {@code state} is {@code null}.
+	 */
+	public Scope push(final T state) {
+		if (state == null) {
+			throw new IllegalArgumentException("state must not be null.");
+		}
 
-        getStack().get().push(state);
+		getStack().get().push(state);
 
-        return this::pop;
-    }
+		return this::pop;
+	}
 
-    /**
-     * Returns the current state for the calling thread.
-     *
-     * @return The state at the top of the current thread's stack, or
-     *         {@code null} if the stack is empty.
-     */
-    public T currentOrNull() {
-        final ArrayDeque<T> currentStack = getStack().get();
-        return currentStack.isEmpty() ? null : currentStack.peek();
-    }
+	/**
+	 * Returns the current state for the calling thread.
+	 *
+	 * @return The state at the top of the current thread's stack, or
+	 *         {@code null} if the stack is empty.
+	 */
+	public T currentOrNull() {
+		final ArrayDeque<T> currentStack = getStack().get();
+		return currentStack.isEmpty() ? null : currentStack.peek();
+	}
 
-    /**
-     * Pops the current state from the calling thread's stack.
-     *
-     * <p>
-     * If the stack becomes empty after the pop operation, the thread-local
-     * value
-     * is removed.
-     * </p>
-     *
-     * @throws IllegalStateException Thrown if the current thread's stack is
-     *         empty.
-     */
-    private void pop() {
-        final ArrayDeque<T> currentStack = getStack().get();
+	/**
+	 * Pops the current state from the calling thread's stack.
+	 *
+	 * <p>
+	 * If the stack becomes empty after the pop operation, the thread-local
+	 * value
+	 * is removed.
+	 * </p>
+	 *
+	 * @throws IllegalStateException Thrown if the current thread's stack is
+	 *         empty.
+	 */
+	private void pop() {
+		final ArrayDeque<T> currentStack = getStack().get();
 
-        if (currentStack.isEmpty()) {
-            throw new IllegalStateException("No product event state to pop.");
-        }
+		if (currentStack.isEmpty()) {
+			throw new IllegalStateException("No product event state to pop.");
+		}
 
-        currentStack.pop();
+		currentStack.pop();
 
-        if (currentStack.isEmpty()) {
-            getStack().remove();
-        }
-    }
+		if (currentStack.isEmpty()) {
+			getStack().remove();
+		}
+	}
 
-    /**
-     * Returns the current thread-local stack, creating it lazily if necessary.
-     *
-     * @return The thread-local stack.
-     */
-    private ThreadLocal<ArrayDeque<T>> getStack() {
-        if (stack == null) {
-            stack = ThreadLocal.withInitial(ArrayDeque::new);
-        }
+	/**
+	 * Returns the current thread-local stack, creating it lazily if necessary.
+	 *
+	 * @return The thread-local stack.
+	 */
+	private ThreadLocal<ArrayDeque<T>> getStack() {
+		if (stack == null) {
+			stack = ThreadLocal.withInitial(ArrayDeque::new);
+		}
 
-        return stack;
-    }
+		return stack;
+	}
 
-    /**
-     * Scope object used to release a pushed product event state.
-     *
-     * <p>
-     * Instances are returned by {@link #push(Object)} and are intended for use
-     * with try-with-resources. Closing a scope pops the corresponding state
-     * from
-     * the current thread's stack.
-     * </p>
-     */
-    @FunctionalInterface
-    public interface Scope extends AutoCloseable {
+	/**
+	 * Scope object used to release a pushed product event state.
+	 *
+	 * <p>
+	 * Instances are returned by {@link #push(Object)} and are intended for use
+	 * with try-with-resources. Closing a scope pops the corresponding state
+	 * from
+	 * the current thread's stack.
+	 * </p>
+	 */
+	@FunctionalInterface
+	public interface Scope extends AutoCloseable {
 
-        /**
-         * Pops the state associated with this scope.
-         */
-        @Override
-        void close();
-    }
+		/**
+		 * Pops the state associated with this scope.
+		 */
+		@Override
+		void close();
+	}
 }

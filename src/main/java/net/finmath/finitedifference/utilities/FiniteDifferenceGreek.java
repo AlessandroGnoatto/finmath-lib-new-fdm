@@ -7,18 +7,18 @@ package net.finmath.finitedifference.utilities;
  */
 public enum FiniteDifferenceGreek {
 
-    /**
-     * First derivative with respect to the first spatial dimension.
-     */
-    DELTA,
+	/**
+	 * First derivative with respect to the first spatial dimension.
+	 */
+	DELTA,
 
-    /**
-     * Second derivative with respect to the first spatial dimension.
-     */
-    GAMMA,
+	/**
+	 * Second derivative with respect to the first spatial dimension.
+	 */
+	GAMMA,
 
-    /**
-     * Derivative with respect to calendar evaluation time.
-     */
-    THETA
+	/**
+	 * Derivative with respect to calendar evaluation time.
+	 */
+	THETA
 }

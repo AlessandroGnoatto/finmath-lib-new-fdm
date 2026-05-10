@@ -31,64 +31,64 @@ package net.finmath.finitedifference.solvers;
  */
 public final class ThomasSolver {
 
-    /**
-     * Creates no instances of this utility class.
-     */
-    private ThomasSolver() {
-    }
+	/**
+	 * Creates no instances of this utility class.
+	 */
+	private ThomasSolver() {
+	}
 
-    /**
-     * Solves a tridiagonal linear system using the Thomas algorithm.
-     * <p>
-     * The input arrays represent the three diagonals of the tridiagonal matrix
-     * and the right-hand side vector. All arrays are expected to have identical
-     * length {@code n}, where {@code n >= 1}.
-     * <p>
-     * The algorithm consists of a forward elimination phase followed by a
-     * backward substitution phase.
-     * <p>
-     * Note: The caller must provide arrays of consistent length and a
-     * non-singular tridiagonal system.
-     *
-     * @param lower The lower diagonal of the system matrix. Entry {@code
-     *     lower[i]}
-     * represents the coefficient below the main diagonal in row {@code i}.
-     * 		The value {@code lower[0]} is not used.
-     * @param diag The main diagonal of the system matrix. Entry {@code diag[i]}
-     * 		represents the diagonal coefficient in row {@code i}.
-     * @param upper The upper diagonal of the system matrix. Entry {@code
-     *     upper[i]}
-     * represents the coefficient above the main diagonal in row {@code i}.
-     * 		The value {@code upper[n-1]} is not used in the final row.
-     * @param rhs The right-hand side vector of the linear system.
-     * @return The solution vector {@code x} satisfying the tridiagonal system.
-     */
-    public static double[] solve(
-            final double[] lower,
-            final double[] diag,
-            final double[] upper,
-            final double[] rhs) {
+	/**
+	 * Solves a tridiagonal linear system using the Thomas algorithm.
+	 * <p>
+	 * The input arrays represent the three diagonals of the tridiagonal matrix
+	 * and the right-hand side vector. All arrays are expected to have identical
+	 * length {@code n}, where {@code n >= 1}.
+	 * <p>
+	 * The algorithm consists of a forward elimination phase followed by a
+	 * backward substitution phase.
+	 * <p>
+	 * Note: The caller must provide arrays of consistent length and a
+	 * non-singular tridiagonal system.
+	 *
+	 * @param lower The lower diagonal of the system matrix. Entry {@code
+	 *     lower[i]}
+	 * represents the coefficient below the main diagonal in row {@code i}.
+	 * 		The value {@code lower[0]} is not used.
+	 * @param diag The main diagonal of the system matrix. Entry {@code diag[i]}
+	 * 		represents the diagonal coefficient in row {@code i}.
+	 * @param upper The upper diagonal of the system matrix. Entry {@code
+	 *     upper[i]}
+	 * represents the coefficient above the main diagonal in row {@code i}.
+	 * 		The value {@code upper[n-1]} is not used in the final row.
+	 * @param rhs The right-hand side vector of the linear system.
+	 * @return The solution vector {@code x} satisfying the tridiagonal system.
+	 */
+	public static double[] solve(
+			final double[] lower,
+			final double[] diag,
+			final double[] upper,
+			final double[] rhs) {
 
-        final int n = diag.length;
+		final int n = diag.length;
 
-        final double[] cPrime = new double[n];
-        final double[] dPrime = new double[n];
-        final double[] x = new double[n];
+		final double[] cPrime = new double[n];
+		final double[] dPrime = new double[n];
+		final double[] x = new double[n];
 
-        cPrime[0] = upper[0] / diag[0];
-        dPrime[0] = rhs[0] / diag[0];
+		cPrime[0] = upper[0] / diag[0];
+		dPrime[0] = rhs[0] / diag[0];
 
-        for (int i = 1; i < n; i++) {
-            final double denom = diag[i] - lower[i] * cPrime[i - 1];
-            cPrime[i] = i < n - 1 ? upper[i] / denom : 0.0;
-            dPrime[i] = (rhs[i] - lower[i] * dPrime[i - 1]) / denom;
-        }
+		for (int i = 1; i < n; i++) {
+			final double denom = diag[i] - lower[i] * cPrime[i - 1];
+			cPrime[i] = i < n - 1 ? upper[i] / denom : 0.0;
+			dPrime[i] = (rhs[i] - lower[i] * dPrime[i - 1]) / denom;
+		}
 
-        x[n - 1] = dPrime[n - 1];
-        for (int i = n - 2; i >= 0; i--) {
-            x[i] = dPrime[i] - cPrime[i] * x[i + 1];
-        }
+		x[n - 1] = dPrime[n - 1];
+		for (int i = n - 2; i >= 0; i--) {
+			x[i] = dPrime[i] - cPrime[i] * x[i + 1];
+		}
 
-        return x;
-    }
+		return x;
+	}
 }

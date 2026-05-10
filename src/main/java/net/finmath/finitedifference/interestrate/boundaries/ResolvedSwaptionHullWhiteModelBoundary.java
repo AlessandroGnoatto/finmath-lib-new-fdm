@@ -26,57 +26,57 @@ import net.finmath.finitedifference.interestrate.products.Swaption;
  */
 public class ResolvedSwaptionHullWhiteModelBoundary implements FiniteDifferenceInterestRateBoundary {
 
-    /**
-     * The delegate.
-     */
-    private final SwaptionHullWhiteModelBoundary delegate;
+	/**
+	 * The delegate.
+	 */
+	private final SwaptionHullWhiteModelBoundary delegate;
 
-    /**
-     * Creates the boundary wrapper.
-     *
-     * @param model The Hull-White model.
-     */
-    public ResolvedSwaptionHullWhiteModelBoundary(final FDMHullWhiteModel model) {
-        this.delegate = new SwaptionHullWhiteModelBoundary(model);
-    }
+	/**
+	 * Creates the boundary wrapper.
+	 *
+	 * @param model The Hull-White model.
+	 */
+	public ResolvedSwaptionHullWhiteModelBoundary(final FDMHullWhiteModel model) {
+		this.delegate = new SwaptionHullWhiteModelBoundary(model);
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-            final FiniteDifferenceInterestRateProduct product,
-            final double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+			final FiniteDifferenceInterestRateProduct product,
+			final double time,
+			final double... stateVariables) {
 
-        final Swaption originalSwaption = unwrap(product);
+		final Swaption originalSwaption = unwrap(product);
 
-        return delegate.getBoundaryConditionsAtLowerBoundary(
-                originalSwaption,
-                time,
-                stateVariables
-        );
-    }
+		return delegate.getBoundaryConditionsAtLowerBoundary(
+				originalSwaption,
+				time,
+				stateVariables
+		);
+	}
 
-    @Override
-    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-            final FiniteDifferenceInterestRateProduct product,
-            final double time,
-            final double... stateVariables) {
+	@Override
+	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+			final FiniteDifferenceInterestRateProduct product,
+			final double time,
+			final double... stateVariables) {
 
-        final Swaption originalSwaption = unwrap(product);
+		final Swaption originalSwaption = unwrap(product);
 
-        return delegate.getBoundaryConditionsAtUpperBoundary(
-                originalSwaption,
-                time,
-                stateVariables
-        );
-    }
+		return delegate.getBoundaryConditionsAtUpperBoundary(
+				originalSwaption,
+				time,
+				stateVariables
+		);
+	}
 
-    private Swaption unwrap(final FiniteDifferenceInterestRateProduct product) {
-        if (!(product instanceof Swaption.ResolvedSwaption)) {
-            throw new IllegalArgumentException(
-                    "ResolvedSwaptionHullWhiteModelBoundary requires a Swaption.ResolvedSwaption product."
-            );
-        }
+	private Swaption unwrap(final FiniteDifferenceInterestRateProduct product) {
+		if (!(product instanceof Swaption.ResolvedSwaption)) {
+			throw new IllegalArgumentException(
+					"ResolvedSwaptionHullWhiteModelBoundary requires a Swaption.ResolvedSwaption product."
+			);
+		}
 
-        return ((Swaption.ResolvedSwaption) product).getOriginalSwaption();
-    }
+		return ((Swaption.ResolvedSwaption) product).getOriginalSwaption();
+	}
 }

@@ -27,210 +27,210 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class AmericanOption implements FiniteDifferenceEquityProduct {
 
-    /**
-     * The underlying name.
-     */
-    private final String underlyingName;
-    /**
-     * The maturity.
-     */
-    private final double maturity;
-    /**
-     * The strike.
-     */
-    private final double strike;
-    /**
-     * The call or put sign.
-     */
-    private final CallOrPut callOrPutSign;
-    /**
-     * The exercise.
-     */
-    private final Exercise exercise;
+	/**
+	 * The underlying name.
+	 */
+	private final String underlyingName;
+	/**
+	 * The maturity.
+	 */
+	private final double maturity;
+	/**
+	 * The strike.
+	 */
+	private final double strike;
+	/**
+	 * The call or put sign.
+	 */
+	private final CallOrPut callOrPutSign;
+	/**
+	 * The exercise.
+	 */
+	private final Exercise exercise;
 
-    /**
-     * Creates an American option for a named underlying.
-     *
-     * @param underlyingName Name of the underlying.
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
-     *     and
-     *        {@code -1.0} corresponds to a put.
-     */
-    public AmericanOption(
-            final String underlyingName,
-            final double maturity,
-            final double strike,
-            final double callOrPutSign) {
+	/**
+	 * Creates an American option for a named underlying.
+	 *
+	 * @param underlyingName Name of the underlying.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
+	 *     and
+	 *        {@code -1.0} corresponds to a put.
+	 */
+	public AmericanOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final double callOrPutSign) {
 
-        super();
-        this.underlyingName = underlyingName;
-        this.maturity = maturity;
-        this.strike = strike;
+		super();
+		this.underlyingName = underlyingName;
+		this.maturity = maturity;
+		this.strike = strike;
 
-        if (callOrPutSign == 1.0) {
-            this.callOrPutSign = CallOrPut.CALL;
-        } else if (callOrPutSign == -1.0) {
-            this.callOrPutSign = CallOrPut.PUT;
-        } else {
-            throw new IllegalArgumentException("Unknown option type");
-        }
+		if (callOrPutSign == 1.0) {
+			this.callOrPutSign = CallOrPut.CALL;
+		} else if (callOrPutSign == -1.0) {
+			this.callOrPutSign = CallOrPut.PUT;
+		} else {
+			throw new IllegalArgumentException("Unknown option type");
+		}
 
-        this.exercise = new AmericanExercise(maturity);
-    }
+		this.exercise = new AmericanExercise(maturity);
+	}
 
-    /**
-     * Creates an American option for a named underlying.
-     *
-     * @param underlyingName Name of the underlying.
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPutSign Option type.
-     */
-    public AmericanOption(
-            final String underlyingName,
-            final double maturity,
-            final double strike,
-            final CallOrPut callOrPutSign) {
+	/**
+	 * Creates an American option for a named underlying.
+	 *
+	 * @param underlyingName Name of the underlying.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Option type.
+	 */
+	public AmericanOption(
+			final String underlyingName,
+			final double maturity,
+			final double strike,
+			final CallOrPut callOrPutSign) {
 
-        super();
-        this.underlyingName = underlyingName;
-        this.maturity = maturity;
-        this.strike = strike;
-        this.callOrPutSign = callOrPutSign;
-        this.exercise = new AmericanExercise(maturity);
-    }
+		super();
+		this.underlyingName = underlyingName;
+		this.maturity = maturity;
+		this.strike = strike;
+		this.callOrPutSign = callOrPutSign;
+		this.exercise = new AmericanExercise(maturity);
+	}
 
-    /**
-     * Creates an American option (single-asset case, unnamed underlying).
-     *
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
-     *     and
-     *        {@code -1.0} corresponds to a put.
-     */
-    public AmericanOption(final double maturity, final double strike, final double callOrPutSign) {
+	/**
+	 * Creates an American option (single-asset case, unnamed underlying).
+	 *
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
+	 *     and
+	 *        {@code -1.0} corresponds to a put.
+	 */
+	public AmericanOption(final double maturity, final double strike, final double callOrPutSign) {
 
-        super();
-        this.maturity = maturity;
-        this.strike = strike;
+		super();
+		this.maturity = maturity;
+		this.strike = strike;
 
-        if (callOrPutSign == 1.0) {
-            this.callOrPutSign = CallOrPut.CALL;
-        } else if (callOrPutSign == -1.0) {
-            this.callOrPutSign = CallOrPut.PUT;
-        } else {
-            throw new IllegalArgumentException("Unknown option type");
-        }
+		if (callOrPutSign == 1.0) {
+			this.callOrPutSign = CallOrPut.CALL;
+		} else if (callOrPutSign == -1.0) {
+			this.callOrPutSign = CallOrPut.PUT;
+		} else {
+			throw new IllegalArgumentException("Unknown option type");
+		}
 
-        this.underlyingName = null;
-        this.exercise = new AmericanExercise(maturity);
-    }
+		this.underlyingName = null;
+		this.exercise = new AmericanExercise(maturity);
+	}
 
-    /**
-     * Creates an American option (single-asset case, unnamed underlying).
-     *
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     * @param callOrPutSign Option type.
-     */
-    public AmericanOption(final double maturity, final double strike, final CallOrPut callOrPutSign) {
+	/**
+	 * Creates an American option (single-asset case, unnamed underlying).
+	 *
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 * @param callOrPutSign Option type.
+	 */
+	public AmericanOption(final double maturity, final double strike, final CallOrPut callOrPutSign) {
 
-        super();
-        this.maturity = maturity;
-        this.strike = strike;
-        this.callOrPutSign = callOrPutSign;
-        this.underlyingName = null;
-        this.exercise = new AmericanExercise(maturity);
-    }
+		super();
+		this.maturity = maturity;
+		this.strike = strike;
+		this.callOrPutSign = callOrPutSign;
+		this.underlyingName = null;
+		this.exercise = new AmericanExercise(maturity);
+	}
 
-    /**
-     * Creates an American call option for a named underlying.
-     *
-     * @param underlyingName Name of the underlying.
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     */
-    public AmericanOption(final String underlyingName, final double maturity, final double strike) {
-        this(underlyingName, maturity, strike, 1.0);
-    }
+	/**
+	 * Creates an American call option for a named underlying.
+	 *
+	 * @param underlyingName Name of the underlying.
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 */
+	public AmericanOption(final String underlyingName, final double maturity, final double strike) {
+		this(underlyingName, maturity, strike, 1.0);
+	}
 
-    /**
-     * Creates an American call option (single-asset case, unnamed underlying).
-     *
-     * @param maturity Maturity {@code T}.
-     * @param strike Strike {@code K}.
-     */
-    public AmericanOption(final double maturity, final double strike) {
-        this(maturity, strike, 1.0);
-    }
+	/**
+	 * Creates an American call option (single-asset case, unnamed underlying).
+	 *
+	 * @param maturity Maturity {@code T}.
+	 * @param strike Strike {@code K}.
+	 */
+	public AmericanOption(final double maturity, final double strike) {
+		this(maturity, strike, 1.0);
+	}
 
-    @Override
-    public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
-        final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
+	@Override
+	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
 
-        if (callOrPutSign == CallOrPut.CALL) {
-            return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(assetValue - strike, 0.0));
-        } else {
-            return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(strike - assetValue, 0.0));
-        }
-    }
+		if (callOrPutSign == CallOrPut.CALL) {
+			return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(assetValue - strike, 0.0));
+		} else {
+			return solver.getValue(evaluationTime, maturity, assetValue -> Math.max(strike - assetValue, 0.0));
+		}
+	}
 
-    @Override
-    public double[][] getValues(final FiniteDifferenceEquityModel model) {
-        final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
+	@Override
+	public double[][] getValues(final FiniteDifferenceEquityModel model) {
+		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, exercise);
 
-        if (callOrPutSign == CallOrPut.CALL) {
-            return solver.getValues(maturity, assetValue -> Math.max(assetValue - strike, 0.0));
-        } else {
-            return solver.getValues(maturity, assetValue -> Math.max(strike - assetValue, 0.0));
-        }
-    }
+		if (callOrPutSign == CallOrPut.CALL) {
+			return solver.getValues(maturity, assetValue -> Math.max(assetValue - strike, 0.0));
+		} else {
+			return solver.getValues(maturity, assetValue -> Math.max(strike - assetValue, 0.0));
+		}
+	}
 
-    /**
-     * Returns the name of the underlying.
-     *
-     * @return The underlying name, or {@code null} if unspecified.
-     */
-    public String getUnderlyingName() {
-        return underlyingName;
-    }
+	/**
+	 * Returns the name of the underlying.
+	 *
+	 * @return The underlying name, or {@code null} if unspecified.
+	 */
+	public String getUnderlyingName() {
+		return underlyingName;
+	}
 
-    /**
-     * Returns the option maturity.
-     *
-     * @return The maturity.
-     */
-    public double getMaturity() {
-        return maturity;
-    }
+	/**
+	 * Returns the option maturity.
+	 *
+	 * @return The maturity.
+	 */
+	public double getMaturity() {
+		return maturity;
+	}
 
-    /**
-     * Returns the option strike.
-     *
-     * @return The strike.
-     */
-    public double getStrike() {
-        return strike;
-    }
+	/**
+	 * Returns the option strike.
+	 *
+	 * @return The strike.
+	 */
+	public double getStrike() {
+		return strike;
+	}
 
-    /**
-     * Returns whether the option is a call or put.
-     *
-     * @return The option type.
-     */
-    public CallOrPut getCallOrPut() {
-        return callOrPutSign;
-    }
+	/**
+	 * Returns whether the option is a call or put.
+	 *
+	 * @return The option type.
+	 */
+	public CallOrPut getCallOrPut() {
+		return callOrPutSign;
+	}
 
-    /**
-     * Returns the exercise specification.
-     *
-     * @return The exercise specification.
-     */
-    public Exercise getExercise() {
-        return exercise;
-    }
+	/**
+	 * Returns the exercise specification.
+	 *
+	 * @return The exercise specification.
+	 */
+	public Exercise getExercise() {
+		return exercise;
+	}
 }

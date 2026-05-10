@@ -18,43 +18,43 @@ import net.finmath.modelling.Product;
  */
 public interface FiniteDifferenceProduct<M extends FiniteDifferenceModel> extends Product {
 
-    /**
-     * Returns the value.
-     *
-     * @param evaluationTime The value.
-     * @param model The value.
-     * @return The value.
-     */
-    double[] getValue(double evaluationTime, M model);
+	/**
+	 * Returns the value.
+	 *
+	 * @param evaluationTime The value.
+	 * @param model The value.
+	 * @return The value.
+	 */
+	double[] getValue(double evaluationTime, M model);
 
-    /**
-     * Returns the value.
-     *
-     * @param model The value.
-     * @return The value.
-     */
-    double[][] getValues(M model);
+	/**
+	 * Returns the value.
+	 *
+	 * @param model The value.
+	 * @return The value.
+	 */
+	double[][] getValues(M model);
 
-    /**
-     * Returns the value.
-     *
-     * @return The value.
-     */
-    Class<M> getModelClass();
+	/**
+	 * Returns the value.
+	 *
+	 * @return The value.
+	 */
+	Class<M> getModelClass();
 
-    @Override
-    default Object getValue(final double evaluationTime, final Model model) {
+	@Override
+	default Object getValue(final double evaluationTime, final Model model) {
 
-        if (getModelClass().isInstance(model)) {
-            return getValue(evaluationTime, getModelClass().cast(model));
-        } else {
-            throw new IllegalArgumentException(
-                    "The product " + this.getClass()
-                    + " cannot be valued against a model "
-                    + model.getClass() + ". "
-                    + "It requires a model of type "
-                    + getModelClass() + "."
-            );
-        }
-    }
+		if (getModelClass().isInstance(model)) {
+			return getValue(evaluationTime, getModelClass().cast(model));
+		} else {
+			throw new IllegalArgumentException(
+					"The product " + this.getClass()
+					+ " cannot be valued against a model "
+					+ model.getClass() + ". "
+					+ "It requires a model of type "
+					+ getModelClass() + "."
+			);
+		}
+	}
 }

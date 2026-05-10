@@ -24,8 +24,8 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDiffer
  */
 public interface FiniteDifferenceEquityProduct extends FiniteDifferenceProduct<FiniteDifferenceEquityModel> {
 
-    @Override
-    default Class<FiniteDifferenceEquityModel> getModelClass() {
-        return FiniteDifferenceEquityModel.class;
-    }
+	@Override
+	default Class<FiniteDifferenceEquityModel> getModelClass() {
+		return FiniteDifferenceEquityModel.class;
+	}
 }
