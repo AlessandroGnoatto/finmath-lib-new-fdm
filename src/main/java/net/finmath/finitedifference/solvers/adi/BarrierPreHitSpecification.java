@@ -45,21 +45,21 @@ public final class BarrierPreHitSpecification {
             final int numberOfSpotSteps,
             final ActivatedBarrierTrace2D activatedTrace) {
 
-        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+        if (barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
             throw new IllegalArgumentException(
                     "BarrierPreHitSpecification is only valid for knock-in barrier types.");
         }
-        if(numberOfSpotSteps <= 0) {
+        if (numberOfSpotSteps <= 0) {
             throw new IllegalArgumentException("numberOfSpotSteps must be strictly positive.");
         }
-        if(spotMax <= spotMin) {
+        if (spotMax <= spotMin) {
             throw new IllegalArgumentException("spotMax must be strictly greater than spotMin.");
         }
-        if(barrierSpotIndex < 0 || barrierSpotIndex > numberOfSpotSteps) {
+        if (barrierSpotIndex < 0 || barrierSpotIndex > numberOfSpotSteps) {
             throw new IllegalArgumentException(
                     "barrierSpotIndex must lie between 0 and numberOfSpotSteps inclusive.");
         }
-        if(activatedTrace == null) {
+        if (activatedTrace == null) {
             throw new IllegalArgumentException("activatedTrace must not be null.");
         }
 

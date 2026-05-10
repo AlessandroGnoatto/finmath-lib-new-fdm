@@ -35,94 +35,94 @@ import net.finmath.finitedifference.interestrate.products.FiniteDifferenceIntere
  */
 public class BondHullWhiteModelBoundary implements FiniteDifferenceInterestRateBoundary {
 
-	private static final double TIME_TOLERANCE = 1E-12;
+    private static final double TIME_TOLERANCE = 1E-12;
 
-	private final FDMHullWhiteModel model;
+    private final FDMHullWhiteModel model;
 
-	/**
-	 * Creates the exact Hull-White boundary for deterministic-cashflow bonds.
-	 *
-	 * @param model The Hull-White model.
-	 */
-	public BondHullWhiteModelBoundary(final FDMHullWhiteModel model) {
-		if(model == null) {
-			throw new IllegalArgumentException("model must not be null.");
-		}
-		if(model.getInitialValue() == null || model.getInitialValue().length != 1) {
-			throw new IllegalArgumentException(
-					"BondHullWhiteModelBoundary requires a one-dimensional Hull-White model.");
-		}
+    /**
+     * Creates the exact Hull-White boundary for deterministic-cashflow bonds.
+     *
+     * @param model The Hull-White model.
+     */
+    public BondHullWhiteModelBoundary(final FDMHullWhiteModel model) {
+        if (model == null) {
+            throw new IllegalArgumentException("model must not be null.");
+        }
+        if (model.getInitialValue() == null || model.getInitialValue().length != 1) {
+            throw new IllegalArgumentException(
+                    "BondHullWhiteModelBoundary requires a one-dimensional Hull-White model.");
+        }
 
-		this.model = model;
-	}
+        this.model = model;
+    }
 
-	@Override
-	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceInterestRateProduct product,
-			final double time,
-			final double... stateVariables) {
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+            final FiniteDifferenceInterestRateProduct product,
+            final double time,
+            final double... stateVariables) {
 
-		final Bond bond = validateAndCastProduct(product);
-		validateStateVariables(stateVariables);
+        final Bond bond = validateAndCastProduct(product);
+        validateStateVariables(stateVariables);
 
-		return new BoundaryCondition[] {
-				StandardBoundaryCondition.dirichlet(
-						getExactBondValue(bond, time, stateVariables[0])
-				)
-		};
-	}
+        return new BoundaryCondition[] {
+                StandardBoundaryCondition.dirichlet(
+                        getExactBondValue(bond, time, stateVariables[0])
+                )
+        };
+    }
 
-	@Override
-	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceInterestRateProduct product,
-			final double time,
-			final double... stateVariables) {
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+            final FiniteDifferenceInterestRateProduct product,
+            final double time,
+            final double... stateVariables) {
 
-		final Bond bond = validateAndCastProduct(product);
-		validateStateVariables(stateVariables);
+        final Bond bond = validateAndCastProduct(product);
+        validateStateVariables(stateVariables);
 
-		return new BoundaryCondition[] {
-				StandardBoundaryCondition.dirichlet(
-						getExactBondValue(bond, time, stateVariables[0])
-				)
-		};
-	}
+        return new BoundaryCondition[] {
+                StandardBoundaryCondition.dirichlet(
+                        getExactBondValue(bond, time, stateVariables[0])
+                )
+        };
+    }
 
-	private Bond validateAndCastProduct(final FiniteDifferenceInterestRateProduct product) {
-		if(!(product instanceof Bond)) {
-			throw new IllegalArgumentException(
-					"BondHullWhiteModelBoundary requires a Bond product.");
-		}
+    private Bond validateAndCastProduct(final FiniteDifferenceInterestRateProduct product) {
+        if (!(product instanceof Bond)) {
+            throw new IllegalArgumentException(
+                    "BondHullWhiteModelBoundary requires a Bond product.");
+        }
 
-		return (Bond) product;
-	}
+        return (Bond) product;
+    }
 
-	private void validateStateVariables(final double[] stateVariables) {
-		if(stateVariables == null || stateVariables.length != 1) {
-			throw new IllegalArgumentException("Exactly one state variable is required.");
-		}
-	}
+    private void validateStateVariables(final double[] stateVariables) {
+        if (stateVariables == null || stateVariables.length != 1) {
+            throw new IllegalArgumentException("Exactly one state variable is required.");
+        }
+    }
 
-	private double getExactBondValue(
-			final Bond bond,
-			final double time,
-			final double stateVariable) {
+    private double getExactBondValue(
+            final Bond bond,
+            final double time,
+            final double stateVariable) {
 
-		double value = 0.0;
+        double value = 0.0;
 
-		for(int periodIndex = 0; periodIndex < bond.getSchedule().getNumberOfPeriods(); periodIndex++) {
-			final double paymentTime = bond.getSchedule().getPayment(periodIndex);
+        for (int periodIndex = 0; periodIndex < bond.getSchedule().getNumberOfPeriods(); periodIndex++) {
+            final double paymentTime = bond.getSchedule().getPayment(periodIndex);
 
-			if(paymentTime < time - TIME_TOLERANCE) {
-				continue;
-			}
+            if (paymentTime < time - TIME_TOLERANCE) {
+                continue;
+            }
 
-			final double cashflow = bond.getCashflow(periodIndex);
-			final double discountBond = model.getDiscountBond(time, paymentTime, stateVariable);
+            final double cashflow = bond.getCashflow(periodIndex);
+            final double discountBond = model.getDiscountBond(time, paymentTime, stateVariable);
 
-			value += cashflow * discountBond;
-		}
+            value += cashflow * discountBond;
+        }
 
-		return value;
-	}
+        return value;
+    }
 }

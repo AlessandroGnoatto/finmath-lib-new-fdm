@@ -26,26 +26,26 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
  */
 public interface FiniteDifferenceInternalStateConstraint {
 
-	/**
-	 * Returns true if the internal constraint is active at the given node and time.
-	 *
-	 * @param time Running time.
-	 * @param stateVariables State variables at the grid node.
-	 * @return True if the node is constrained.
-	 */
-	boolean isConstraintActive(double time, double... stateVariables);
+    /**
+     * Returns true if the internal constraint is active at the given node and time.
+     *
+     * @param time Running time.
+     * @param stateVariables State variables at the grid node.
+     * @return True if the node is constrained.
+     */
+    boolean isConstraintActive(double time, double... stateVariables);
 
-	/**
-	 * Returns the value to impose at a constrained node.
-	 *
-	 * <p>
-	 * This method is called only if {@link #isConstraintActive(double, double...)}
-	 * returns true.
-	 * </p>
-	 *
-	 * @param time Running time.
-	 * @param stateVariables State variables at the grid node.
-	 * @return The constrained value.
-	 */
-	double getConstrainedValue(double time, double... stateVariables);
+    /**
+     * Returns the value to impose at a constrained node.
+     *
+     * <p>
+     * This method is called only if {@link #isConstraintActive(double, double...)}
+     * returns true.
+     * </p>
+     *
+     * @param time Running time.
+     * @param stateVariables State variables at the grid node.
+     * @return The constrained value.
+     */
+    double getConstrainedValue(double time, double... stateVariables);
 }

@@ -28,58 +28,58 @@ import net.finmath.time.Schedule;
  */
 public final class SwapAnnuity {
 
-	private static final double TIME_TOLERANCE = 1E-12;
+    private static final double TIME_TOLERANCE = 1E-12;
 
-	private SwapAnnuity() {
-	}
+    private SwapAnnuity() {
+    }
 
-	/**
-	 * Returns the reduced-scope swap annuity at the given evaluation time and
-	 * state.
-	 *
-	 * @param evaluationTime The evaluation time.
-	 * @param schedule The fixed-leg schedule.
-	 * @param model The finite-difference interest-rate model.
-	 * @param stateVariables The current state variables.
-	 * @return The swap annuity.
-	 */
-	public static double getSwapAnnuity(
-			final double evaluationTime,
-			final Schedule schedule,
-			final FiniteDifferenceInterestRateModel model,
-			final double... stateVariables) {
+    /**
+     * Returns the reduced-scope swap annuity at the given evaluation time and
+     * state.
+     *
+     * @param evaluationTime The evaluation time.
+     * @param schedule The fixed-leg schedule.
+     * @param model The finite-difference interest-rate model.
+     * @param stateVariables The current state variables.
+     * @return The swap annuity.
+     */
+    public static double getSwapAnnuity(
+            final double evaluationTime,
+            final Schedule schedule,
+            final FiniteDifferenceInterestRateModel model,
+            final double... stateVariables) {
 
-		if(schedule == null) {
-			throw new IllegalArgumentException("schedule must not be null.");
-		}
-		if(model == null) {
-			throw new IllegalArgumentException("model must not be null.");
-		}
-		if(stateVariables == null || stateVariables.length != 1) {
-			throw new IllegalArgumentException("Exactly one state variable is required.");
-		}
+        if (schedule == null) {
+            throw new IllegalArgumentException("schedule must not be null.");
+        }
+        if (model == null) {
+            throw new IllegalArgumentException("model must not be null.");
+        }
+        if (stateVariables == null || stateVariables.length != 1) {
+            throw new IllegalArgumentException("Exactly one state variable is required.");
+        }
 
-		double value = 0.0;
+        double value = 0.0;
 
-		for(int periodIndex = 0; periodIndex < schedule.getNumberOfPeriods(); periodIndex++) {
-			final double periodStart = schedule.getPeriodStart(periodIndex);
-			final double paymentDate = schedule.getPayment(periodIndex);
+        for (int periodIndex = 0; periodIndex < schedule.getNumberOfPeriods(); periodIndex++) {
+            final double periodStart = schedule.getPeriodStart(periodIndex);
+            final double paymentDate = schedule.getPayment(periodIndex);
 
-			if(periodStart < evaluationTime - TIME_TOLERANCE) {
-				continue;
-			}
-			if(paymentDate <= evaluationTime + TIME_TOLERANCE) {
-				continue;
-			}
+            if (periodStart < evaluationTime - TIME_TOLERANCE) {
+                continue;
+            }
+            if (paymentDate <= evaluationTime + TIME_TOLERANCE) {
+                continue;
+            }
 
-			value += schedule.getPeriodLength(periodIndex)
-					* model.getDiscountBond(
-							evaluationTime,
-							paymentDate,
-							stateVariables[0]
-					);
-		}
+            value += schedule.getPeriodLength(periodIndex)
+                    * model.getDiscountBond(
+                            evaluationTime,
+                            paymentDate,
+                            stateVariables[0]
+                    );
+        }
 
-		return value;
-	}
+        return value;
+    }
 }

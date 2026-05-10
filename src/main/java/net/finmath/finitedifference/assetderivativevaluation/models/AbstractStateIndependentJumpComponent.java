@@ -35,111 +35,111 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
  */
 public abstract class AbstractStateIndependentJumpComponent implements JumpComponent {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	private final int stateVariableIndex;
-	private final double lowerIntegrationBound;
-	private final double upperIntegrationBound;
-	private final boolean finiteActivity;
-	private final boolean finiteVariation;
+    private final int stateVariableIndex;
+    private final double lowerIntegrationBound;
+    private final double upperIntegrationBound;
+    private final boolean finiteActivity;
+    private final boolean finiteVariation;
 
-	/**
-	 * Creates a state-independent jump component acting on the first state variable.
-	 *
-	 * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-	 * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-	 * @param finiteActivity {@code true} if the jump measure has finite activity.
-	 * @param finiteVariation {@code true} if the jump part has finite variation.
-	 */
-	protected AbstractStateIndependentJumpComponent(
-			final double lowerIntegrationBound,
-			final double upperIntegrationBound,
-			final boolean finiteActivity,
-			final boolean finiteVariation) {
-		this(0, lowerIntegrationBound, upperIntegrationBound, finiteActivity, finiteVariation);
-	}
+    /**
+     * Creates a state-independent jump component acting on the first state variable.
+     *
+     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param finiteActivity {@code true} if the jump measure has finite activity.
+     * @param finiteVariation {@code true} if the jump part has finite variation.
+     */
+    protected AbstractStateIndependentJumpComponent(
+            final double lowerIntegrationBound,
+            final double upperIntegrationBound,
+            final boolean finiteActivity,
+            final boolean finiteVariation) {
+        this(0, lowerIntegrationBound, upperIntegrationBound, finiteActivity, finiteVariation);
+    }
 
-	/**
-	 * Creates a state-independent jump component.
-	 *
-	 * @param stateVariableIndex Index of the affected state variable.
-	 * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-	 * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-	 * @param finiteActivity {@code true} if the jump measure has finite activity.
-	 * @param finiteVariation {@code true} if the jump part has finite variation.
-	 */
-	protected AbstractStateIndependentJumpComponent(
-			final int stateVariableIndex,
-			final double lowerIntegrationBound,
-			final double upperIntegrationBound,
-			final boolean finiteActivity,
-			final boolean finiteVariation) {
+    /**
+     * Creates a state-independent jump component.
+     *
+     * @param stateVariableIndex Index of the affected state variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param finiteActivity {@code true} if the jump measure has finite activity.
+     * @param finiteVariation {@code true} if the jump part has finite variation.
+     */
+    protected AbstractStateIndependentJumpComponent(
+            final int stateVariableIndex,
+            final double lowerIntegrationBound,
+            final double upperIntegrationBound,
+            final boolean finiteActivity,
+            final boolean finiteVariation) {
 
-		if(stateVariableIndex < 0) {
-			throw new IllegalArgumentException("State variable index must be non-negative.");
-		}
-		if(lowerIntegrationBound >= upperIntegrationBound) {
-			throw new IllegalArgumentException(
-					"Lower integration bound must be strictly smaller than upper integration bound.");
-		}
+        if (stateVariableIndex < 0) {
+            throw new IllegalArgumentException("State variable index must be non-negative.");
+        }
+        if (lowerIntegrationBound >= upperIntegrationBound) {
+            throw new IllegalArgumentException(
+                    "Lower integration bound must be strictly smaller than upper integration bound.");
+        }
 
-		this.stateVariableIndex = stateVariableIndex;
-		this.lowerIntegrationBound = lowerIntegrationBound;
-		this.upperIntegrationBound = upperIntegrationBound;
-		this.finiteActivity = finiteActivity;
-		this.finiteVariation = finiteVariation;
-	}
+        this.stateVariableIndex = stateVariableIndex;
+        this.lowerIntegrationBound = lowerIntegrationBound;
+        this.upperIntegrationBound = upperIntegrationBound;
+        this.finiteActivity = finiteActivity;
+        this.finiteVariation = finiteVariation;
+    }
 
-	@Override
-	public int getStateVariableIndex() {
-		return stateVariableIndex;
-	}
+    @Override
+    public int getStateVariableIndex() {
+        return stateVariableIndex;
+    }
 
-	@Override
-	public double getLowerIntegrationBound(final double time, final double... stateVariables) {
-		return lowerIntegrationBound;
-	}
+    @Override
+    public double getLowerIntegrationBound(final double time, final double... stateVariables) {
+        return lowerIntegrationBound;
+    }
 
-	@Override
-	public double getUpperIntegrationBound(final double time, final double... stateVariables) {
-		return upperIntegrationBound;
-	}
+    @Override
+    public double getUpperIntegrationBound(final double time, final double... stateVariables) {
+        return upperIntegrationBound;
+    }
 
-	@Override
-	public final double getLevyDensity(
-			final double time,
-			final double jumpSize,
-			final double... stateVariables) {
-		return getLevyDensity(time, jumpSize);
-	}
+    @Override
+    public final double getLevyDensity(
+            final double time,
+            final double jumpSize,
+            final double... stateVariables) {
+        return getLevyDensity(time, jumpSize);
+    }
 
-	@Override
-	public boolean isStateDependent() {
-		return false;
-	}
+    @Override
+    public boolean isStateDependent() {
+        return false;
+    }
 
-	@Override
-	public boolean isFiniteActivity() {
-		return finiteActivity;
-	}
+    @Override
+    public boolean isFiniteActivity() {
+        return finiteActivity;
+    }
 
-	@Override
-	public boolean isFiniteVariation() {
-		return finiteVariation;
-	}
+    @Override
+    public boolean isFiniteVariation() {
+        return finiteVariation;
+    }
 
-	/**
-	 * Returns the Levy density at the given log-jump size.
-	 *
-	 * <p>
-	 * Implementations only need to provide the state-independent density
-	 * {@code nu(y)}. Dependence on the PDE state variables is intentionally excluded
-	 * from this base class.
-	 * </p>
-	 *
-	 * @param time The evaluation time.
-	 * @param jumpSize The log-relative jump size.
-	 * @return The Levy density at the given jump size.
-	 */
-	protected abstract double getLevyDensity(double time, double jumpSize);
+    /**
+     * Returns the Levy density at the given log-jump size.
+     *
+     * <p>
+     * Implementations only need to provide the state-independent density
+     * {@code nu(y)}. Dependence on the PDE state variables is intentionally excluded
+     * from this base class.
+     * </p>
+     *
+     * @param time The evaluation time.
+     * @param jumpSize The log-relative jump size.
+     * @return The Levy density at the given jump size.
+     */
+    protected abstract double getLevyDensity(double time, double jumpSize);
 }

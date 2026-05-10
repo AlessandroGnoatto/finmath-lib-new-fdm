@@ -32,44 +32,43 @@ import net.finmath.finitedifference.interestrate.products.FiniteDifferenceIntere
  */
 public final class FDInterestRateBoundaryFactory {
 
-	private FDInterestRateBoundaryFactory() {
-		// Utility class
-	}
+    private FDInterestRateBoundaryFactory() {
+        // Utility class
+    }
 
-	/**
-	 * Creates a boundary corresponding to the given model and product.
-	 *
-	 * @param model The finite-difference model.
-	 * @param product The finite-difference interest-rate product.
-	 * @return The corresponding boundary implementation.
-	 */
-	public static FiniteDifferenceInterestRateBoundary createBoundary(
-			final FiniteDifferenceModel model,
-			final FiniteDifferenceInterestRateProduct product) {
+    /**
+     * Creates a boundary corresponding to the given model and product.
+     *
+     * @param model The finite-difference model.
+     * @param product The finite-difference interest-rate product.
+     * @return The corresponding boundary implementation.
+     */
+    public static FiniteDifferenceInterestRateBoundary createBoundary(
+            final FiniteDifferenceModel model,
+            final FiniteDifferenceInterestRateProduct product) {
 
-		try {
-			final String productSimpleName = product.getClass().getSimpleName();
-			final String modelSimpleName = model.getClass().getSimpleName();
+        try {
+            final String productSimpleName = product.getClass().getSimpleName();
+            final String modelSimpleName = model.getClass().getSimpleName();
 
-			final String modelCoreName = modelSimpleName.replace("FDM", "");
-			final String boundarySimpleName = productSimpleName + modelCoreName + "Boundary";
+            final String modelCoreName = modelSimpleName.replace("FDM", "");
+            final String boundarySimpleName = productSimpleName + modelCoreName + "Boundary";
 
-			final String packageName = FDInterestRateBoundaryFactory.class.getPackageName();
-			final String boundaryClassName = packageName + "." + boundarySimpleName;
+            final String packageName = FDInterestRateBoundaryFactory.class.getPackageName();
+            final String boundaryClassName = packageName + "." + boundarySimpleName;
 
-			final Class<?> boundaryClass = Class.forName(boundaryClassName);
-			final var constructor = boundaryClass.getConstructor(model.getClass());
+            final Class<?> boundaryClass = Class.forName(boundaryClassName);
+            final var constructor = boundaryClass.getConstructor(model.getClass());
 
-			return (FiniteDifferenceInterestRateBoundary) constructor.newInstance(model);
-		}
-		catch(final ReflectiveOperationException exception) {
-			throw new IllegalArgumentException(
-					"Cannot create interest-rate boundary for model type "
-							+ model.getClass()
-							+ " and product type "
-							+ product.getClass(),
-					exception
-			);
-		}
-	}
+            return (FiniteDifferenceInterestRateBoundary) constructor.newInstance(model);
+        } catch (final ReflectiveOperationException exception) {
+            throw new IllegalArgumentException(
+                    "Cannot create interest-rate boundary for model type "
+                            + model.getClass()
+                            + " and product type "
+                            + product.getClass(),
+                    exception
+            );
+        }
+    }
 }

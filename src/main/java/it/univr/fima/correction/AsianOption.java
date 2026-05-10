@@ -32,20 +32,20 @@ public final class AsianOption {
             final double stdDev,
             final double discountFactor) {
 
-        if(forward <= 0.0) {
+        if (forward <= 0.0) {
             throw new IllegalArgumentException("forward must be positive.");
         }
-        if(strike < 0.0) {
+        if (strike < 0.0) {
             throw new IllegalArgumentException("strike must be non-negative.");
         }
-        if(stdDev < 0.0) {
+        if (stdDev < 0.0) {
             throw new IllegalArgumentException("stdDev must be non-negative.");
         }
-        if(discountFactor <= 0.0) {
+        if (discountFactor <= 0.0) {
             throw new IllegalArgumentException("discountFactor must be positive.");
         }
 
-        if(stdDev == 0.0) {
+        if (stdDev == 0.0) {
             final double intrinsic = optionType == CallOrPut.CALL
                     ? Math.max(forward - strike, 0.0)
                     : Math.max(strike - forward, 0.0);
@@ -55,11 +55,10 @@ public final class AsianOption {
         final double d1 = (Math.log(forward / strike) + 0.5 * stdDev * stdDev) / stdDev;
         final double d2 = d1 - stdDev;
 
-        if(optionType == CallOrPut.CALL) {
+        if (optionType == CallOrPut.CALL) {
             return discountFactor * (forward * NormalDistribution.cumulativeDistribution(d1)
                     - strike * NormalDistribution.cumulativeDistribution(d2));
-        }
-        else {
+        } else {
             return discountFactor * (strike * NormalDistribution.cumulativeDistribution(-d2)
                     - forward * NormalDistribution.cumulativeDistribution(-d1));
         }
@@ -120,7 +119,7 @@ public final class AsianOption {
         final double[] times = futureFixingTimes;
         final int remainingFixings = times.length;
         final int numberOfFixings = pastFixings + remainingFixings;
-        if(numberOfFixings <= 0) {
+        if (numberOfFixings <= 0) {
             throw new IllegalArgumentException("At least one fixing is required.");
         }
 
@@ -129,12 +128,12 @@ public final class AsianOption {
         final double futureWeight = 1.0 - pastWeight;
 
         double timeSum = 0.0;
-        for(final double t : times) {
+        for (final double t : times) {
             timeSum += t;
         }
 
         double temp = 0.0;
-        for(int i = pastFixings + 1; i < numberOfFixings; i++) {
+        for (int i = pastFixings + 1; i < numberOfFixings; i++) {
             temp += times[i - pastFixings - 1] * (N - i);
         }
 
@@ -173,7 +172,7 @@ public final class AsianOption {
             final int pastFixings,
             final double runningProduct) {
 
-        if(pastFixings != 0) {
+        if (pastFixings != 0) {
             throw new IllegalArgumentException("pastFixings currently not supported for discrete geometric average strike.");
         }
 
@@ -182,7 +181,7 @@ public final class AsianOption {
         final double[] times = fixingTimesFromStart;
         final int remainingFixings = times.length;
         final int numberOfFixings = pastFixings + remainingFixings;
-        if(numberOfFixings <= 0) {
+        if (numberOfFixings <= 0) {
             throw new IllegalArgumentException("At least one fixing is required.");
         }
 
@@ -191,14 +190,14 @@ public final class AsianOption {
         final double futureWeight = 1.0 - pastWeight;
 
         double timeSum = 0.0;
-        for(final double t : times) {
+        for (final double t : times) {
             timeSum += t;
         }
 
         final double nu = riskFreeRate - dividendYield - 0.5 * volatility * volatility;
 
         double temp = 0.0;
-        for(int i = pastFixings + 1; i < numberOfFixings; i++) {
+        for (int i = pastFixings + 1; i < numberOfFixings; i++) {
             temp += times[i - pastFixings - 1] * (N - i);
         }
 
@@ -213,7 +212,7 @@ public final class AsianOption {
                 + futureWeight * Math.log(spot)
                 + nu * timeSum / N;
 
-        if(safeSigmaSum2 == 0.0) {
+        if (safeSigmaSum2 == 0.0) {
             final double discountedSpot = spot * Math.exp(-dividendYield * residualTime);
             final double discountedGeomAverage = Math.exp(muG + 0.5 * variance - riskFreeRate * residualTime);
             return optionType == CallOrPut.CALL
@@ -230,11 +229,10 @@ public final class AsianOption {
         final double term1 = spot * Math.exp(-dividendYield * residualTime);
         final double term2 = Math.exp(muG + 0.5 * variance - riskFreeRate * residualTime);
 
-        if(optionType == CallOrPut.CALL) {
+        if (optionType == CallOrPut.CALL) {
             return term1 * NormalDistribution.cumulativeDistribution(y1)
                     - term2 * NormalDistribution.cumulativeDistribution(y2);
-        }
-        else {
+        } else {
             return -term1 * NormalDistribution.cumulativeDistribution(-y1)
                     + term2 * NormalDistribution.cumulativeDistribution(-y2);
         }
@@ -258,13 +256,13 @@ public final class AsianOption {
             final double maturity,
             final double currentAverage) {
 
-        if(averagingStartTime > maturity) {
+        if (averagingStartTime > maturity) {
             throw new IllegalArgumentException("averagingStartTime must be <= maturity.");
         }
 
         final double T2 = maturity;
         final double T = maturity - averagingStartTime;
-        if(T <= 0.0) {
+        if (T <= 0.0) {
             throw new IllegalArgumentException("original averaging length T must be positive.");
         }
 
@@ -272,22 +270,20 @@ public final class AsianOption {
         final double discount = Math.exp(-riskFreeRate * T2);
 
         final double Se;
-        if(Math.abs(b) > 1.0e-12) {
+        if (Math.abs(b) > 1.0e-12) {
             Se = (spot / (T * b)) * (Math.exp((b - riskFreeRate) * T2) - Math.exp(-riskFreeRate * T2));
-        }
-        else {
+        } else {
             Se = spot * T2 / T * Math.exp(-riskFreeRate * T2);
         }
 
         final double X;
-        if(averagingStartTime > 0.0) {
+        if (averagingStartTime > 0.0) {
             X = strike - (averagingStartTime / T) * currentAverage;
-        }
-        else {
+        } else {
             X = strike;
         }
 
-        if(X <= 0.0) {
+        if (X <= 0.0) {
             final double intrinsic = optionType == CallOrPut.CALL
                     ? Math.max(Se - X * discount, 0.0)
                     : Math.max(X * discount - Se, 0.0);
@@ -295,24 +291,22 @@ public final class AsianOption {
         }
 
         final double m;
-        if(Math.abs(b) > 1.0e-12) {
+        if (Math.abs(b) > 1.0e-12) {
             m = (Math.exp(b * T2) - 1.0) / b;
-        }
-        else {
+        } else {
             m = T2;
         }
 
         final double denom = b + volatility * volatility;
-        if(Math.abs(denom) < 1.0e-14) {
+        if (Math.abs(denom) < 1.0e-14) {
             throw new IllegalArgumentException("b + volatility^2 is too close to zero for the Levy formula.");
         }
 
         final double expTermDenom = 2.0 * b + volatility * volatility;
         final double expTerm;
-        if(Math.abs(expTermDenom) < 1.0e-14) {
+        if (Math.abs(expTermDenom) < 1.0e-14) {
             expTerm = T2;
-        }
-        else {
+        } else {
             expTerm = (Math.exp((2.0 * b + volatility * volatility) * T2) - 1.0) / expTermDenom;
         }
 
@@ -321,7 +315,7 @@ public final class AsianOption {
         final double V = Math.log(D) - 2.0 * (riskFreeRate * T2 + Math.log(Se));
         final double safeV = Math.max(V, 0.0);
 
-        if(safeV == 0.0) {
+        if (safeV == 0.0) {
             final double intrinsic = optionType == CallOrPut.CALL
                     ? Math.max(Se - X * discount, 0.0)
                     : Math.max(X * discount - Se, 0.0);
@@ -332,11 +326,10 @@ public final class AsianOption {
         final double d1 = (0.5 * Math.log(D) - Math.log(X)) / sqrtV;
         final double d2 = d1 - sqrtV;
 
-        if(optionType == CallOrPut.CALL) {
+        if (optionType == CallOrPut.CALL) {
             return Se * NormalDistribution.cumulativeDistribution(d1)
                     - X * discount * NormalDistribution.cumulativeDistribution(d2);
-        }
-        else {
+        } else {
             return Se * NormalDistribution.cumulativeDistribution(d1)
                     - X * discount * NormalDistribution.cumulativeDistribution(d2)
                     - Se + X * discount;
@@ -368,7 +361,7 @@ public final class AsianOption {
         final double[] times = futureFixingTimes;
         final int futureFixings = times.length;
         final int m = futureFixings + pastFixings;
-        if(m <= 0) {
+        if (m <= 0) {
             throw new IllegalArgumentException("At least one fixing is required.");
         }
 
@@ -376,10 +369,10 @@ public final class AsianOption {
         final double effectiveStrike = strike - accruedAverage;
         final double discount = Math.exp(-riskFreeRate * exerciseTime);
 
-        if(effectiveStrike <= 0.0) {
-            if(optionType == CallOrPut.CALL) {
+        if (effectiveStrike <= 0.0) {
+            if (optionType == CallOrPut.CALL) {
                 double expectedAverage = accruedAverage;
-                for(final double t : times) {
+                for (final double t : times) {
                     expectedAverage += (spot * Math.exp((riskFreeRate - dividendYield) * t)) / m;
                 }
                 return discount * (expectedAverage - strike);
@@ -388,7 +381,7 @@ public final class AsianOption {
         }
 
         final int n = times.length;
-        if(n == 0) {
+        if (n == 0) {
             final double realizedAverage = pastFixings == 0 ? 0.0 : runningSum / pastFixings;
             final double payoff = optionType == CallOrPut.CALL
                     ? Math.max(realizedAverage - strike, 0.0)
@@ -400,7 +393,7 @@ public final class AsianOption {
         final double[] spotVars = new double[n];
         double EA = 0.0;
 
-        for(int i = 0; i < n; i++) {
+        for (int i = 0; i < n; i++) {
             final double t = times[i];
             forwards[i] = spot * Math.exp((riskFreeRate - dividendYield) * t);
             spotVars[i] = volatility * volatility * t;
@@ -409,9 +402,9 @@ public final class AsianOption {
         EA /= m;
 
         double EA2 = 0.0;
-        for(int i = 0; i < n; i++) {
+        for (int i = 0; i < n; i++) {
             EA2 += forwards[i] * forwards[i] * Math.exp(spotVars[i]);
-            for(int j = 0; j < i; j++) {
+            for (int j = 0; j < i; j++) {
                 EA2 += 2.0 * forwards[i] * forwards[j] * Math.exp(spotVars[j]);
             }
         }
@@ -423,11 +416,11 @@ public final class AsianOption {
     }
 
     private static void checkNonNegativeAndSorted(final double[] times) {
-        for(int i = 0; i < times.length; i++) {
-            if(times[i] < 0.0) {
+        for (int i = 0; i < times.length; i++) {
+            if (times[i] < 0.0) {
                 throw new IllegalArgumentException("Fixing times must be non-negative.");
             }
-            if(i > 0 && times[i] < times[i - 1]) {
+            if (i > 0 && times[i] < times[i - 1]) {
                 throw new IllegalArgumentException("Fixing times must be sorted increasingly.");
             }
         }

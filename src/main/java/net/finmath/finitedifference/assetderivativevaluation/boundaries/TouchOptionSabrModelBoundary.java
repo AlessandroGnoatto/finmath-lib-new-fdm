@@ -56,10 +56,9 @@ public class TouchOptionSabrModelBoundary implements FiniteDifferenceBoundary {
          * DOWN_OUT no-touch: knocked out -> 0.
          * Otherwise: discounted expiry cash.
          */
-        if(barrierType == BarrierType.DOWN_OUT) {
+        if (barrierType == BarrierType.DOWN_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else {
+        } else {
             result[0] = StandardBoundaryCondition.dirichlet(
                     getDiscountedCashValue(option, time)
             );
@@ -90,10 +89,9 @@ public class TouchOptionSabrModelBoundary implements FiniteDifferenceBoundary {
          * UP_OUT no-touch: knocked out -> 0.
          * Otherwise: discounted expiry cash.
          */
-        if(barrierType == BarrierType.UP_OUT) {
+        if (barrierType == BarrierType.UP_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else {
+        } else {
             result[0] = StandardBoundaryCondition.dirichlet(
                     getDiscountedCashValue(option, time)
             );
@@ -106,7 +104,7 @@ public class TouchOptionSabrModelBoundary implements FiniteDifferenceBoundary {
     }
 
     private double getDiscountedCashValue(final TouchOption option, final double evaluationTime) {
-        if(evaluationTime >= option.getMaturity()) {
+        if (evaluationTime >= option.getMaturity()) {
             return option.getPayoffAmount();
         }
 

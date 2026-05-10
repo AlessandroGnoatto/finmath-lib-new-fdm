@@ -60,28 +60,28 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMMultiAssetBlackScholesADI2D extends AbstractADI2D {
 
-	/**
-	 * Creates the ADI solver for the two-dimensional multi-asset Black-Scholes PDE.
-	 *
-	 * @param model The multi-asset Black-Scholes finite-difference model.
-	 * @param product The product to be valued.
-	 * @param spaceTimeDiscretization The space-time discretization.
-	 * @param exercise The exercise specification.
-	 */
-	public FDMMultiAssetBlackScholesADI2D(
-			final FDMMultiAssetBlackScholesModel model,
-			final FiniteDifferenceEquityProduct product,
-			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise) {
-		super(model, product, spaceTimeDiscretization, exercise);
+    /**
+     * Creates the ADI solver for the two-dimensional multi-asset Black-Scholes PDE.
+     *
+     * @param model The multi-asset Black-Scholes finite-difference model.
+     * @param product The product to be valued.
+     * @param spaceTimeDiscretization The space-time discretization.
+     * @param exercise The exercise specification.
+     */
+    public FDMMultiAssetBlackScholesADI2D(
+            final FDMMultiAssetBlackScholesModel model,
+            final FiniteDifferenceEquityProduct product,
+            final SpaceTimeDiscretization spaceTimeDiscretization,
+            final Exercise exercise) {
+        super(model, product, spaceTimeDiscretization, exercise);
 
-		if(spaceTimeDiscretization.getNumberOfSpaceGrids() != 2) {
-			throw new IllegalArgumentException(
-					"FDMMultiAssetBlackScholesADI2D requires exactly two space grids.");
-		}
-		if(model.getInitialValue() == null || model.getInitialValue().length != 2) {
-			throw new IllegalArgumentException(
-					"FDMMultiAssetBlackScholesADI2D requires a two-dimensional model state.");
-		}
-	}
+        if (spaceTimeDiscretization.getNumberOfSpaceGrids() != 2) {
+            throw new IllegalArgumentException(
+                    "FDMMultiAssetBlackScholesADI2D requires exactly two space grids.");
+        }
+        if (model.getInitialValue() == null || model.getInitialValue().length != 2) {
+            throw new IllegalArgumentException(
+                    "FDMMultiAssetBlackScholesADI2D requires a two-dimensional model state.");
+        }
+    }
 }

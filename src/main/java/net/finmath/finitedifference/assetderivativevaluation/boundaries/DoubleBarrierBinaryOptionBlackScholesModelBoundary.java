@@ -21,7 +21,7 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
  *   <li>KIKO: discounted cash at the lower side, zero at the upper side,</li>
  *   <li>KOKI: zero at the lower side, discounted cash at the upper side.</li>
  * </ul>
- * 
+ *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierBinaryOptionBlackScholesModelBoundary implements FiniteDifferenceBoundary {
@@ -66,7 +66,7 @@ public class DoubleBarrierBinaryOptionBlackScholesModelBoundary implements Finit
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        switch(option.getDoubleBarrierType()) {
+        switch (option.getDoubleBarrierType()) {
         case KNOCK_OUT:
             return 0.0;
         case KNOCK_IN:
@@ -84,7 +84,7 @@ public class DoubleBarrierBinaryOptionBlackScholesModelBoundary implements Finit
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        switch(option.getDoubleBarrierType()) {
+        switch (option.getDoubleBarrierType()) {
         case KNOCK_OUT:
             return 0.0;
         case KNOCK_IN:
@@ -102,13 +102,13 @@ public class DoubleBarrierBinaryOptionBlackScholesModelBoundary implements Finit
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        if(option.getCashPayoff() == 0.0) {
+        if (option.getCashPayoff() == 0.0) {
             return 0.0;
         }
 
         final double effectiveTime = Math.max(time, EPSILON);
 
-        if(effectiveTime >= option.getMaturity()) {
+        if (effectiveTime >= option.getMaturity()) {
             return option.getCashPayoff();
         }
 

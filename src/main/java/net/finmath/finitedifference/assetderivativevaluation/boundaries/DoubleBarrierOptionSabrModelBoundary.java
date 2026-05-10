@@ -104,7 +104,7 @@ public class DoubleBarrierOptionSabrModelBoundary implements FiniteDifferenceBou
         final double discountedForwardLikeSpot = stock * discountFactorDividend;
         final double discountedStrike = option.getStrike() * discountFactorRiskFree;
 
-        switch(option.getCallOrPut()) {
+        switch (option.getCallOrPut()) {
         case CALL:
             return Math.max(discountedForwardLikeSpot - discountedStrike, 0.0);
         case PUT:

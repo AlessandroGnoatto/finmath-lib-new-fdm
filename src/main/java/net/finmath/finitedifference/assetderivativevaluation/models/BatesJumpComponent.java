@@ -33,56 +33,56 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
  */
 public class BatesJumpComponent extends MertonJumpComponent {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	/**
-	 * Creates a Bates jump component acting on the first state variable.
-	 *
-	 * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-	 * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-	 * @param intensity Jump intensity.
-	 * @param jumpMean Mean of the log-jump size.
-	 * @param jumpStdDev Standard deviation of the log-jump size.
-	 */
-	public BatesJumpComponent(
-			final double lowerIntegrationBound,
-			final double upperIntegrationBound,
-			final double intensity,
-			final double jumpMean,
-			final double jumpStdDev) {
-		super(
-				lowerIntegrationBound,
-				upperIntegrationBound,
-				intensity,
-				jumpMean,
-				jumpStdDev
-		);
-	}
+    /**
+     * Creates a Bates jump component acting on the first state variable.
+     *
+     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param intensity Jump intensity.
+     * @param jumpMean Mean of the log-jump size.
+     * @param jumpStdDev Standard deviation of the log-jump size.
+     */
+    public BatesJumpComponent(
+            final double lowerIntegrationBound,
+            final double upperIntegrationBound,
+            final double intensity,
+            final double jumpMean,
+            final double jumpStdDev) {
+        super(
+                lowerIntegrationBound,
+                upperIntegrationBound,
+                intensity,
+                jumpMean,
+                jumpStdDev
+        );
+    }
 
-	/**
-	 * Creates a Bates jump component.
-	 *
-	 * @param stateVariableIndex Index of the affected state variable.
-	 * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-	 * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-	 * @param intensity Jump intensity.
-	 * @param jumpMean Mean of the log-jump size.
-	 * @param jumpStdDev Standard deviation of the log-jump size.
-	 */
-	public BatesJumpComponent(
-			final int stateVariableIndex,
-			final double lowerIntegrationBound,
-			final double upperIntegrationBound,
-			final double intensity,
-			final double jumpMean,
-			final double jumpStdDev) {
-		super(
-				stateVariableIndex,
-				lowerIntegrationBound,
-				upperIntegrationBound,
-				intensity,
-				jumpMean,
-				jumpStdDev
-		);
-	}
+    /**
+     * Creates a Bates jump component.
+     *
+     * @param stateVariableIndex Index of the affected state variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param intensity Jump intensity.
+     * @param jumpMean Mean of the log-jump size.
+     * @param jumpStdDev Standard deviation of the log-jump size.
+     */
+    public BatesJumpComponent(
+            final int stateVariableIndex,
+            final double lowerIntegrationBound,
+            final double upperIntegrationBound,
+            final double intensity,
+            final double jumpMean,
+            final double jumpStdDev) {
+        super(
+                stateVariableIndex,
+                lowerIntegrationBound,
+                upperIntegrationBound,
+                intensity,
+                jumpMean,
+                jumpStdDev
+        );
+    }
 }

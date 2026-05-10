@@ -35,7 +35,7 @@ import java.io.Serializable;
  * This interface therefore complements, but does not modify, the meaning of
  * {@link FiniteDifferenceEquityModel#getDrift(double, double...)}.
  * </p>
- * 
+ *
  * @author Alessandro Gnoatto
  */
 public interface JumpComponent extends Serializable {

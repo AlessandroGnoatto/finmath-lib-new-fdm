@@ -61,10 +61,10 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
             final BarrierPreHitSpecification preHitSpecification) {
         super(model, product, spaceTimeDiscretization, exercise);
 
-        if(barrierMode == null) {
+        if (barrierMode == null) {
             throw new IllegalArgumentException("barrierMode must not be null.");
         }
-        if(barrierMode == BarrierPDEMode.IN_PRE_HIT && preHitSpecification == null) {
+        if (barrierMode == BarrierPDEMode.IN_PRE_HIT && preHitSpecification == null) {
             throw new IllegalArgumentException(
                     "preHitSpecification must not be null in IN_PRE_HIT mode.");
         }
@@ -100,8 +100,8 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
         final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
 
         double[] u = new double[n];
-        for(int j = 0; j < n1; j++) {
-            for(int i = 0; i < n0; i++) {
+        for (int j = 0; j < n1; j++) {
+            for (int i = 0; i < n0; i++) {
                 u[flatten(i, j)] = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
             }
         }
@@ -114,7 +114,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
         final RealMatrix solutionSurface = new Array2DRowRealMatrix(n, timeLength);
         solutionSurface.setColumn(0, u.clone());
 
-        for(int m = 0; m < numberOfTimeSteps; m++) {
+        for (int m = 0; m < numberOfTimeSteps; m++) {
             final double dt = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
             final double tauNext = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
@@ -127,7 +127,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
             applyOuterBoundaries(runningTimeNext, u);
             applyBarrierTraceIfNeeded(runningTimeNext, u);
 
-            if(!isPreHitMode()) {
+            if (!isPreHitMode()) {
                 applyExerciseObstacleIfNeeded(runningTimeNext, tauNext, u, exerciseValue);
             }
 
@@ -149,18 +149,18 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
             final double time,
             final double dt) {
 
-        if(!isPreHitMode()) {
+        if (!isPreHitMode()) {
             return super.solveFirstDirectionLines(rhs, time, dt);
         }
 
         final double[] out = rhs.clone();
 
-        for(int j = 0; j < n1; j++) {
+        for (int j = 0; j < n1; j++) {
             final TridiagonalMatrix matrix =
                     stencilBuilder.buildFirstDirectionLineMatrix(time, dt, theta, j);
 
             final double[] lineRhs = new double[n0];
-            for(int i = 0; i < n0; i++) {
+            for (int i = 0; i < n0; i++) {
                 lineRhs[i] = rhs[flatten(i, j)];
             }
 
@@ -181,7 +181,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
                     lineRhs
             );
 
-            for(int i = 0; i < n0; i++) {
+            for (int i = 0; i < n0; i++) {
                 out[flatten(i, j)] = solved[i];
             }
         }
@@ -218,7 +218,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
             final int secondIndex,
             final double runningTime) {
 
-        if(!isPreHitMode()) {
+        if (!isPreHitMode()) {
             return;
         }
 
@@ -238,13 +238,13 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
             final double runningTime,
             final double[] u) {
 
-        if(!isPreHitMode()) {
+        if (!isPreHitMode()) {
             return;
         }
 
         final int barrierRow = preHitSpecification.getBarrierSpotIndex();
 
-        for(int j = 0; j < n1; j++) {
+        for (int j = 0; j < n1; j++) {
             u[flatten(barrierRow, j)] = getBarrierTraceValue(j, runningTime);
         }
     }

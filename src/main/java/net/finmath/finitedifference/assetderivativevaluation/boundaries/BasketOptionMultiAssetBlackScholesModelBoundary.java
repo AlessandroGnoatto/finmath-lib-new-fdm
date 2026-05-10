@@ -62,354 +62,354 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDifferenceBoundary {
 
-	private static final double TIME_FLOOR = 1E-10;
-	private static final double QUANTITY_TOLERANCE = 1E-14;
-	private static final double GRID_TOLERANCE = 1E-12;
+    private static final double TIME_FLOOR = 1E-10;
+    private static final double QUANTITY_TOLERANCE = 1E-14;
+    private static final double GRID_TOLERANCE = 1E-12;
 
-	private final FDMMultiAssetBlackScholesModel model;
+    private final FDMMultiAssetBlackScholesModel model;
 
-	public BasketOptionMultiAssetBlackScholesModelBoundary(final FDMMultiAssetBlackScholesModel model) {
-		if(model == null) {
-			throw new IllegalArgumentException("model must not be null.");
-		}
-		if(model.getInitialValue() == null || model.getInitialValue().length != 2) {
-			throw new IllegalArgumentException(
-					"BasketOptionMultiAssetBlackScholesModelBoundary requires a two-dimensional model.");
-		}
+    public BasketOptionMultiAssetBlackScholesModelBoundary(final FDMMultiAssetBlackScholesModel model) {
+        if (model == null) {
+            throw new IllegalArgumentException("model must not be null.");
+        }
+        if (model.getInitialValue() == null || model.getInitialValue().length != 2) {
+            throw new IllegalArgumentException(
+                    "BasketOptionMultiAssetBlackScholesModelBoundary requires a two-dimensional model.");
+        }
 
-		final double[] firstGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-		final double[] secondGrid = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
+        final double[] firstGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
+        final double[] secondGrid = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
 
-		if(Math.abs(firstGrid[0]) > GRID_TOLERANCE || Math.abs(secondGrid[0]) > GRID_TOLERANCE) {
-			throw new IllegalArgumentException(
-					"BasketOptionMultiAssetBlackScholesModelBoundary requires both asset grids to start at 0. "
-							+ "The lower-face one-dimensional reduction is exact only at S1 = 0 and S2 = 0.");
-		}
+        if (Math.abs(firstGrid[0]) > GRID_TOLERANCE || Math.abs(secondGrid[0]) > GRID_TOLERANCE) {
+            throw new IllegalArgumentException(
+                    "BasketOptionMultiAssetBlackScholesModelBoundary requires both asset grids to start at 0. "
+                            + "The lower-face one-dimensional reduction is exact only at S1 = 0 and S2 = 0.");
+        }
 
-		this.model = model;
-	}
+        this.model = model;
+    }
 
-	@Override
-	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceEquityProduct product,
-			final double time,
-			final double... stateVariables) {
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+            final FiniteDifferenceEquityProduct product,
+            final double time,
+            final double... stateVariables) {
 
-		final BasketOption basketOption = validateAndCastProduct(product);
-		validateStateVariables(stateVariables);
+        final BasketOption basketOption = validateAndCastProduct(product);
+        validateStateVariables(stateVariables);
 
-		final double[] quantities = basketOption.getQuantities();
-		final double strike = basketOption.getStrike();
-		final double tau = Math.max(basketOption.getMaturity() - time, 0.0);
+        final double[] quantities = basketOption.getQuantities();
+        final double strike = basketOption.getStrike();
+        final double tau = Math.max(basketOption.getMaturity() - time, 0.0);
 
-		final double s1 = stateVariables[0];
-		final double s2 = stateVariables[1];
+        final double s1 = stateVariables[0];
+        final double s2 = stateVariables[1];
 
-		final BoundaryCondition[] conditions = new BoundaryCondition[] {
-				StandardBoundaryCondition.none(),
-				StandardBoundaryCondition.none()
-		};
+        final BoundaryCondition[] conditions = new BoundaryCondition[] {
+                StandardBoundaryCondition.none(),
+                StandardBoundaryCondition.none()
+        };
 
-		if(isAtLowerBoundary(0, s1)) {
-			conditions[0] = StandardBoundaryCondition.dirichlet(
-					getReducedOneDimensionalValue(
-							basketOption.getCallOrPut(),
-							quantities[1],
-							s2,
-							strike - quantities[0] * s1,
-							1,
-							tau
-					)
-			);
-		}
+        if (isAtLowerBoundary(0, s1)) {
+            conditions[0] = StandardBoundaryCondition.dirichlet(
+                    getReducedOneDimensionalValue(
+                            basketOption.getCallOrPut(),
+                            quantities[1],
+                            s2,
+                            strike - quantities[0] * s1,
+                            1,
+                            tau
+                    )
+            );
+        }
 
-		if(isAtLowerBoundary(1, s2)) {
-			conditions[1] = StandardBoundaryCondition.dirichlet(
-					getReducedOneDimensionalValue(
-							basketOption.getCallOrPut(),
-							quantities[0],
-							s1,
-							strike - quantities[1] * s2,
-							0,
-							tau
-					)
-			);
-		}
+        if (isAtLowerBoundary(1, s2)) {
+            conditions[1] = StandardBoundaryCondition.dirichlet(
+                    getReducedOneDimensionalValue(
+                            basketOption.getCallOrPut(),
+                            quantities[0],
+                            s1,
+                            strike - quantities[1] * s2,
+                            0,
+                            tau
+                    )
+            );
+        }
 
-		return conditions;
-	}
+        return conditions;
+    }
 
-	@Override
-	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceEquityProduct product,
-			final double time,
-			final double... stateVariables) {
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+            final FiniteDifferenceEquityProduct product,
+            final double time,
+            final double... stateVariables) {
 
-		final BasketOption basketOption = validateAndCastProduct(product);
-		validateStateVariables(stateVariables);
+        final BasketOption basketOption = validateAndCastProduct(product);
+        validateStateVariables(stateVariables);
 
-		final double[] quantities = basketOption.getQuantities();
-		final double strike = basketOption.getStrike();
-		final double tau = Math.max(basketOption.getMaturity() - time, 0.0);
+        final double[] quantities = basketOption.getQuantities();
+        final double strike = basketOption.getStrike();
+        final double tau = Math.max(basketOption.getMaturity() - time, 0.0);
 
-		final double s1 = stateVariables[0];
-		final double s2 = stateVariables[1];
+        final double s1 = stateVariables[0];
+        final double s2 = stateVariables[1];
 
-		final BoundaryCondition[] conditions = new BoundaryCondition[] {
-				StandardBoundaryCondition.none(),
-				StandardBoundaryCondition.none()
-		};
+        final BoundaryCondition[] conditions = new BoundaryCondition[] {
+                StandardBoundaryCondition.none(),
+                StandardBoundaryCondition.none()
+        };
 
-		if(isAtUpperBoundary(0, s1)) {
-			conditions[0] = StandardBoundaryCondition.dirichlet(
-					getUpperFaceValue(
-							basketOption.getCallOrPut(),
-							quantities,
-							strike,
-							s1,
-							s2,
-							0,
-							tau
-					)
-			);
-		}
+        if (isAtUpperBoundary(0, s1)) {
+            conditions[0] = StandardBoundaryCondition.dirichlet(
+                    getUpperFaceValue(
+                            basketOption.getCallOrPut(),
+                            quantities,
+                            strike,
+                            s1,
+                            s2,
+                            0,
+                            tau
+                    )
+            );
+        }
 
-		if(isAtUpperBoundary(1, s2)) {
-			conditions[1] = StandardBoundaryCondition.dirichlet(
-					getUpperFaceValue(
-							basketOption.getCallOrPut(),
-							quantities,
-							strike,
-							s1,
-							s2,
-							1,
-							tau
-					)
-			);
-		}
+        if (isAtUpperBoundary(1, s2)) {
+            conditions[1] = StandardBoundaryCondition.dirichlet(
+                    getUpperFaceValue(
+                            basketOption.getCallOrPut(),
+                            quantities,
+                            strike,
+                            s1,
+                            s2,
+                            1,
+                            tau
+                    )
+            );
+        }
 
-		return conditions;
-	}
+        return conditions;
+    }
 
-	private BasketOption validateAndCastProduct(final FiniteDifferenceEquityProduct product) {
-		if(!(product instanceof BasketOption)) {
-			throw new IllegalArgumentException(
-					"BasketOptionMultiAssetBlackScholesModelBoundary requires a BasketOption.");
-		}
+    private BasketOption validateAndCastProduct(final FiniteDifferenceEquityProduct product) {
+        if (!(product instanceof BasketOption)) {
+            throw new IllegalArgumentException(
+                    "BasketOptionMultiAssetBlackScholesModelBoundary requires a BasketOption.");
+        }
 
-		final BasketOption basketOption = (BasketOption) product;
+        final BasketOption basketOption = (BasketOption) product;
 
-		if(basketOption.getQuantities().length != 2) {
-			throw new IllegalArgumentException(
-					"BasketOptionMultiAssetBlackScholesModelBoundary currently supports only two assets.");
-		}
-		if(!basketOption.getExercise().isEuropean()) {
-			throw new IllegalArgumentException(
-					"BasketOptionMultiAssetBlackScholesModelBoundary currently supports only European exercise.");
-		}
+        if (basketOption.getQuantities().length != 2) {
+            throw new IllegalArgumentException(
+                    "BasketOptionMultiAssetBlackScholesModelBoundary currently supports only two assets.");
+        }
+        if (!basketOption.getExercise().isEuropean()) {
+            throw new IllegalArgumentException(
+                    "BasketOptionMultiAssetBlackScholesModelBoundary currently supports only European exercise.");
+        }
 
-		return basketOption;
-	}
+        return basketOption;
+    }
 
-	private void validateStateVariables(final double[] stateVariables) {
-		if(stateVariables == null || stateVariables.length != 2) {
-			throw new IllegalArgumentException("Two state variables are required.");
-		}
-	}
+    private void validateStateVariables(final double[] stateVariables) {
+        if (stateVariables == null || stateVariables.length != 2) {
+            throw new IllegalArgumentException("Two state variables are required.");
+        }
+    }
 
-	private boolean isAtLowerBoundary(final int dimension, final double value) {
-		final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(dimension).getGrid();
-		return Math.abs(value - grid[0]) <= GRID_TOLERANCE;
-	}
+    private boolean isAtLowerBoundary(final int dimension, final double value) {
+        final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(dimension).getGrid();
+        return Math.abs(value - grid[0]) <= GRID_TOLERANCE;
+    }
 
-	private boolean isAtUpperBoundary(final int dimension, final double value) {
-		final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(dimension).getGrid();
-		return Math.abs(value - grid[grid.length - 1]) <= GRID_TOLERANCE;
-	}
+    private boolean isAtUpperBoundary(final int dimension, final double value) {
+        final double[] grid = model.getSpaceTimeDiscretization().getSpaceGrid(dimension).getGrid();
+        return Math.abs(value - grid[grid.length - 1]) <= GRID_TOLERANCE;
+    }
 
-	private double getUpperFaceValue(
-			final CallOrPut callOrPut,
-			final double[] quantities,
-			final double strike,
-			final double s1,
-			final double s2,
-			final int boundaryAssetIndex,
-			final double tau) {
+    private double getUpperFaceValue(
+            final CallOrPut callOrPut,
+            final double[] quantities,
+            final double strike,
+            final double s1,
+            final double s2,
+            final int boundaryAssetIndex,
+            final double tau) {
 
-		final double quantityBoundaryAsset = quantities[boundaryAssetIndex];
-		final int sign = callOrPut.toInteger();
+        final double quantityBoundaryAsset = quantities[boundaryAssetIndex];
+        final int sign = callOrPut.toInteger();
 
-		if(Math.abs(quantityBoundaryAsset) <= QUANTITY_TOLERANCE) {
-			if(boundaryAssetIndex == 0) {
-				return getReducedOneDimensionalValue(
-						callOrPut,
-						quantities[1],
-						s2,
-						strike - quantities[0] * s1,
-						1,
-						tau
-				);
-			}
-			return getReducedOneDimensionalValue(
-					callOrPut,
-					quantities[0],
-					s1,
-					strike - quantities[1] * s2,
-					0,
-					tau
-			);
-		}
+        if (Math.abs(quantityBoundaryAsset) <= QUANTITY_TOLERANCE) {
+            if (boundaryAssetIndex == 0) {
+                return getReducedOneDimensionalValue(
+                        callOrPut,
+                        quantities[1],
+                        s2,
+                        strike - quantities[0] * s1,
+                        1,
+                        tau
+                );
+            }
+            return getReducedOneDimensionalValue(
+                    callOrPut,
+                    quantities[0],
+                    s1,
+                    strike - quantities[1] * s2,
+                    0,
+                    tau
+            );
+        }
 
-		if(sign * quantityBoundaryAsset < 0.0) {
-			return 0.0;
-		}
+        if (sign * quantityBoundaryAsset < 0.0) {
+            return 0.0;
+        }
 
-		final double discountedLinearCombination =
-				quantities[0] * s1 * getDividendDiscountFactor(0, tau)
-				+ quantities[1] * s2 * getDividendDiscountFactor(1, tau)
-				- strike * getRiskFreeDiscountFactor(tau);
+        final double discountedLinearCombination =
+                quantities[0] * s1 * getDividendDiscountFactor(0, tau)
+                + quantities[1] * s2 * getDividendDiscountFactor(1, tau)
+                - strike * getRiskFreeDiscountFactor(tau);
 
-		return Math.max(sign * discountedLinearCombination, 0.0);
-	}
+        return Math.max(sign * discountedLinearCombination, 0.0);
+    }
 
-	private double getReducedOneDimensionalValue(
-			final CallOrPut callOrPut,
-			final double quantity,
-			final double spot,
-			final double adjustedStrike,
-			final int assetIndex,
-			final double tau) {
+    private double getReducedOneDimensionalValue(
+            final CallOrPut callOrPut,
+            final double quantity,
+            final double spot,
+            final double adjustedStrike,
+            final int assetIndex,
+            final double tau) {
 
-		final int sign = callOrPut.toInteger();
+        final int sign = callOrPut.toInteger();
 
-		if(Math.abs(quantity) <= QUANTITY_TOLERANCE) {
-			return Math.max(-sign * adjustedStrike, 0.0) * getRiskFreeDiscountFactor(tau);
-		}
+        if (Math.abs(quantity) <= QUANTITY_TOLERANCE) {
+            return Math.max(-sign * adjustedStrike, 0.0) * getRiskFreeDiscountFactor(tau);
+        }
 
-		if(quantity > 0.0) {
-			final double effectiveStrike = adjustedStrike / quantity;
+        if (quantity > 0.0) {
+            final double effectiveStrike = adjustedStrike / quantity;
 
-			if(sign > 0) {
-				if(effectiveStrike <= 0.0) {
-					return quantity * spot * getDividendDiscountFactor(assetIndex, tau)
-							- adjustedStrike * getRiskFreeDiscountFactor(tau);
-				}
-				return quantity * getBlackScholesCallValue(
-						spot,
-						effectiveStrike,
-						assetIndex,
-						tau
-				);
-			}
+            if (sign > 0) {
+                if (effectiveStrike <= 0.0) {
+                    return quantity * spot * getDividendDiscountFactor(assetIndex, tau)
+                            - adjustedStrike * getRiskFreeDiscountFactor(tau);
+                }
+                return quantity * getBlackScholesCallValue(
+                        spot,
+                        effectiveStrike,
+                        assetIndex,
+                        tau
+                );
+            }
 
-			if(effectiveStrike <= 0.0) {
-				return 0.0;
-			}
-			return quantity * getBlackScholesPutValue(
-					spot,
-					effectiveStrike,
-					assetIndex,
-					tau
-			);
-		}
+            if (effectiveStrike <= 0.0) {
+                return 0.0;
+            }
+            return quantity * getBlackScholesPutValue(
+                    spot,
+                    effectiveStrike,
+                    assetIndex,
+                    tau
+            );
+        }
 
-		final double absoluteQuantity = -quantity;
-		final double transformedStrike = -adjustedStrike / absoluteQuantity;
+        final double absoluteQuantity = -quantity;
+        final double transformedStrike = -adjustedStrike / absoluteQuantity;
 
-		if(sign > 0) {
-			if(transformedStrike <= 0.0) {
-				return 0.0;
-			}
-			return absoluteQuantity * getBlackScholesPutValue(
-					spot,
-					transformedStrike,
-					assetIndex,
-					tau
-			);
-		}
+        if (sign > 0) {
+            if (transformedStrike <= 0.0) {
+                return 0.0;
+            }
+            return absoluteQuantity * getBlackScholesPutValue(
+                    spot,
+                    transformedStrike,
+                    assetIndex,
+                    tau
+            );
+        }
 
-		if(transformedStrike <= 0.0) {
-			return absoluteQuantity * spot * getDividendDiscountFactor(assetIndex, tau)
-					+ adjustedStrike * getRiskFreeDiscountFactor(tau);
-		}
-		return absoluteQuantity * getBlackScholesCallValue(
-				spot,
-				transformedStrike,
-				assetIndex,
-				tau
-		);
-	}
+        if (transformedStrike <= 0.0) {
+            return absoluteQuantity * spot * getDividendDiscountFactor(assetIndex, tau)
+                    + adjustedStrike * getRiskFreeDiscountFactor(tau);
+        }
+        return absoluteQuantity * getBlackScholesCallValue(
+                spot,
+                transformedStrike,
+                assetIndex,
+                tau
+        );
+    }
 
-	private double getBlackScholesCallValue(
-			final double spot,
-			final double strike,
-			final int assetIndex,
-			final double tau) {
+    private double getBlackScholesCallValue(
+            final double spot,
+            final double strike,
+            final int assetIndex,
+            final double tau) {
 
-		if(tau <= 0.0) {
-			return Math.max(spot - strike, 0.0);
-		}
-		if(spot <= 0.0) {
-			return 0.0;
-		}
+        if (tau <= 0.0) {
+            return Math.max(spot - strike, 0.0);
+        }
+        if (spot <= 0.0) {
+            return 0.0;
+        }
 
-		final double riskFreeRate = getRiskFreeRate(tau);
-		final double dividendYield = getDividendYieldRate(assetIndex, tau);
-		final double forward = spot * Math.exp((riskFreeRate - dividendYield) * tau);
-		final double payoffUnit = Math.exp(-riskFreeRate * tau);
+        final double riskFreeRate = getRiskFreeRate(tau);
+        final double dividendYield = getDividendYieldRate(assetIndex, tau);
+        final double forward = spot * Math.exp((riskFreeRate - dividendYield) * tau);
+        final double payoffUnit = Math.exp(-riskFreeRate * tau);
 
-		return AnalyticFormulas.blackScholesGeneralizedOptionValue(
-				forward,
-				model.getVolatilities()[assetIndex],
-				tau,
-				strike,
-				payoffUnit
-		);
-	}
+        return AnalyticFormulas.blackScholesGeneralizedOptionValue(
+                forward,
+                model.getVolatilities()[assetIndex],
+                tau,
+                strike,
+                payoffUnit
+        );
+    }
 
-	private double getBlackScholesPutValue(
-			final double spot,
-			final double strike,
-			final int assetIndex,
-			final double tau) {
+    private double getBlackScholesPutValue(
+            final double spot,
+            final double strike,
+            final int assetIndex,
+            final double tau) {
 
-		if(tau <= 0.0) {
-			return Math.max(strike - spot, 0.0);
-		}
-		if(spot <= 0.0) {
-			return strike * getRiskFreeDiscountFactor(tau);
-		}
+        if (tau <= 0.0) {
+            return Math.max(strike - spot, 0.0);
+        }
+        if (spot <= 0.0) {
+            return strike * getRiskFreeDiscountFactor(tau);
+        }
 
-		final double callValue = getBlackScholesCallValue(spot, strike, assetIndex, tau);
+        final double callValue = getBlackScholesCallValue(spot, strike, assetIndex, tau);
 
-		return callValue
-				- spot * getDividendDiscountFactor(assetIndex, tau)
-				+ strike * getRiskFreeDiscountFactor(tau);
-	}
+        return callValue
+                - spot * getDividendDiscountFactor(assetIndex, tau)
+                + strike * getRiskFreeDiscountFactor(tau);
+    }
 
-	private double getRiskFreeRate(final double tau) {
-		final double safeTau = Math.max(tau, TIME_FLOOR);
-		final DiscountCurve curve = model.getRiskFreeCurve();
-		return -Math.log(curve.getDiscountFactor(safeTau)) / safeTau;
-	}
+    private double getRiskFreeRate(final double tau) {
+        final double safeTau = Math.max(tau, TIME_FLOOR);
+        final DiscountCurve curve = model.getRiskFreeCurve();
+        return -Math.log(curve.getDiscountFactor(safeTau)) / safeTau;
+    }
 
-	private double getDividendYieldRate(final int assetIndex, final double tau) {
-		final double safeTau = Math.max(tau, TIME_FLOOR);
-		final DiscountCurve curve = model.getDividendYieldCurves()[assetIndex];
-		return -Math.log(curve.getDiscountFactor(safeTau)) / safeTau;
-	}
+    private double getDividendYieldRate(final int assetIndex, final double tau) {
+        final double safeTau = Math.max(tau, TIME_FLOOR);
+        final DiscountCurve curve = model.getDividendYieldCurves()[assetIndex];
+        return -Math.log(curve.getDiscountFactor(safeTau)) / safeTau;
+    }
 
-	private double getRiskFreeDiscountFactor(final double tau) {
-		if(tau <= 0.0) {
-			return 1.0;
-		}
-		return model.getRiskFreeCurve().getDiscountFactor(tau);
-	}
+    private double getRiskFreeDiscountFactor(final double tau) {
+        if (tau <= 0.0) {
+            return 1.0;
+        }
+        return model.getRiskFreeCurve().getDiscountFactor(tau);
+    }
 
-	private double getDividendDiscountFactor(final int assetIndex, final double tau) {
-		if(tau <= 0.0) {
-			return 1.0;
-		}
-		return model.getDividendYieldCurves()[assetIndex].getDiscountFactor(tau);
-	}
+    private double getDividendDiscountFactor(final int assetIndex, final double tau) {
+        if (tau <= 0.0) {
+            return 1.0;
+        }
+        return model.getDividendYieldCurves()[assetIndex].getDiscountFactor(tau);
+    }
 }

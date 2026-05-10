@@ -26,105 +26,105 @@ import net.finmath.time.TimeDiscretization;
  */
 public class SpaceTimeDiscretization {
 
-	private final HashMap<Integer, Grid> spaceGrids = new HashMap<>();
-	public HashMap<Integer, Grid> getSpaceGrids() {
-		return spaceGrids;
-	}
+    private final HashMap<Integer, Grid> spaceGrids = new HashMap<>();
+    public HashMap<Integer, Grid> getSpaceGrids() {
+        return spaceGrids;
+    }
 
-	public double[] getCenter() {
-		return center;
-	}
+    public double[] getCenter() {
+        return center;
+    }
 
-	private final TimeDiscretization timeDiscretization;
-	private final double theta;
-	private final double[] center;
+    private final TimeDiscretization timeDiscretization;
+    private final double theta;
+    private final double[] center;
 
-	/**
-	 * Constructs a one-dimensional space-time discretization.
-	 *
-	 * @param spaceGrid         The spatial grid.
-	 * @param timeDiscretization The time discretization (time-to-maturity).
-	 * @param theta             The theta parameter of the theta-method.
-	 * @param center            The center point of the spatial grid.
-	 */
-	public SpaceTimeDiscretization(
-			final Grid spaceGrid,
-			final TimeDiscretization timeDiscretization,
-			final double theta,
-			final double[] center) {
+    /**
+     * Constructs a one-dimensional space-time discretization.
+     *
+     * @param spaceGrid         The spatial grid.
+     * @param timeDiscretization The time discretization (time-to-maturity).
+     * @param theta             The theta parameter of the theta-method.
+     * @param center            The center point of the spatial grid.
+     */
+    public SpaceTimeDiscretization(
+            final Grid spaceGrid,
+            final TimeDiscretization timeDiscretization,
+            final double theta,
+            final double[] center) {
 
-		spaceGrids.put(0, spaceGrid);
-		this.timeDiscretization = timeDiscretization;
-		this.theta = theta;
-		this.center = center;
-	}
+        spaceGrids.put(0, spaceGrid);
+        this.timeDiscretization = timeDiscretization;
+        this.theta = theta;
+        this.center = center;
+    }
 
-	/**
-	 * Constructs a multi-dimensional space-time discretization.
-	 *
-	 * <p>
-	 * The {@code i}-th grid in the array is stored under key {@code i}.
-	 * </p>
-	 *
-	 * @param spaceGrids         Array of grids, one per spatial dimension.
-	 * @param timeDiscretization The time discretization (time-to-maturity).
-	 * @param theta              The theta parameter of the theta-method.
-	 * @param center             Center point per dimension (same length as {@code spaceGrids}).
-	 */
-	public SpaceTimeDiscretization(
-			final Grid[] spaceGrids,
-			final TimeDiscretization timeDiscretization,
-			final double theta,
-			final double[] center) {
+    /**
+     * Constructs a multi-dimensional space-time discretization.
+     *
+     * <p>
+     * The {@code i}-th grid in the array is stored under key {@code i}.
+     * </p>
+     *
+     * @param spaceGrids         Array of grids, one per spatial dimension.
+     * @param timeDiscretization The time discretization (time-to-maturity).
+     * @param theta              The theta parameter of the theta-method.
+     * @param center             Center point per dimension (same length as {@code spaceGrids}).
+     */
+    public SpaceTimeDiscretization(
+            final Grid[] spaceGrids,
+            final TimeDiscretization timeDiscretization,
+            final double theta,
+            final double[] center) {
 
-		for(int i = 0; i < spaceGrids.length; i++) {
-			this.spaceGrids.put(i, spaceGrids[i]);
-		}
+        for (int i = 0; i < spaceGrids.length; i++) {
+            this.spaceGrids.put(i, spaceGrids[i]);
+        }
 
-		this.timeDiscretization = timeDiscretization;
-		this.theta = theta;
-		this.center = center;
-	}
+        this.timeDiscretization = timeDiscretization;
+        this.theta = theta;
+        this.center = center;
+    }
 
-	/**
-	 * Returns the spatial grid corresponding to the given dimension.
-	 *
-	 * @param dimension The spatial dimension index.
-	 * @return The corresponding {@link Grid}.
-	 */
-	public Grid getSpaceGrid(final int dimension) {
-		return spaceGrids.get(dimension);
-	}
+    /**
+     * Returns the spatial grid corresponding to the given dimension.
+     *
+     * @param dimension The spatial dimension index.
+     * @return The corresponding {@link Grid}.
+     */
+    public Grid getSpaceGrid(final int dimension) {
+        return spaceGrids.get(dimension);
+    }
 
-	/**
-	 * Returns the time discretization.
-	 *
-	 * @return The {@link TimeDiscretization}.
-	 */
-	public TimeDiscretization getTimeDiscretization() {
-		return timeDiscretization;
-	}
+    /**
+     * Returns the time discretization.
+     *
+     * @return The {@link TimeDiscretization}.
+     */
+    public TimeDiscretization getTimeDiscretization() {
+        return timeDiscretization;
+    }
 
-	/**
-	 * Returns the theta parameter of the theta-method.
-	 *
-	 * @return The theta parameter.
-	 */
-	public double getTheta() {
-		return theta;
-	}
+    /**
+     * Returns the theta parameter of the theta-method.
+     *
+     * @return The theta parameter.
+     */
+    public double getTheta() {
+        return theta;
+    }
 
-	/**
-	 * Returns the center coordinate for the specified spatial dimension.
-	 *
-	 * @param dimension The spatial dimension index.
-	 * @return The center value for the given dimension.
-	 */
-	public double getCenter(final int dimension) {
-		return center[dimension];
-	}
+    /**
+     * Returns the center coordinate for the specified spatial dimension.
+     *
+     * @param dimension The spatial dimension index.
+     * @return The center value for the given dimension.
+     */
+    public double getCenter(final int dimension) {
+        return center[dimension];
+    }
 
-	public int getNumberOfSpaceGrids() {
-		return spaceGrids.size();
-	}
+    public int getNumberOfSpaceGrids() {
+        return spaceGrids.size();
+    }
 }

@@ -12,5 +12,5 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
  * @author Alessandro Gnoatto
  */
 public interface FiniteDifferenceConstrainedProduct
-		extends FiniteDifferenceEquityProduct, FiniteDifferenceInternalStateConstraint {
+        extends FiniteDifferenceEquityProduct, FiniteDifferenceInternalStateConstraint {
 }

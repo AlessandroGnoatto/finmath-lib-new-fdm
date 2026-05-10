@@ -36,62 +36,62 @@ package net.finmath.finitedifference.solvers;
  */
 public class ImmediateCashActivationPolicy implements TwoStateActivationPolicy {
 
-	private final double payoffAmount;
+    private final double payoffAmount;
 
-	/**
-	 * Creates an immediate-cash activation policy.
-	 *
-	 * @param payoffAmount Cash amount paid immediately upon activation.
-	 */
-	public ImmediateCashActivationPolicy(final double payoffAmount) {
-		this.payoffAmount = payoffAmount;
-	}
+    /**
+     * Creates an immediate-cash activation policy.
+     *
+     * @param payoffAmount Cash amount paid immediately upon activation.
+     */
+    public ImmediateCashActivationPolicy(final double payoffAmount) {
+        this.payoffAmount = payoffAmount;
+    }
 
-	/**
-	 * Returns the already-hit value at maturity.
-	 *
-	 * @param stateVariable State variable.
-	 * @param activePayoffValue Active-regime payoff value at maturity.
-	 * @param inactiveNoHitValue Inactive no-hit value at maturity.
-	 * @return The immediate cash payoff amount.
-	 */
-	@Override
-	public double getAlreadyHitValueAtMaturity(
-			final double stateVariable,
-			final double activePayoffValue,
-			final double inactiveNoHitValue) {
-		return payoffAmount;
-	}
+    /**
+     * Returns the already-hit value at maturity.
+     *
+     * @param stateVariable State variable.
+     * @param activePayoffValue Active-regime payoff value at maturity.
+     * @param inactiveNoHitValue Inactive no-hit value at maturity.
+     * @return The immediate cash payoff amount.
+     */
+    @Override
+    public double getAlreadyHitValueAtMaturity(
+            final double stateVariable,
+            final double activePayoffValue,
+            final double inactiveNoHitValue) {
+        return payoffAmount;
+    }
 
-	/**
-	 * Returns the already-hit value before maturity.
-	 *
-	 * @param currentTime Current running time.
-	 * @param stateVariable State variable.
-	 * @param activeValue Active-regime continuation value.
-	 * @return The immediate cash payoff amount.
-	 */
-	@Override
-	public double getAlreadyHitValue(
-			final double currentTime,
-			final double stateVariable,
-			final double activeValue) {
-		return payoffAmount;
-	}
+    /**
+     * Returns the already-hit value before maturity.
+     *
+     * @param currentTime Current running time.
+     * @param stateVariable State variable.
+     * @param activeValue Active-regime continuation value.
+     * @return The immediate cash payoff amount.
+     */
+    @Override
+    public double getAlreadyHitValue(
+            final double currentTime,
+            final double stateVariable,
+            final double activeValue) {
+        return payoffAmount;
+    }
 
-	/**
-	 * Returns the interface value at the activation boundary.
-	 *
-	 * @param currentTime Current running time.
-	 * @param barrierStateVariable State variable at the barrier.
-	 * @param activeValueAtBarrier Active-regime value at the barrier.
-	 * @return The immediate cash payoff amount.
-	 */
-	@Override
-	public double getInterfaceValue(
-			final double currentTime,
-			final double barrierStateVariable,
-			final double activeValueAtBarrier) {
-		return payoffAmount;
-	}
+    /**
+     * Returns the interface value at the activation boundary.
+     *
+     * @param currentTime Current running time.
+     * @param barrierStateVariable State variable at the barrier.
+     * @param activeValueAtBarrier Active-regime value at the barrier.
+     * @return The immediate cash payoff amount.
+     */
+    @Override
+    public double getInterfaceValue(
+            final double currentTime,
+            final double barrierStateVariable,
+            final double activeValueAtBarrier) {
+        return payoffAmount;
+    }
 }

@@ -23,152 +23,150 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class BermudanOption implements FiniteDifferenceEquityProduct {
 
-	private final String underlyingName;
-	private final double maturity;
-	private final double strike;
-	private final CallOrPut callOrPutSign;
-	private final Exercise exercise;
+    private final String underlyingName;
+    private final double maturity;
+    private final double strike;
+    private final CallOrPut callOrPutSign;
+    private final Exercise exercise;
 
-	public BermudanOption(
-			final String underlyingName,
-			final double[] exerciseTimes,
-			final double strike,
-			final double callOrPutSign) {
-		this(
-				underlyingName,
-				exerciseTimes,
-				strike,
-				mapCallOrPut(callOrPutSign)
-		);
-	}
+    public BermudanOption(
+            final String underlyingName,
+            final double[] exerciseTimes,
+            final double strike,
+            final double callOrPutSign) {
+        this(
+                underlyingName,
+                exerciseTimes,
+                strike,
+                mapCallOrPut(callOrPutSign)
+        );
+    }
 
-	public BermudanOption(
-			final String underlyingName,
-			final double[] exerciseTimes,
-			final double strike,
-			final CallOrPut callOrPutSign) {
+    public BermudanOption(
+            final String underlyingName,
+            final double[] exerciseTimes,
+            final double strike,
+            final CallOrPut callOrPutSign) {
 
-		if(exerciseTimes == null || exerciseTimes.length == 0) {
-			throw new IllegalArgumentException("Exercise times must not be null or empty.");
-		}
+        if (exerciseTimes == null || exerciseTimes.length == 0) {
+            throw new IllegalArgumentException("Exercise times must not be null or empty.");
+        }
 
-		this.underlyingName = underlyingName;
-		this.exercise = new BermudanExercise(exerciseTimes);
-		this.maturity = this.exercise.getMaturity();
-		this.strike = strike;
-		this.callOrPutSign = callOrPutSign;
-	}
+        this.underlyingName = underlyingName;
+        this.exercise = new BermudanExercise(exerciseTimes);
+        this.maturity = this.exercise.getMaturity();
+        this.strike = strike;
+        this.callOrPutSign = callOrPutSign;
+    }
 
-	public BermudanOption(
-			final double[] exerciseTimes,
-			final double strike,
-			final double callOrPutSign) {
-		this(null, exerciseTimes, strike, callOrPutSign);
-	}
+    public BermudanOption(
+            final double[] exerciseTimes,
+            final double strike,
+            final double callOrPutSign) {
+        this(null, exerciseTimes, strike, callOrPutSign);
+    }
 
-	public BermudanOption(
-			final double[] exerciseTimes,
-			final double strike,
-			final CallOrPut callOrPutSign) {
-		this(null, exerciseTimes, strike, callOrPutSign);
-	}
+    public BermudanOption(
+            final double[] exerciseTimes,
+            final double strike,
+            final CallOrPut callOrPutSign) {
+        this(null, exerciseTimes, strike, callOrPutSign);
+    }
 
-	@Override
-	public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
-		final SpaceTimeDiscretization refinedDiscretization = getRefinedSpaceTimeDiscretization(model);
-		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, refinedDiscretization, exercise);
+    @Override
+    public double[] getValue(final double evaluationTime, final FiniteDifferenceEquityModel model) {
+        final SpaceTimeDiscretization refinedDiscretization = getRefinedSpaceTimeDiscretization(model);
+        final FDMSolver solver = FDMSolverFactory.createSolver(model, this, refinedDiscretization, exercise);
 
-		if(callOrPutSign == CallOrPut.CALL) {
-			return solver.getValue(
-					evaluationTime,
-					maturity,
-					assetValue -> Math.max(assetValue - strike, 0.0)
-			);
-		}
-		else {
-			return solver.getValue(
-					evaluationTime,
-					maturity,
-					assetValue -> Math.max(strike - assetValue, 0.0)
-			);
-		}
-	}
+        if (callOrPutSign == CallOrPut.CALL) {
+            return solver.getValue(
+                    evaluationTime,
+                    maturity,
+                    assetValue -> Math.max(assetValue - strike, 0.0)
+            );
+        } else {
+            return solver.getValue(
+                    evaluationTime,
+                    maturity,
+                    assetValue -> Math.max(strike - assetValue, 0.0)
+            );
+        }
+    }
 
-	@Override
-	public double[][] getValues(final FiniteDifferenceEquityModel model) {
-		final SpaceTimeDiscretization refinedDiscretization = getRefinedSpaceTimeDiscretization(model);
-		final FDMSolver solver = FDMSolverFactory.createSolver(model, this, refinedDiscretization, exercise);
+    @Override
+    public double[][] getValues(final FiniteDifferenceEquityModel model) {
+        final SpaceTimeDiscretization refinedDiscretization = getRefinedSpaceTimeDiscretization(model);
+        final FDMSolver solver = FDMSolverFactory.createSolver(model, this, refinedDiscretization, exercise);
 
-		if(callOrPutSign == CallOrPut.CALL) {
-			return solver.getValues(maturity, assetValue -> Math.max(assetValue - strike, 0.0));
-		}
-		else {
-			return solver.getValues(maturity, assetValue -> Math.max(strike - assetValue, 0.0));
-		}
-	}
+        if (callOrPutSign == CallOrPut.CALL) {
+            return solver.getValues(maturity, assetValue -> Math.max(assetValue - strike, 0.0));
+        } else {
+            return solver.getValues(maturity, assetValue -> Math.max(strike - assetValue, 0.0));
+        }
+    }
 
-	private SpaceTimeDiscretization getRefinedSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
-		final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
+    private SpaceTimeDiscretization getRefinedSpaceTimeDiscretization(final FiniteDifferenceEquityModel model) {
+        final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
 
-		final var refinedTimeDiscretization =
-				FiniteDifferenceExerciseUtil.refineTimeDiscretization(
-						base.getTimeDiscretization(),
-						exercise
-				);
+        final var refinedTimeDiscretization =
+                FiniteDifferenceExerciseUtil.refineTimeDiscretization(
+                        base.getTimeDiscretization(),
+                        exercise
+                );
 
-		if(base.getNumberOfSpaceGrids() == 1) {
-			return new SpaceTimeDiscretization(
-					base.getSpaceGrid(0),
-					refinedTimeDiscretization,
-					base.getTheta(),
-					new double[] { base.getCenter(0) }
-			);
-		}
+        if (base.getNumberOfSpaceGrids() == 1) {
+            return new SpaceTimeDiscretization(
+                    base.getSpaceGrid(0),
+                    refinedTimeDiscretization,
+                    base.getTheta(),
+                    new double[] {base.getCenter(0) }
+            );
+        }
 
-		final int numberOfSpaceGrids = base.getNumberOfSpaceGrids();
-		final Grid[] spaceGrids = new Grid[numberOfSpaceGrids];
-		final double[] center = new double[numberOfSpaceGrids];
+        final int numberOfSpaceGrids = base.getNumberOfSpaceGrids();
+        final Grid[] spaceGrids = new Grid[numberOfSpaceGrids];
+        final double[] center = new double[numberOfSpaceGrids];
 
-		for(int i = 0; i < numberOfSpaceGrids; i++) {
-			spaceGrids[i] = base.getSpaceGrid(i);
-			center[i] = base.getCenter(i);
-		}
+        for (int i = 0; i < numberOfSpaceGrids; i++) {
+            spaceGrids[i] = base.getSpaceGrid(i);
+            center[i] = base.getCenter(i);
+        }
 
-		return new SpaceTimeDiscretization(
-				spaceGrids,
-				refinedTimeDiscretization,
-				base.getTheta(),
-				center
-		);
-	}
+        return new SpaceTimeDiscretization(
+                spaceGrids,
+                refinedTimeDiscretization,
+                base.getTheta(),
+                center
+        );
+    }
 
-	private static CallOrPut mapCallOrPut(final double callOrPutSign) {
-		if(callOrPutSign == 1.0) {
-			return CallOrPut.CALL;
-		}
-		if(callOrPutSign == -1.0) {
-			return CallOrPut.PUT;
-		}
-		throw new IllegalArgumentException("Unknown option type");
-	}
+    private static CallOrPut mapCallOrPut(final double callOrPutSign) {
+        if (callOrPutSign == 1.0) {
+            return CallOrPut.CALL;
+        }
+        if (callOrPutSign == -1.0) {
+            return CallOrPut.PUT;
+        }
+        throw new IllegalArgumentException("Unknown option type");
+    }
 
-	public String getUnderlyingName() {
-		return underlyingName;
-	}
+    public String getUnderlyingName() {
+        return underlyingName;
+    }
 
-	public double getMaturity() {
-		return maturity;
-	}
+    public double getMaturity() {
+        return maturity;
+    }
 
-	public double getStrike() {
-		return strike;
-	}
+    public double getStrike() {
+        return strike;
+    }
 
-	public CallOrPut getCallOrPut() {
-		return callOrPutSign;
-	}
+    public CallOrPut getCallOrPut() {
+        return callOrPutSign;
+    }
 
-	public Exercise getExercise() {
-		return exercise;
-	}
+    public Exercise getExercise() {
+        return exercise;
+    }
 }

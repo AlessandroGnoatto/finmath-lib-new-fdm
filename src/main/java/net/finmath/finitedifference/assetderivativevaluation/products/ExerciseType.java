@@ -26,7 +26,7 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
  * @author Alessandro Gnoatto
  */
 public enum ExerciseType {
-	EUROPEAN,
-	BERMUDAN,
-	AMERICAN;
+    EUROPEAN,
+    BERMUDAN,
+    AMERICAN;
 }

@@ -111,22 +111,22 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final TwoStateActiveBoundaryProvider activeBoundaryProvider,
             final TwoStateActivationPolicy activationPolicy) {
 
-        if(model == null) {
+        if (model == null) {
             throw new IllegalArgumentException("Model must not be null.");
         }
-        if(product == null) {
+        if (product == null) {
             throw new IllegalArgumentException("Product must not be null.");
         }
-        if(spaceTimeDiscretization == null) {
+        if (spaceTimeDiscretization == null) {
             throw new IllegalArgumentException("Space-time discretization must not be null.");
         }
-        if(exercise == null) {
+        if (exercise == null) {
             throw new IllegalArgumentException("Exercise must not be null.");
         }
-        if(activeBoundaryProvider == null) {
+        if (activeBoundaryProvider == null) {
             throw new IllegalArgumentException("Active boundary provider must not be null.");
         }
-        if(activationPolicy == null) {
+        if (activationPolicy == null) {
             throw new IllegalArgumentException("Activation policy must not be null.");
         }
 
@@ -164,19 +164,19 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     @Override
     public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
 
-        if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+        if (!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
             throw new IllegalArgumentException(
                     "FDMThetaMethod1DTwoState currently supports only European, Bermudan, and American exercise.");
         }
 
         final BarrierType barrierType = product.getBarrierType();
-        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+        if (barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
             throw new IllegalArgumentException("FDMThetaMethod1DTwoState is only for knock-in barrier options.");
         }
 
         final double[] xGrid = spaceTimeDiscretization.getSpaceGrid(0).getGrid();
         final int nX = xGrid.length;
-        if(nX < 2) {
+        if (nX < 2) {
             throw new IllegalArgumentException("Need at least two grid points.");
         }
 
@@ -187,7 +187,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         double[] inactive = new double[nX];
         double[] active = new double[nX];
 
-        for(int i = 0; i < nX; i++) {
+        for (int i = 0; i < nX; i++) {
             final double x = xGrid[i];
             final double payoff = valueAtMaturity.applyAsDouble(x);
 
@@ -201,11 +201,11 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         }
 
         final double[][] solutionSurface = new double[nX][timeLength];
-        for(int i = 0; i < nX; i++) {
+        for (int i = 0; i < nX; i++) {
             solutionSurface[i][0] = inactive[i];
         }
 
-        for(int m = 0; m < numberOfTimeSteps; m++) {
+        for (int m = 0; m < numberOfTimeSteps; m++) {
 
             final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
@@ -222,7 +222,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                     FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
 
             final double[] nextActive;
-            if(exercise.isAmerican() && isExerciseDate) {
+            if (exercise.isAmerican() && isExerciseDate) {
                 nextActive = solveVanillaStepAmerican(
                         xGrid,
                         active,
@@ -233,8 +233,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                         upperActiveBoundary,
                         valueAtMaturity
                 );
-            }
-            else {
+            } else {
                 final double[] nextActiveContinuation = solveVanillaStep(
                         xGrid,
                         active,
@@ -245,7 +244,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                         upperActiveBoundary
                 );
 
-                if(exercise.isBermudan() && isExerciseDate) {
+                if (exercise.isBermudan() && isExerciseDate) {
                     nextActive = applyBermudanExerciseProjection(
                             nextActiveContinuation,
                             xGrid,
@@ -253,15 +252,14 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                             lowerActiveBoundary,
                             upperActiveBoundary
                     );
-                }
-                else {
+                } else {
                     nextActive = nextActiveContinuation;
                 }
             }
 
             final double[] nextInactive = new double[nX];
 
-            switch(barrierType) {
+            switch (barrierType) {
             case DOWN_IN:
                 fillDownInInactiveStep(
                         xGrid,
@@ -297,7 +295,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             active = nextActive;
             inactive = nextInactive;
 
-            for(int i = 0; i < nX; i++) {
+            for (int i = 0; i < nX; i++) {
                 solutionSurface[i][m + 1] = inactive[i];
             }
         }
@@ -310,7 +308,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
         final double[] xGrid = spaceTimeDiscretization.getSpaceGrid(0).getGrid();
 
-        if(valueAtMaturity.length != xGrid.length) {
+        if (valueAtMaturity.length != xGrid.length) {
             throw new IllegalArgumentException("Terminal vector size does not match grid size.");
         }
 
@@ -336,7 +334,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         final int timeIndex = spaceTimeDiscretization.getTimeDiscretization().getTimeIndexNearestLessOrEqual(tau);
 
         final double[] column = new double[values.length];
-        for(int i = 0; i < values.length; i++) {
+        for (int i = 0; i < values.length; i++) {
             column[i] = values[i][timeIndex];
         }
         return column;
@@ -354,7 +352,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final double deltaTau,
             final double currentTime) {
 
-        for(int i = 0; i <= barrierIndex; i++) {
+        for (int i = 0; i <= barrierIndex; i++) {
             inactiveNext[i] = activationPolicy.getAlreadyHitValue(
                     currentTime,
                     xGrid[i],
@@ -362,14 +360,14 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             );
         }
 
-        if(barrierIndex == xGrid.length - 1) {
+        if (barrierIndex == xGrid.length - 1) {
             return;
         }
 
         final double[] subGrid = sliceGrid(xGrid, barrierIndex, xGrid.length - 1);
         final double[] previousSub = new double[subGrid.length];
 
-        for(int j = 0; j < subGrid.length; j++) {
+        for (int j = 0; j < subGrid.length; j++) {
             previousSub[j] = inactivePrevious[barrierIndex + j];
         }
 
@@ -396,11 +394,11 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                 interfaceValue,
                 discountedNoHitValue);
 
-        for(int j = 0; j < nextSub.length; j++) {
+        for (int j = 0; j < nextSub.length; j++) {
             inactiveNext[barrierIndex + j] = nextSub[j];
         }
 
-        for(int i = 0; i <= barrierIndex; i++) {
+        for (int i = 0; i <= barrierIndex; i++) {
             inactiveNext[i] = activationPolicy.getAlreadyHitValue(
                     currentTime,
                     xGrid[i],
@@ -421,7 +419,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final double deltaTau,
             final double currentTime) {
 
-        for(int i = barrierIndex; i < xGrid.length; i++) {
+        for (int i = barrierIndex; i < xGrid.length; i++) {
             inactiveNext[i] = activationPolicy.getAlreadyHitValue(
                     currentTime,
                     xGrid[i],
@@ -429,14 +427,14 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             );
         }
 
-        if(barrierIndex == 0) {
+        if (barrierIndex == 0) {
             return;
         }
 
         final double[] subGrid = sliceGrid(xGrid, 0, barrierIndex);
         final double[] previousSub = new double[subGrid.length];
 
-        for(int j = 0; j < subGrid.length; j++) {
+        for (int j = 0; j < subGrid.length; j++) {
             previousSub[j] = inactivePrevious[j];
         }
 
@@ -463,11 +461,11 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                 discountedNoHitValue,
                 interfaceValue);
 
-        for(int j = 0; j < nextSub.length; j++) {
+        for (int j = 0; j < nextSub.length; j++) {
             inactiveNext[j] = nextSub[j];
         }
 
-        for(int i = barrierIndex; i < xGrid.length; i++) {
+        for (int i = barrierIndex; i < xGrid.length; i++) {
             inactiveNext[i] = activationPolicy.getAlreadyHitValue(
                     currentTime,
                     xGrid[i],
@@ -487,16 +485,16 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
         final int n = xGrid.length;
 
-        if(n != previousValues.length) {
+        if (n != previousValues.length) {
             throw new IllegalArgumentException("Grid and solution vector size mismatch.");
         }
 
-        if(n == 1) {
-            return new double[] { lowerBoundaryValue };
+        if (n == 1) {
+            return new double[] {lowerBoundaryValue };
         }
 
-        if(n == 2) {
-            return new double[] { lowerBoundaryValue, upperBoundaryValue };
+        if (n == 2) {
+            return new double[] {lowerBoundaryValue, upperBoundaryValue };
         }
 
         final double theta = spaceTimeDiscretization.getTheta();
@@ -553,14 +551,14 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
      */
     private double getDiscountedNoHitValue(final double currentTime) {
 
-        if(product.getInactiveValueAtMaturity() == 0.0) {
+        if (product.getInactiveValueAtMaturity() == 0.0) {
             return 0.0;
         }
 
         final double t = Math.max(currentTime, EPSILON);
         final double maturity = product.getMaturity();
 
-        if(t >= maturity) {
+        if (t >= maturity) {
             return product.getInactiveValueAtMaturity();
         }
 
@@ -571,8 +569,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     }
 
     private int findBarrierIndex(final double[] grid, final double barrier) {
-        for(int i = 0; i < grid.length; i++) {
-            if(Math.abs(grid[i] - barrier) < 1E-12) {
+        for (int i = 0; i < grid.length; i++) {
+            if (Math.abs(grid[i] - barrier) < 1E-12) {
                 return i;
             }
         }
@@ -583,7 +581,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
     private double[] sliceGrid(final double[] grid, final int startInclusive, final int endInclusive) {
         final double[] result = new double[endInclusive - startInclusive + 1];
-        for(int i = 0; i < result.length; i++) {
+        for (int i = 0; i < result.length; i++) {
             result[i] = grid[startInclusive + i];
         }
         return result;
@@ -594,7 +592,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final BarrierType barrierType,
             final double barrier) {
 
-        switch(barrierType) {
+        switch (barrierType) {
         case DOWN_IN:
             return x <= barrier;
         case UP_IN:
@@ -616,16 +614,16 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
         final int n = xGrid.length;
 
-        if(n != previousValues.length) {
+        if (n != previousValues.length) {
             throw new IllegalArgumentException("Grid and solution vector size mismatch.");
         }
 
-        if(n == 1) {
-            return new double[] { lowerBoundaryValue };
+        if (n == 1) {
+            return new double[] {lowerBoundaryValue };
         }
 
-        if(n == 2) {
-            return new double[] { lowerBoundaryValue, upperBoundaryValue };
+        if (n == 2) {
+            return new double[] {lowerBoundaryValue, upperBoundaryValue };
         }
 
         final double theta = spaceTimeDiscretization.getTheta();
@@ -693,14 +691,12 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
         final double[] exercisedValues = continuationValues.clone();
 
-        for(int i = 0; i < exercisedValues.length; i++) {
-            if(i == 0) {
+        for (int i = 0; i < exercisedValues.length; i++) {
+            if (i == 0) {
                 exercisedValues[i] = lowerBoundaryValue;
-            }
-            else if(i == exercisedValues.length - 1) {
+            } else if (i == exercisedValues.length - 1) {
                 exercisedValues[i] = upperBoundaryValue;
-            }
-            else {
+            } else {
                 exercisedValues[i] = Math.max(exercisedValues[i], exerciseValue.applyAsDouble(xGrid[i]));
             }
         }
@@ -716,14 +712,12 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
         final double[] obstacle = new double[xGrid.length];
 
-        for(int i = 0; i < xGrid.length; i++) {
-            if(i == 0) {
+        for (int i = 0; i < xGrid.length; i++) {
+            if (i == 0) {
                 obstacle[i] = lowerBoundaryValue;
-            }
-            else if(i == xGrid.length - 1) {
+            } else if (i == xGrid.length - 1) {
                 obstacle[i] = upperBoundaryValue;
-            }
-            else {
+            } else {
                 obstacle[i] = exerciseValue.applyAsDouble(xGrid[i]);
             }
         }
@@ -732,8 +726,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     }
 
     private int findGridIndex(final double[] grid, final double value) {
-        for(int i = 0; i < grid.length; i++) {
-            if(Math.abs(grid[i] - value) < 1E-12) {
+        for (int i = 0; i < grid.length; i++) {
+            if (Math.abs(grid[i] - value) < 1E-12) {
                 return i;
             }
         }

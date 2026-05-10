@@ -78,7 +78,7 @@ public class DoubleBarrierBinaryOptionHestonModelBoundary implements FiniteDiffe
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        switch(option.getDoubleBarrierType()) {
+        switch (option.getDoubleBarrierType()) {
         case KNOCK_OUT:
             return 0.0;
         case KNOCK_IN:
@@ -96,7 +96,7 @@ public class DoubleBarrierBinaryOptionHestonModelBoundary implements FiniteDiffe
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        switch(option.getDoubleBarrierType()) {
+        switch (option.getDoubleBarrierType()) {
         case KNOCK_OUT:
             return 0.0;
         case KNOCK_IN:
@@ -114,13 +114,13 @@ public class DoubleBarrierBinaryOptionHestonModelBoundary implements FiniteDiffe
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        if(option.getCashPayoff() == 0.0) {
+        if (option.getCashPayoff() == 0.0) {
             return 0.0;
         }
 
         final double effectiveTime = Math.max(time, EPSILON);
 
-        if(effectiveTime >= option.getMaturity()) {
+        if (effectiveTime >= option.getMaturity()) {
             return option.getCashPayoff();
         }
 

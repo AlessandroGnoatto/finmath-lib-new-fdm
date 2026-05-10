@@ -16,7 +16,7 @@ import net.finmath.modelling.products.CallOrPut;
  * state constraints. Therefore, the outer-domain boundaries use the same
  * vanilla asymptotics as {@code EuropeanOption}.
  * </p>
- * 
+ *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierOptionCevModelBoundary implements FiniteDifferenceBoundary {
@@ -38,12 +38,11 @@ public class DoubleBarrierOptionCevModelBoundary implements FiniteDifferenceBoun
         final DoubleBarrierOption option = (DoubleBarrierOption) product;
         final CallOrPut sign = option.getCallOrPut();
 
-        if(sign == CallOrPut.CALL) {
+        if (sign == CallOrPut.CALL) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };
-        }
-        else {
+        } else {
             time = Math.max(time, EPSILON);
 
             final double discountFactorRiskFree =
@@ -72,7 +71,7 @@ public class DoubleBarrierOptionCevModelBoundary implements FiniteDifferenceBoun
         final DoubleBarrierOption option = (DoubleBarrierOption) product;
         final CallOrPut sign = option.getCallOrPut();
 
-        if(sign == CallOrPut.CALL) {
+        if (sign == CallOrPut.CALL) {
             time = Math.max(time, EPSILON);
 
             final double discountFactorRiskFree =
@@ -99,8 +98,7 @@ public class DoubleBarrierOptionCevModelBoundary implements FiniteDifferenceBoun
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(value)
             };
-        }
-        else {
+        } else {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };

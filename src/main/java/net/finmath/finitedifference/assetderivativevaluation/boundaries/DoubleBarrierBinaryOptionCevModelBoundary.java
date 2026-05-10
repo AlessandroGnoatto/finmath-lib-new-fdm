@@ -9,7 +9,7 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 /**
  * Boundary conditions for {@link DoubleBarrierBinaryOption} under
  * {@link FDMCevModel}.
- * 
+ *
  * @author Alessandro Gnoatto
  */
 public class DoubleBarrierBinaryOptionCevModelBoundary implements FiniteDifferenceBoundary {
@@ -54,7 +54,7 @@ public class DoubleBarrierBinaryOptionCevModelBoundary implements FiniteDifferen
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        switch(option.getDoubleBarrierType()) {
+        switch (option.getDoubleBarrierType()) {
         case KNOCK_OUT:
             return 0.0;
         case KNOCK_IN:
@@ -72,7 +72,7 @@ public class DoubleBarrierBinaryOptionCevModelBoundary implements FiniteDifferen
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        switch(option.getDoubleBarrierType()) {
+        switch (option.getDoubleBarrierType()) {
         case KNOCK_OUT:
             return 0.0;
         case KNOCK_IN:
@@ -90,13 +90,13 @@ public class DoubleBarrierBinaryOptionCevModelBoundary implements FiniteDifferen
             final DoubleBarrierBinaryOption option,
             final double time) {
 
-        if(option.getCashPayoff() == 0.0) {
+        if (option.getCashPayoff() == 0.0) {
             return 0.0;
         }
 
         final double effectiveTime = Math.max(time, EPSILON);
 
-        if(effectiveTime >= option.getMaturity()) {
+        if (effectiveTime >= option.getMaturity()) {
             return option.getCashPayoff();
         }
 

@@ -10,11 +10,11 @@ import net.finmath.finitedifference.assetderivativevaluation.products.FiniteDiff
  */
 public interface FiniteDifferenceBoundaryFactory {
 
-	/**
-	 * Creates a {@link FiniteDifferenceBoundary} for the specified product.
-	 *
-	 * @param product The finite difference product.
-	 * @return The corresponding boundary implementation.
-	 */
-	FiniteDifferenceBoundary createBoundary(FiniteDifferenceEquityProduct product);
+    /**
+     * Creates a {@link FiniteDifferenceBoundary} for the specified product.
+     *
+     * @param product The finite difference product.
+     * @return The corresponding boundary implementation.
+     */
+    FiniteDifferenceBoundary createBoundary(FiniteDifferenceEquityProduct product);
 }

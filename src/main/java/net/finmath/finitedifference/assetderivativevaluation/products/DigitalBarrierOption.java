@@ -56,7 +56,7 @@ import net.finmath.time.TimeDiscretization;
  *   <li>for discretely monitored knock-ins with Bermudan/American exercise, only the activated state carries exercise rights; the pre-hit state is solved as a European continuation problem,</li>
  *   <li>2D discrete monitoring is supported for Heston / SABR models.</li>
  * </ul>
- * 
+ *
  * @author Alessandro Gnoatto
  */
 public class DigitalBarrierOption implements
@@ -139,29 +139,29 @@ public class DigitalBarrierOption implements
             final MonitoringType monitoringType,
             final double[] monitoringTimes) {
 
-        if(callOrPutSign == null) {
+        if (callOrPutSign == null) {
             throw new IllegalArgumentException("Option type must not be null.");
         }
-        if(barrierType == null) {
+        if (barrierType == null) {
             throw new IllegalArgumentException("Barrier type must not be null.");
         }
-        if(digitalPayoffType == null) {
+        if (digitalPayoffType == null) {
             throw new IllegalArgumentException("Digital payoff type must not be null.");
         }
-        if(exercise == null) {
+        if (exercise == null) {
             throw new IllegalArgumentException("Exercise must not be null.");
         }
-        if(monitoringType == null) {
+        if (monitoringType == null) {
             throw new IllegalArgumentException("Monitoring type must not be null.");
         }
-        if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+        if (!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
             throw new IllegalArgumentException(
                     "DigitalBarrierOption currently supports only European, Bermudan, and American exercise.");
         }
-        if(maturity < 0.0) {
+        if (maturity < 0.0) {
             throw new IllegalArgumentException("Maturity must be non-negative.");
         }
-        if(digitalPayoffType == DigitalPayoffType.CASH_OR_NOTHING && cashPayoff < 0.0) {
+        if (digitalPayoffType == DigitalPayoffType.CASH_OR_NOTHING && cashPayoff < 0.0) {
             throw new IllegalArgumentException("Cash payoff must be non-negative.");
         }
 
@@ -389,7 +389,7 @@ public class DigitalBarrierOption implements
     }
 
     private ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> getDiscreteKnockInEventStateStack() {
-        if(discreteKnockInEventStateStack == null) {
+        if (discreteKnockInEventStateStack == null) {
             discreteKnockInEventStateStack = ThreadLocal.withInitial(ArrayDeque::new);
         }
         return discreteKnockInEventStateStack;
@@ -402,13 +402,13 @@ public class DigitalBarrierOption implements
     private void popDiscreteKnockInEventState() {
         final ArrayDeque<DiscreteKnockInEventState> stack = getDiscreteKnockInEventStateStack().get();
 
-        if(stack.isEmpty()) {
+        if (stack.isEmpty()) {
             throw new IllegalStateException("No discrete knock-in event state to pop.");
         }
 
         stack.pop();
 
-        if(stack.isEmpty()) {
+        if (stack.isEmpty()) {
             getDiscreteKnockInEventStateStack().remove();
         }
     }
@@ -428,11 +428,11 @@ public class DigitalBarrierOption implements
                 .getTimeIndexNearestLessOrEqual(tau);
 
         final double[] column = new double[values.length];
-        for(int i = 0; i < values.length; i++) {
+        for (int i = 0; i < values.length; i++) {
             column[i] = values[i][timeIndex];
         }
 
-        if(usesDiscreteMonitoring() && isMonitoringTime(evaluationTime)) {
+        if (usesDiscreteMonitoring() && isMonitoringTime(evaluationTime)) {
             return applyEvaluationTimeDiscreteCondition(evaluationTime, column, model);
         }
 
@@ -444,19 +444,19 @@ public class DigitalBarrierOption implements
 
         validateProductConfiguration(model);
 
-        if(!usesDiscreteMonitoring()) {
-            if(isDegenerateZeroCase()) {
+        if (!usesDiscreteMonitoring()) {
+            if (isDegenerateZeroCase()) {
                 return buildZeroValueSurface(model);
             }
 
-            if(isDegenerateVanillaCase()) {
+            if (isDegenerateVanillaCase()) {
                 return createVanillaDigitalOption().getValues(model);
             }
         }
 
         final FiniteDifferenceEquityModel effectiveModel = getEffectiveModelForValuation(model);
 
-        switch(getPricingMode(effectiveModel)) {
+        switch (getPricingMode(effectiveModel)) {
         case DIRECT_OUT:
             return priceOutOptionDirectly(effectiveModel);
 
@@ -488,12 +488,12 @@ public class DigitalBarrierOption implements
         final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
         final double[] adjustedValues = valuesAtEvaluationTime.clone();
 
-        if(dims == 1) {
+        if (dims == 1) {
             final double[] xGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
 
-            if(isOutOption()) {
-                for(int i = 0; i < xGrid.length; i++) {
-                    if(isBarrierBreached(xGrid[i])) {
+            if (isOutOption()) {
+                for (int i = 0; i < xGrid.length; i++) {
+                    if (isBarrierBreached(xGrid[i])) {
                         adjustedValues[i] = 0.0;
                     }
                 }
@@ -503,23 +503,23 @@ public class DigitalBarrierOption implements
             final double[] activatedValuesAtEvaluationTime =
                     createActivatedVanillaDigitalOption().getValue(evaluationTime, model);
 
-            for(int i = 0; i < xGrid.length; i++) {
-                if(isBarrierBreached(xGrid[i])) {
+            for (int i = 0; i < xGrid.length; i++) {
+                if (isBarrierBreached(xGrid[i])) {
                     adjustedValues[i] = activatedValuesAtEvaluationTime[i];
                 }
             }
             return adjustedValues;
         }
 
-        if(dims == 2) {
+        if (dims == 2) {
             final double[] x0 = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
             final double[] x1 = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
             final int n0 = x0.length;
 
-            if(isOutOption()) {
-                for(int j = 0; j < x1.length; j++) {
-                    for(int i = 0; i < x0.length; i++) {
-                        if(isBarrierBreached(x0[i])) {
+            if (isOutOption()) {
+                for (int j = 0; j < x1.length; j++) {
+                    for (int i = 0; i < x0.length; i++) {
+                        if (isBarrierBreached(x0[i])) {
                             adjustedValues[flatten(i, j, n0)] = 0.0;
                         }
                     }
@@ -530,9 +530,9 @@ public class DigitalBarrierOption implements
             final double[] activatedValuesAtEvaluationTime =
                     createActivatedVanillaDigitalOption().getValue(evaluationTime, model);
 
-            for(int j = 0; j < x1.length; j++) {
-                for(int i = 0; i < x0.length; i++) {
-                    if(isBarrierBreached(x0[i])) {
+            for (int j = 0; j < x1.length; j++) {
+                for (int i = 0; i < x0.length; i++) {
+                    if (isBarrierBreached(x0[i])) {
                         adjustedValues[flatten(i, j, n0)] =
                                 activatedValuesAtEvaluationTime[flatten(i, j, n0)];
                     }
@@ -545,13 +545,13 @@ public class DigitalBarrierOption implements
     }
 
     private boolean isMonitoringTime(final double time) {
-        if(!usesDiscreteMonitoring() || monitoringTimes == null) {
+        if (!usesDiscreteMonitoring() || monitoringTimes == null) {
             return false;
         }
 
         final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
-        for(final double monitoringTime : monitoringTimes) {
-            if(Math.abs(monitoringTime - time) <= tolerance) {
+        for (final double monitoringTime : monitoringTimes) {
+            if (Math.abs(monitoringTime - time) <= tolerance) {
                 return true;
             }
         }
@@ -560,7 +560,7 @@ public class DigitalBarrierOption implements
 
     @Override
     public double[] getEventTimes() {
-        if(!usesDiscreteMonitoring()) {
+        if (!usesDiscreteMonitoring()) {
             return new double[0];
         }
         return monitoringTimes == null ? new double[0] : monitoringTimes.clone();
@@ -572,46 +572,46 @@ public class DigitalBarrierOption implements
             final double[] valuesAfterEvent,
             final FiniteDifferenceEquityModel model) {
 
-        if(!usesDiscreteMonitoring()) {
+        if (!usesDiscreteMonitoring()) {
             return valuesAfterEvent;
         }
 
         final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
-        if(dims == 1) {
+        if (dims == 1) {
             final double[] xGrid = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
-            if(valuesAfterEvent.length != xGrid.length) {
+            if (valuesAfterEvent.length != xGrid.length) {
                 throw new IllegalArgumentException(
                         "Value vector length does not match the one-dimensional spatial grid.");
             }
 
-            if(isOutOption()) {
+            if (isOutOption()) {
                 return applyDiscreteOutEvent1D(valuesAfterEvent, xGrid);
             }
 
             final DiscreteKnockInEventState state = getCurrentDiscreteKnockInEventState();
-            if(state == null) {
+            if (state == null) {
                 return valuesAfterEvent;
             }
 
             return applyDiscreteInEvent1D(time, valuesAfterEvent, xGrid, state);
         }
 
-        if(dims == 2) {
+        if (dims == 2) {
             final double[] x0 = model.getSpaceTimeDiscretization().getSpaceGrid(0).getGrid();
             final double[] x1 = model.getSpaceTimeDiscretization().getSpaceGrid(1).getGrid();
 
-            if(valuesAfterEvent.length != x0.length * x1.length) {
+            if (valuesAfterEvent.length != x0.length * x1.length) {
                 throw new IllegalArgumentException(
                         "Value vector length does not match the two-dimensional spatial grid.");
             }
 
-            if(isOutOption()) {
+            if (isOutOption()) {
                 return applyDiscreteOutEvent2D(valuesAfterEvent, x0, x1);
             }
 
             final DiscreteKnockInEventState state = getCurrentDiscreteKnockInEventState();
-            if(state == null) {
+            if (state == null) {
                 return valuesAfterEvent;
             }
 
@@ -627,8 +627,8 @@ public class DigitalBarrierOption implements
 
         final double[] valuesBeforeEvent = valuesAfterEvent.clone();
 
-        for(int i = 0; i < xGrid.length; i++) {
-            if(isBarrierBreached(xGrid[i])) {
+        for (int i = 0; i < xGrid.length; i++) {
+            if (isBarrierBreached(xGrid[i])) {
                 valuesBeforeEvent[i] = 0.0;
             }
         }
@@ -646,14 +646,14 @@ public class DigitalBarrierOption implements
         final double[] valuesBeforeEvent = valuesAfterEvent.clone();
         final boolean isExerciseTime = exercise.isExerciseAllowed(time);
 
-        for(int i = 0; i < xGrid.length; i++) {
-            if(!isBarrierBreached(xGrid[i])) {
+        for (int i = 0; i < xGrid.length; i++) {
+            if (!isBarrierBreached(xGrid[i])) {
                 continue;
             }
 
             double value = activatedVector[i];
 
-            if(isExerciseTime) {
+            if (isExerciseTime) {
                 value = Math.max(value, pointwiseImmediateExercisePayoff(xGrid[i]));
             }
 
@@ -671,9 +671,9 @@ public class DigitalBarrierOption implements
         final double[] valuesBeforeEvent = valuesAfterEvent.clone();
         final int n0 = x0.length;
 
-        for(int j = 0; j < x1.length; j++) {
-            for(int i = 0; i < x0.length; i++) {
-                if(isBarrierBreached(x0[i])) {
+        for (int j = 0; j < x1.length; j++) {
+            for (int i = 0; i < x0.length; i++) {
+                if (isBarrierBreached(x0[i])) {
                     valuesBeforeEvent[flatten(i, j, n0)] = 0.0;
                 }
             }
@@ -694,15 +694,15 @@ public class DigitalBarrierOption implements
         final boolean isExerciseTime = exercise.isExerciseAllowed(time);
         final int n0 = x0.length;
 
-        for(int j = 0; j < x1.length; j++) {
-            for(int i = 0; i < x0.length; i++) {
-                if(!isBarrierBreached(x0[i])) {
+        for (int j = 0; j < x1.length; j++) {
+            for (int i = 0; i < x0.length; i++) {
+                if (!isBarrierBreached(x0[i])) {
                     continue;
                 }
 
                 double value = activatedVector[flatten(i, j, n0)];
 
-                if(isExerciseTime) {
+                if (isExerciseTime) {
                     value = Math.max(value, pointwiseImmediateExercisePayoff(x0[i]));
                 }
 
@@ -717,7 +717,7 @@ public class DigitalBarrierOption implements
             final double time,
             final DiscreteKnockInEventState state) {
 
-        if(state == null || state.activatedVectorsAtEventTimes == null) {
+        if (state == null || state.activatedVectorsAtEventTimes == null) {
             throw new IllegalStateException(
                     "Discrete knock-in event condition requires cached activated vectors."
             );
@@ -725,8 +725,8 @@ public class DigitalBarrierOption implements
 
         final double tolerance = DiscreteMonitoringSupport.DEFAULT_MONITORING_TIME_TOLERANCE;
 
-        for(final Map.Entry<Double, double[]> entry : state.activatedVectorsAtEventTimes.entrySet()) {
-            if(Math.abs(entry.getKey() - time) <= tolerance) {
+        for (final Map.Entry<Double, double[]> entry : state.activatedVectorsAtEventTimes.entrySet()) {
+            if (Math.abs(entry.getKey() - time) <= tolerance) {
                 return entry.getValue();
             }
         }
@@ -738,27 +738,27 @@ public class DigitalBarrierOption implements
 
     private PricingMode getPricingMode(final FiniteDifferenceEquityModel model) {
 
-        if(isOutOption()) {
+        if (isOutOption()) {
             return PricingMode.DIRECT_OUT;
         }
 
         final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
-        if(usesDiscreteMonitoring()) {
-            if(dims == 1) {
+        if (usesDiscreteMonitoring()) {
+            if (dims == 1) {
                 return PricingMode.DIRECT_IN_1D_DISCRETE_EVENT;
             }
-            if(dims == 2 && supportsDirect2DDiscreteMonitoring(model)) {
+            if (dims == 2 && supportsDirect2DDiscreteMonitoring(model)) {
                 return PricingMode.DIRECT_IN_2D_DISCRETE_EVENT;
             }
             return PricingMode.PARITY_IN_FALLBACK;
         }
 
-        if(dims == 1) {
+        if (dims == 1) {
             return PricingMode.DIRECT_IN_1D_TWO_STATE;
         }
 
-        if(dims == 2 && supportsDirect2DKnockIn(model)) {
+        if (dims == 2 && supportsDirect2DKnockIn(model)) {
             return PricingMode.DIRECT_IN_2D_PRE_HIT;
         }
 
@@ -774,10 +774,10 @@ public class DigitalBarrierOption implements
     }
 
     private PricingMode getPricingModeForCellAveraging() {
-        if(isOutOption()) {
+        if (isOutOption()) {
             return PricingMode.DIRECT_OUT;
         }
-        if(usesDiscreteMonitoring()) {
+        if (usesDiscreteMonitoring()) {
             return PricingMode.DIRECT_IN_1D_DISCRETE_EVENT;
         }
         return PricingMode.DIRECT_IN_1D_TWO_STATE;
@@ -786,12 +786,12 @@ public class DigitalBarrierOption implements
     private void validateProductConfiguration(final FiniteDifferenceEquityModel model) {
         validateBarrierInsideGrid(model);
 
-        if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+        if (!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
             throw new IllegalArgumentException(
                     "DigitalBarrierOption currently supports only European, Bermudan, and American exercise.");
         }
 
-        if(usesDiscreteMonitoring()) {
+        if (usesDiscreteMonitoring()) {
             validateDiscreteMonitoringScope(model);
         }
     }
@@ -799,16 +799,16 @@ public class DigitalBarrierOption implements
     private void validateDiscreteMonitoringScope(final FiniteDifferenceEquityModel model) {
         final int dims = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
-        if(dims == 1) {
-            if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+        if (dims == 1) {
+            if (!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
                 throw new IllegalArgumentException(
                         "Discrete monitoring for DigitalBarrierOption currently supports only European, Bermudan, and American exercise.");
             }
             return;
         }
 
-        if(dims == 2 && supportsDirect2DDiscreteMonitoring(model)) {
-            if(!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
+        if (dims == 2 && supportsDirect2DDiscreteMonitoring(model)) {
+            if (!exercise.isEuropean() && !exercise.isBermudan() && !exercise.isAmerican()) {
                 throw new IllegalArgumentException(
                         "Discrete monitoring for 2D DigitalBarrierOption currently supports only European, Bermudan, and American exercise.");
             }
@@ -825,8 +825,8 @@ public class DigitalBarrierOption implements
                 model.getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps() + 1;
 
         final double[][] zeroValues = new double[numberOfSpacePoints][numberOfTimePoints];
-        for(int i = 0; i < numberOfSpacePoints; i++) {
-            for(int j = 0; j < numberOfTimePoints; j++) {
+        for (int i = 0; i < numberOfSpacePoints; i++) {
+            for (int j = 0; j < numberOfTimePoints; j++) {
                 zeroValues[i][j] = 0.0;
             }
         }
@@ -844,11 +844,11 @@ public class DigitalBarrierOption implements
         final boolean isOneDimensional =
                 model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() == 1;
 
-        if(isOneDimensional) {
+        if (isOneDimensional) {
             final double[] terminalValues =
                     buildCellAveragedTerminalValues(model.getSpaceTimeDiscretization());
 
-            if(exercise.isEuropean()) {
+            if (exercise.isEuropean()) {
                 return solver.getValues(maturity, terminalValues);
             }
 
@@ -866,12 +866,12 @@ public class DigitalBarrierOption implements
 
         final int numberOfSpaceDimensions = model.getSpaceTimeDiscretization().getNumberOfSpaceGrids();
 
-        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+        if (barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
             throw new IllegalStateException(
                     "priceInOptionDirectly1D was called for a non knock-in barrier type.");
         }
 
-        if(numberOfSpaceDimensions != 1) {
+        if (numberOfSpaceDimensions != 1) {
             throw new IllegalArgumentException("priceInOptionDirectly1D requires a 1D model.");
         }
 
@@ -904,12 +904,12 @@ public class DigitalBarrierOption implements
 
     private double[][] priceInOptionDiscrete1D(final FiniteDifferenceEquityModel model) {
 
-        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+        if (barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
             throw new IllegalStateException(
                     "priceInOptionDiscrete1D was called for a non knock-in barrier type.");
         }
 
-        if(!usesDiscreteMonitoring()) {
+        if (!usesDiscreteMonitoring()) {
             throw new IllegalStateException(
                     "priceInOptionDiscrete1D requires discrete monitoring.");
         }
@@ -917,7 +917,7 @@ public class DigitalBarrierOption implements
         final DigitalOption activatedDigital = createActivatedVanillaDigitalOption();
 
         final Map<Double, double[]> activatedVectorsAtEventTimes = new HashMap<>();
-        for(final double eventTime : monitoringTimes) {
+        for (final double eventTime : monitoringTimes) {
             activatedVectorsAtEventTimes.put(
                     eventTime,
                     activatedDigital.getValue(eventTime, model).clone()
@@ -940,36 +940,35 @@ public class DigitalBarrierOption implements
                             model.getSpaceTimeDiscretization()
                     )
             );
-        }
-        finally {
+        } finally {
             popDiscreteKnockInEventState();
         }
     }
 
     private double[][] priceInOptionDiscrete2D(final FiniteDifferenceEquityModel model) {
 
-        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+        if (barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
             throw new IllegalStateException(
                     "priceInOptionDiscrete2D was called for a non knock-in barrier type.");
         }
 
-        if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() != 2) {
+        if (model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() != 2) {
             throw new IllegalArgumentException("priceInOptionDiscrete2D requires a 2D model.");
         }
 
-        if(!usesDiscreteMonitoring()) {
+        if (!usesDiscreteMonitoring()) {
             throw new IllegalStateException(
                     "priceInOptionDiscrete2D requires discrete monitoring.");
         }
 
-        if(!supportsDirect2DDiscreteMonitoring(model)) {
+        if (!supportsDirect2DDiscreteMonitoring(model)) {
             return priceInOptionByParity(model);
         }
 
         final DigitalOption activatedDigital = createActivatedVanillaDigitalOption();
 
         final Map<Double, double[]> activatedVectorsAtEventTimes = new HashMap<>();
-        for(final double eventTime : monitoringTimes) {
+        for (final double eventTime : monitoringTimes) {
             activatedVectorsAtEventTimes.put(
                     eventTime,
                     activatedDigital.getValue(eventTime, model).clone()
@@ -987,24 +986,23 @@ public class DigitalBarrierOption implements
             );
 
             return solver.getValues(maturity, assetValue -> getInactiveValueAtMaturity());
-        }
-        finally {
+        } finally {
             popDiscreteKnockInEventState();
         }
     }
 
     private double[][] priceInOptionDirectly2D(final FiniteDifferenceEquityModel model) {
 
-        if(barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
+        if (barrierType != BarrierType.DOWN_IN && barrierType != BarrierType.UP_IN) {
             throw new IllegalStateException(
                     "priceInOptionDirectly2D was called for a non knock-in barrier type.");
         }
 
-        if(model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() != 2) {
+        if (model.getSpaceTimeDiscretization().getNumberOfSpaceGrids() != 2) {
             throw new IllegalArgumentException("priceInOptionDirectly2D requires a 2D model.");
         }
 
-        if(!supportsDirect2DKnockIn(model)) {
+        if (!supportsDirect2DKnockIn(model)) {
             return priceInOptionByParity(model);
         }
 
@@ -1062,13 +1060,13 @@ public class DigitalBarrierOption implements
 
         final SpaceTimeDiscretization base = model.getSpaceTimeDiscretization();
 
-        if(!exercise.isBermudan() && !usesDiscreteMonitoring()) {
+        if (!exercise.isBermudan() && !usesDiscreteMonitoring()) {
             return base;
         }
 
         TimeDiscretization refinedTimeDiscretization = base.getTimeDiscretization();
 
-        if(exercise.isBermudan()) {
+        if (exercise.isBermudan()) {
             refinedTimeDiscretization =
                     FiniteDifferenceExerciseUtil.refineTimeDiscretization(
                             refinedTimeDiscretization,
@@ -1076,7 +1074,7 @@ public class DigitalBarrierOption implements
                     );
         }
 
-        if(usesDiscreteMonitoring()) {
+        if (usesDiscreteMonitoring()) {
             refinedTimeDiscretization =
                     DiscreteMonitoringSupport.refineTimeDiscretizationWithMonitoring(
                             refinedTimeDiscretization,
@@ -1085,12 +1083,12 @@ public class DigitalBarrierOption implements
                     );
         }
 
-        if(base.getNumberOfSpaceGrids() == 1) {
+        if (base.getNumberOfSpaceGrids() == 1) {
             return new SpaceTimeDiscretization(
                     base.getSpaceGrid(0),
                     refinedTimeDiscretization,
                     base.getTheta(),
-                    new double[] { base.getCenter(0) }
+                    new double[] {base.getCenter(0) }
             );
         }
 
@@ -1098,7 +1096,7 @@ public class DigitalBarrierOption implements
         final Grid[] spaceGrids = new Grid[numberOfSpaceGrids];
         final double[] center = new double[numberOfSpaceGrids];
 
-        for(int i = 0; i < numberOfSpaceGrids; i++) {
+        for (int i = 0; i < numberOfSpaceGrids; i++) {
             spaceGrids[i] = base.getSpaceGrid(i);
             center[i] = base.getCenter(i);
         }
@@ -1117,7 +1115,7 @@ public class DigitalBarrierOption implements
         final SpaceTimeDiscretization effectiveDiscretization =
                 getValuationSpaceTimeDiscretization(model);
 
-        if(effectiveDiscretization == model.getSpaceTimeDiscretization()) {
+        if (effectiveDiscretization == model.getSpaceTimeDiscretization()) {
             return model;
         }
 
@@ -1130,7 +1128,7 @@ public class DigitalBarrierOption implements
         final SpaceTimeDiscretization effectiveDiscretization =
                 getValuationSpaceTimeDiscretization(model);
 
-        if(effectiveDiscretization == model.getSpaceTimeDiscretization()) {
+        if (effectiveDiscretization == model.getSpaceTimeDiscretization()) {
             return model;
         }
 
@@ -1143,7 +1141,7 @@ public class DigitalBarrierOption implements
         final SpaceTimeDiscretization base = barrierModel.getSpaceTimeDiscretization();
         final double[] baseSpotGrid = base.getSpaceGrid(0).getGrid();
 
-        if(baseSpotGrid.length < 2) {
+        if (baseSpotGrid.length < 2) {
             throw new IllegalArgumentException("Barrier grid must contain at least two points.");
         }
 
@@ -1154,14 +1152,14 @@ public class DigitalBarrierOption implements
                 && callOrPutSign == CallOrPut.PUT;
 
         boolean barrierAlreadyOnSpotGrid = false;
-        for(final double s : baseSpotGrid) {
-            if(Math.abs(s - barrierValue) <= GRID_TOLERANCE) {
+        for (final double s : baseSpotGrid) {
+            if (Math.abs(s - barrierValue) <= GRID_TOLERANCE) {
                 barrierAlreadyOnSpotGrid = true;
                 break;
             }
         }
 
-        if(barrierAlreadyOnSpotGrid && !forceWidenedActivatedGrid) {
+        if (barrierAlreadyOnSpotGrid && !forceWidenedActivatedGrid) {
             return barrierModel;
         }
 
@@ -1180,7 +1178,7 @@ public class DigitalBarrierOption implements
 
         final SpaceTimeDiscretization activatedDiscretization =
                 new SpaceTimeDiscretization(
-                        new Grid[] { activatedSpotGrid, preservedSecondGrid },
+                        new Grid[] {activatedSpotGrid, preservedSecondGrid },
                         base.getTimeDiscretization(),
                         base.getTheta(),
                         barrierModel.getInitialValue()
@@ -1223,19 +1221,17 @@ public class DigitalBarrierOption implements
         final int numberOfSpotSteps;
         final int barrierSpotIndex;
 
-        if(barrierType == BarrierType.DOWN_IN) {
+        if (barrierType == BarrierType.DOWN_IN) {
             spotMin = barrierValue;
             numberOfSpotSteps = (int)Math.ceil((originalSpotGrid[originalSpotGrid.length - 1] - barrierValue) / deltaS);
             spotMax = barrierValue + numberOfSpotSteps * deltaS;
             barrierSpotIndex = 0;
-        }
-        else if(barrierType == BarrierType.UP_IN) {
+        } else if (barrierType == BarrierType.UP_IN) {
             spotMax = barrierValue;
             numberOfSpotSteps = (int)Math.ceil((barrierValue - originalSpotGrid[0]) / deltaS);
             spotMin = barrierValue - numberOfSpotSteps * deltaS;
             barrierSpotIndex = numberOfSpotSteps;
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Pre-hit specification requested for non knock-in type.");
         }
 
@@ -1271,7 +1267,7 @@ public class DigitalBarrierOption implements
 
         final SpaceTimeDiscretization preHitDiscretization =
                 new SpaceTimeDiscretization(
-                        new Grid[] { preHitSpotGrid, preservedSecondGrid },
+                        new Grid[] {preHitSpotGrid, preservedSecondGrid },
                         base.getTimeDiscretization(),
                         base.getTheta(),
                         barrierModel.getInitialValue()
@@ -1293,9 +1289,9 @@ public class DigitalBarrierOption implements
         final int timeCount = activatedValues[0].length;
         final double[][] traceValues = new double[x1.length][timeCount];
 
-        for(int j = 0; j < x1.length; j++) {
+        for (int j = 0; j < x1.length; j++) {
             final int k = flatten(barrierIndex, j, x0.length);
-            for(int timeIndex = 0; timeIndex < timeCount; timeIndex++) {
+            for (int timeIndex = 0; timeIndex < timeCount; timeIndex++) {
                 traceValues[j][timeIndex] = activatedValues[k][timeIndex];
             }
         }
@@ -1309,8 +1305,8 @@ public class DigitalBarrierOption implements
     }
 
     private int findExactGridIndex(final double[] grid, final double x) {
-        for(int i = 0; i < grid.length; i++) {
-            if(Math.abs(grid[i] - x) <= GRID_TOLERANCE) {
+        for (int i = 0; i < grid.length; i++) {
+            if (Math.abs(grid[i] - x) <= GRID_TOLERANCE) {
                 return i;
             }
         }
@@ -1346,8 +1342,8 @@ public class DigitalBarrierOption implements
         final int numberOfColumns = activatedOnOriginalGrid[0].length;
         final double[][] result = new double[x0.length * x1.length][numberOfColumns];
 
-        for(int j = 0; j < x1.length; j++) {
-            for(int i = 0; i < x0.length; i++) {
+        for (int j = 0; j < x1.length; j++) {
+            for (int i = 0; i < x0.length; i++) {
                 final boolean alreadyHit =
                         barrierType == BarrierType.DOWN_IN
                                 ? x0[i] <= barrierValue
@@ -1356,7 +1352,7 @@ public class DigitalBarrierOption implements
                 final int k = flatten(i, j, x0.length);
                 final double[][] source = alreadyHit ? activatedOnOriginalGrid : preHitOnOriginalGrid;
 
-                for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+                for (int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
                     result[k][timeIndex] = source[k][timeIndex];
                 }
             }
@@ -1380,14 +1376,14 @@ public class DigitalBarrierOption implements
 
         final int dims = barrierDiscretization.getNumberOfSpaceGrids();
 
-        if(dims == 1) {
+        if (dims == 1) {
             final double[] barrierGrid = barrierDiscretization.getSpaceGrid(0).getGrid();
             final double[] vanillaGrid = vanillaDiscretization.getSpaceGrid(0).getGrid();
 
             final int numberOfColumns = outValues[0].length;
             final double[][] inValues = new double[outValues.length][numberOfColumns];
 
-            for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+            for (int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
                 final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
                         vanillaGrid,
                         getColumn(vanillaValues, timeIndex),
@@ -1395,7 +1391,7 @@ public class DigitalBarrierOption implements
                         ExtrapolationMethod.CONSTANT
                 );
 
-                for(int i = 0; i < barrierGrid.length; i++) {
+                for (int i = 0; i < barrierGrid.length; i++) {
                     final double stock = barrierGrid[i];
                     final double vanillaValue = interpolator.getValue(stock);
                     inValues[i][timeIndex] = vanillaValue - outValues[i][timeIndex];
@@ -1403,8 +1399,7 @@ public class DigitalBarrierOption implements
             }
 
             return inValues;
-        }
-        else if(dims == 2) {
+        } else if (dims == 2) {
             final double[][] vanillaOnBarrierGrid = interpolateSurfaceToOriginalGrid2DAlongFirstState(
                     vanillaValues,
                     vanillaDiscretization,
@@ -1415,15 +1410,14 @@ public class DigitalBarrierOption implements
             final int numberOfColumns = outValues[0].length;
             final double[][] inValues = new double[numberOfRows][numberOfColumns];
 
-            for(int i = 0; i < numberOfRows; i++) {
-                for(int j = 0; j < numberOfColumns; j++) {
+            for (int i = 0; i < numberOfRows; i++) {
+                for (int j = 0; j < numberOfColumns; j++) {
                     inValues[i][j] = vanillaOnBarrierGrid[i][j] - outValues[i][j];
                 }
             }
 
             return inValues;
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
         }
     }
@@ -1432,7 +1426,7 @@ public class DigitalBarrierOption implements
         final double[] sGrid = discretization.getSpaceGrid(0).getGrid();
         final double[] terminalValues = new double[sGrid.length];
 
-        for(int i = 0; i < sGrid.length; i++) {
+        for (int i = 0; i < sGrid.length; i++) {
             final double leftEdge = getLeftDualCellEdge(sGrid, i);
             final double rightEdge = getRightDualCellEdge(sGrid, i);
             terminalValues[i] = cellAveragedPayoffForProductMode(leftEdge, rightEdge);
@@ -1442,7 +1436,7 @@ public class DigitalBarrierOption implements
     }
 
     private double cellAveragedPayoffForProductMode(final double leftEdge, final double rightEdge) {
-        switch(getPricingModeForCellAveraging()) {
+        switch (getPricingModeForCellAveraging()) {
         case DIRECT_OUT:
             return cellAveragedPayoffForDirectOutPricing(leftEdge, rightEdge);
 
@@ -1459,7 +1453,7 @@ public class DigitalBarrierOption implements
     }
 
     private double pointwisePayoffForDirectOutPricing(final double assetValue) {
-        if(!isAliveAtExerciseOrMaturityForOutOption(assetValue)) {
+        if (!isAliveAtExerciseOrMaturityForOutOption(assetValue)) {
             return 0.0;
         }
         return pointwiseImmediateExercisePayoff(assetValue);
@@ -1471,11 +1465,11 @@ public class DigitalBarrierOption implements
                         ? assetValue > strike
                         : assetValue < strike;
 
-        if(!inTheMoney) {
+        if (!inTheMoney) {
             return 0.0;
         }
 
-        switch(digitalPayoffType) {
+        switch (digitalPayoffType) {
         case CASH_OR_NOTHING:
             return cashPayoff;
         case ASSET_OR_NOTHING:
@@ -1486,11 +1480,11 @@ public class DigitalBarrierOption implements
     }
 
     private double cellAveragedPureDigital(final double leftEdge, final double rightEdge) {
-        if(!(leftEdge < rightEdge)) {
+        if (!(leftEdge < rightEdge)) {
             throw new IllegalArgumentException("Require leftEdge < rightEdge.");
         }
 
-        switch(digitalPayoffType) {
+        switch (digitalPayoffType) {
         case CASH_OR_NOTHING:
             return cellAveragedCashDigital(leftEdge, rightEdge);
 
@@ -1505,20 +1499,19 @@ public class DigitalBarrierOption implements
     private double cellAveragedCashDigital(final double leftEdge, final double rightEdge) {
         final double width = rightEdge - leftEdge;
 
-        if(callOrPutSign == CallOrPut.CALL) {
-            if(rightEdge <= strike) {
+        if (callOrPutSign == CallOrPut.CALL) {
+            if (rightEdge <= strike) {
                 return 0.0;
             }
-            if(leftEdge >= strike) {
+            if (leftEdge >= strike) {
                 return cashPayoff;
             }
             return cashPayoff * (rightEdge - strike) / width;
-        }
-        else {
-            if(leftEdge >= strike) {
+        } else {
+            if (leftEdge >= strike) {
                 return 0.0;
             }
-            if(rightEdge <= strike) {
+            if (rightEdge <= strike) {
                 return cashPayoff;
             }
             return cashPayoff * (strike - leftEdge) / width;
@@ -1528,22 +1521,21 @@ public class DigitalBarrierOption implements
     private double cellAveragedAssetDigital(final double leftEdge, final double rightEdge) {
         final double width = rightEdge - leftEdge;
 
-        if(callOrPutSign == CallOrPut.CALL) {
-            if(rightEdge <= strike) {
+        if (callOrPutSign == CallOrPut.CALL) {
+            if (rightEdge <= strike) {
                 return 0.0;
             }
-            if(leftEdge >= strike) {
+            if (leftEdge >= strike) {
                 return 0.5 * (leftEdge + rightEdge);
             }
 
             final double lower = strike;
             return 0.5 * (rightEdge * rightEdge - lower * lower) / width;
-        }
-        else {
-            if(leftEdge >= strike) {
+        } else {
+            if (leftEdge >= strike) {
                 return 0.0;
             }
-            if(rightEdge <= strike) {
+            if (rightEdge <= strike) {
                 return 0.5 * (leftEdge + rightEdge);
             }
 
@@ -1553,13 +1545,13 @@ public class DigitalBarrierOption implements
     }
 
     private double cellAveragedPayoffForDirectOutPricing(final double leftEdge, final double rightEdge) {
-        if(!(leftEdge < rightEdge)) {
+        if (!(leftEdge < rightEdge)) {
             throw new IllegalArgumentException("Require leftEdge < rightEdge.");
         }
 
         final double width = rightEdge - leftEdge;
 
-        switch(barrierType) {
+        switch (barrierType) {
         case DOWN_OUT:
             return averageDigitalPayoffOverInterval(
                     Math.max(leftEdge, barrierValue),
@@ -1584,11 +1576,11 @@ public class DigitalBarrierOption implements
             final double aliveRight,
             final double totalWidth) {
 
-        if(aliveRight <= aliveLeft) {
+        if (aliveRight <= aliveLeft) {
             return 0.0;
         }
 
-        switch(digitalPayoffType) {
+        switch (digitalPayoffType) {
         case CASH_OR_NOTHING:
             return averageCashDigitalOverAliveInterval(aliveLeft, aliveRight, totalWidth);
 
@@ -1608,16 +1600,15 @@ public class DigitalBarrierOption implements
         final double lower;
         final double upper;
 
-        if(callOrPutSign == CallOrPut.CALL) {
+        if (callOrPutSign == CallOrPut.CALL) {
             lower = Math.max(aliveLeft, strike);
             upper = aliveRight;
-        }
-        else {
+        } else {
             lower = aliveLeft;
             upper = Math.min(aliveRight, strike);
         }
 
-        if(upper <= lower) {
+        if (upper <= lower) {
             return 0.0;
         }
 
@@ -1632,16 +1623,15 @@ public class DigitalBarrierOption implements
         final double lower;
         final double upper;
 
-        if(callOrPutSign == CallOrPut.CALL) {
+        if (callOrPutSign == CallOrPut.CALL) {
             lower = Math.max(aliveLeft, strike);
             upper = aliveRight;
-        }
-        else {
+        } else {
             lower = aliveLeft;
             upper = Math.min(aliveRight, strike);
         }
 
-        if(upper <= lower) {
+        if (upper <= lower) {
             return 0.0;
         }
 
@@ -1649,14 +1639,14 @@ public class DigitalBarrierOption implements
     }
 
     private double getLeftDualCellEdge(final double[] grid, final int i) {
-        if(i == 0) {
+        if (i == 0) {
             return grid[0];
         }
         return 0.5 * (grid[i - 1] + grid[i]);
     }
 
     private double getRightDualCellEdge(final double[] grid, final int i) {
-        if(i == grid.length - 1) {
+        if (i == grid.length - 1) {
             return grid[grid.length - 1];
         }
         return 0.5 * (grid[i] + grid[i + 1]);
@@ -1670,7 +1660,7 @@ public class DigitalBarrierOption implements
         final int numberOfColumns = valuesOnAuxiliaryGrid[0].length;
         final double[][] interpolatedValues = new double[originalGrid.length][numberOfColumns];
 
-        for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+        for (int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
             final RationalFunctionInterpolation interpolator = new RationalFunctionInterpolation(
                     auxiliaryGrid,
                     getColumn(valuesOnAuxiliaryGrid, timeIndex),
@@ -1678,7 +1668,7 @@ public class DigitalBarrierOption implements
                     ExtrapolationMethod.CONSTANT
             );
 
-            for(int i = 0; i < originalGrid.length; i++) {
+            for (int i = 0; i < originalGrid.length; i++) {
                 interpolatedValues[i][timeIndex] = interpolator.getValue(originalGrid[i]);
             }
         }
@@ -1697,13 +1687,13 @@ public class DigitalBarrierOption implements
         final double[] originalX0 = originalDiscretization.getSpaceGrid(0).getGrid();
         final double[] originalX1 = originalDiscretization.getSpaceGrid(1).getGrid();
 
-        if(auxiliaryX1.length != originalX1.length) {
+        if (auxiliaryX1.length != originalX1.length) {
             throw new IllegalArgumentException(
                     "2D digital knock-in interpolation currently requires the second state-variable grid to remain unchanged.");
         }
 
-        for(int j = 0; j < originalX1.length; j++) {
-            if(Math.abs(auxiliaryX1[j] - originalX1[j]) > 1E-12) {
+        for (int j = 0; j < originalX1.length; j++) {
+            if (Math.abs(auxiliaryX1[j] - originalX1[j]) > 1E-12) {
                 throw new IllegalArgumentException(
                         "2D digital knock-in interpolation currently requires the second state-variable grid to remain unchanged.");
             }
@@ -1716,11 +1706,11 @@ public class DigitalBarrierOption implements
         final int numberOfColumns = valuesOnAuxiliaryGrid[0].length;
         final double[][] interpolatedValues = new double[originalN0 * originalN1][numberOfColumns];
 
-        for(int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
-            for(int j = 0; j < originalN1; j++) {
+        for (int timeIndex = 0; timeIndex < numberOfColumns; timeIndex++) {
+            for (int j = 0; j < originalN1; j++) {
 
                 final double[] auxiliarySlice = new double[auxiliaryN0];
-                for(int i = 0; i < auxiliaryN0; i++) {
+                for (int i = 0; i < auxiliaryN0; i++) {
                     final int k = flatten(i, j, auxiliaryN0);
                     auxiliarySlice[i] = valuesOnAuxiliaryGrid[k][timeIndex];
                 }
@@ -1732,7 +1722,7 @@ public class DigitalBarrierOption implements
                         ExtrapolationMethod.CONSTANT
                 );
 
-                for(int i = 0; i < originalN0; i++) {
+                for (int i = 0; i < originalN0; i++) {
                     final int k = flatten(i, j, originalN0);
                     interpolatedValues[k][timeIndex] = interpolator.getValue(originalX0[i]);
                 }
@@ -1749,7 +1739,7 @@ public class DigitalBarrierOption implements
         final double thetaValue = originalDiscretization.getTheta();
 
         final double[] originalGrid = originalDiscretization.getSpaceGrid(0).getGrid();
-        if(originalGrid.length < 2) {
+        if (originalGrid.length < 2) {
             throw new IllegalArgumentException("Barrier grid must contain at least two points.");
         }
 
@@ -1760,15 +1750,13 @@ public class DigitalBarrierOption implements
         final double sMin;
         final double sMax;
 
-        if(barrierType == BarrierType.DOWN_IN) {
+        if (barrierType == BarrierType.DOWN_IN) {
             sMin = barrierValue - extraStepsBeyondBarrier * deltaS;
             sMax = sMin + numberOfSteps * deltaS;
-        }
-        else if(barrierType == BarrierType.UP_IN) {
+        } else if (barrierType == BarrierType.UP_IN) {
             sMax = barrierValue + extraStepsBeyondBarrier * deltaS;
             sMin = sMax - numberOfSteps * deltaS;
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Auxiliary knock-in model requested for non knock-in barrier type.");
         }
 
@@ -1780,17 +1768,17 @@ public class DigitalBarrierOption implements
                 knockInGrid,
                 timeDiscretization,
                 thetaValue,
-                new double[] { originalModel.getInitialValue()[0] }
+                new double[] {originalModel.getInitialValue()[0] }
         );
 
         return originalModel.getCloneWithModifiedSpaceTimeDiscretization(knockInDiscretization);
     }
 
     private int getKnockInExtraStepsBeyondBarrier1D() {
-        if(barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT) {
+        if (barrierType == BarrierType.DOWN_IN && callOrPutSign == CallOrPut.PUT) {
             return DOWN_IN_PUT_EXTRA_STEPS_1D;
         }
-        if(barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL) {
+        if (barrierType == BarrierType.UP_IN && callOrPutSign == CallOrPut.CALL) {
             return UP_IN_CALL_EXTRA_STEPS_1D;
         }
         return DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D;
@@ -1805,15 +1793,15 @@ public class DigitalBarrierOption implements
         final double barrierIndexReal = (barrierValue - sMin) / deltaS;
         final long barrierIndexRounded = Math.round(barrierIndexReal);
 
-        if(Math.abs(barrierIndexReal - barrierIndexRounded) > GRID_TOLERANCE) {
+        if (Math.abs(barrierIndexReal - barrierIndexRounded) > GRID_TOLERANCE) {
             throw new IllegalArgumentException("Auxiliary knock-in grid does not place the barrier on a grid node.");
         }
 
-        if(barrierIndexRounded <= 0 || barrierIndexRounded >= numberOfSteps) {
+        if (barrierIndexRounded <= 0 || barrierIndexRounded >= numberOfSteps) {
             throw new IllegalArgumentException("Auxiliary knock-in grid must place the barrier on an interior node.");
         }
 
-        if(barrierValue <= sMin || barrierValue >= sMax) {
+        if (barrierValue <= sMin || barrierValue >= sMax) {
             throw new IllegalArgumentException(
                     "Auxiliary knock-in grid must contain the barrier strictly inside the domain.");
         }
@@ -1821,7 +1809,7 @@ public class DigitalBarrierOption implements
 
     private static double[] getColumn(final double[][] matrix, final int columnIndex) {
         final double[] column = new double[matrix.length];
-        for(int i = 0; i < matrix.length; i++) {
+        for (int i = 0; i < matrix.length; i++) {
             column[i] = matrix[i][columnIndex];
         }
         return column;
@@ -1833,14 +1821,12 @@ public class DigitalBarrierOption implements
 
     private int getTotalNumberOfSpacePoints(final SpaceTimeDiscretization discretization) {
         final int dims = discretization.getNumberOfSpaceGrids();
-        if(dims == 1) {
+        if (dims == 1) {
             return discretization.getSpaceGrid(0).getGrid().length;
-        }
-        else if(dims == 2) {
+        } else if (dims == 2) {
             return discretization.getSpaceGrid(0).getGrid().length
                     * discretization.getSpaceGrid(1).getGrid().length;
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
         }
     }
@@ -1863,7 +1849,7 @@ public class DigitalBarrierOption implements
     }
 
     private boolean isBarrierBreached(final double assetValue) {
-        switch(barrierType) {
+        switch (barrierType) {
         case DOWN_IN:
         case DOWN_OUT:
             return assetValue <= barrierValue;
@@ -1876,7 +1862,7 @@ public class DigitalBarrierOption implements
     }
 
     private boolean isAliveAtExerciseOrMaturityForOutOption(final double assetValue) {
-        switch(barrierType) {
+        switch (barrierType) {
         case DOWN_OUT:
             return assetValue > barrierValue;
         case UP_OUT:
@@ -1903,7 +1889,7 @@ public class DigitalBarrierOption implements
         final double lowerBoundary = grid[0];
         final double upperBoundary = grid[grid.length - 1];
 
-        if(barrierValue < lowerBoundary || barrierValue > upperBoundary) {
+        if (barrierValue < lowerBoundary || barrierValue > upperBoundary) {
             throw new IllegalArgumentException(
                     "The barrier must lie inside the first state-variable grid domain of the supplied model.");
         }
@@ -1911,17 +1897,17 @@ public class DigitalBarrierOption implements
 
     @Override
     public boolean isConstraintActive(final double time, final double... stateVariables) {
-        if(usesDiscreteMonitoring()) {
+        if (usesDiscreteMonitoring()) {
             return false;
         }
 
-        if(!isOutOption()) {
+        if (!isOutOption()) {
             return false;
         }
 
         final double underlyingLevel = stateVariables[0];
 
-        switch(barrierType) {
+        switch (barrierType) {
         case DOWN_OUT:
             return underlyingLevel <= barrierValue;
         case UP_OUT:
@@ -1933,7 +1919,7 @@ public class DigitalBarrierOption implements
 
     @Override
     public double getConstrainedValue(final double time, final double... stateVariables) {
-        if(!isOutOption()) {
+        if (!isOutOption()) {
             throw new IllegalStateException("Internal constrained value requested for a non out-option.");
         }
 
@@ -1981,10 +1967,10 @@ public class DigitalBarrierOption implements
     }
 
     private BarrierType getCorrespondingOutBarrierType() {
-        if(barrierType == BarrierType.DOWN_IN) {
+        if (barrierType == BarrierType.DOWN_IN) {
             return BarrierType.DOWN_OUT;
         }
-        if(barrierType == BarrierType.UP_IN) {
+        if (barrierType == BarrierType.UP_IN) {
             return BarrierType.UP_OUT;
         }
         throw new IllegalArgumentException("No corresponding out barrier type for " + barrierType);
@@ -1998,7 +1984,7 @@ public class DigitalBarrierOption implements
 
         final double[] barrierGrid = barrierDiscretization.getSpaceGrid(0).getGrid();
 
-        if(barrierGrid.length < 2) {
+        if (barrierGrid.length < 2) {
             throw new IllegalArgumentException("Barrier grid must contain at least two points.");
         }
 
@@ -2018,16 +2004,15 @@ public class DigitalBarrierOption implements
 
         final Grid vanillaSpotGrid = new UniformGrid(numberOfSteps, sMin, sMax);
 
-        if(barrierDiscretization.getNumberOfSpaceGrids() == 1) {
+        if (barrierDiscretization.getNumberOfSpaceGrids() == 1) {
             final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
                     vanillaSpotGrid,
                     timeDiscretization,
                     thetaValue,
-                    new double[] { initialValue }
+                    new double[] {initialValue }
             );
             return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
-        }
-        else if(barrierDiscretization.getNumberOfSpaceGrids() == 2) {
+        } else if (barrierDiscretization.getNumberOfSpaceGrids() == 2) {
             final double[] secondGrid = barrierDiscretization.getSpaceGrid(1).getGrid();
             final Grid preservedSecondGrid = new UniformGrid(
                     secondGrid.length - 1,
@@ -2036,23 +2021,22 @@ public class DigitalBarrierOption implements
             );
 
             final SpaceTimeDiscretization vanillaDiscretization = new SpaceTimeDiscretization(
-                    new Grid[] { vanillaSpotGrid, preservedSecondGrid },
+                    new Grid[] {vanillaSpotGrid, preservedSecondGrid },
                     timeDiscretization,
                     thetaValue,
                     barrierModel.getInitialValue()
             );
             return barrierModel.getCloneWithModifiedSpaceTimeDiscretization(vanillaDiscretization);
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Only 1D and 2D grids are supported.");
         }
     }
 
     private static CallOrPut mapCallOrPut(final double callOrPutSign) {
-        if(callOrPutSign == 1.0) {
+        if (callOrPutSign == 1.0) {
             return CallOrPut.CALL;
         }
-        if(callOrPutSign == -1.0) {
+        if (callOrPutSign == -1.0) {
             return CallOrPut.PUT;
         }
         throw new IllegalArgumentException("Unknown option type.");

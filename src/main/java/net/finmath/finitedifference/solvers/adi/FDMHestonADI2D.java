@@ -41,19 +41,19 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMHestonADI2D extends AbstractADI2D {
 
-	/**
-	 * Creates the ADI solver for the two-dimensional Heston PDE.
-	 *
-	 * @param model The Heston finite-difference model.
-	 * @param product The product to be valued.
-	 * @param spaceTimeDiscretization The space-time discretization.
-	 * @param exercise The exercise specification.
-	 */
-	public FDMHestonADI2D(
-			final FDMHestonModel model,
-			final FiniteDifferenceEquityProduct product,
-			final SpaceTimeDiscretization spaceTimeDiscretization,
-			final Exercise exercise) {
-		super(model, product, spaceTimeDiscretization, exercise);
-	}
+    /**
+     * Creates the ADI solver for the two-dimensional Heston PDE.
+     *
+     * @param model The Heston finite-difference model.
+     * @param product The product to be valued.
+     * @param spaceTimeDiscretization The space-time discretization.
+     * @param exercise The exercise specification.
+     */
+    public FDMHestonADI2D(
+            final FDMHestonModel model,
+            final FiniteDifferenceEquityProduct product,
+            final SpaceTimeDiscretization spaceTimeDiscretization,
+            final Exercise exercise) {
+        super(model, product, spaceTimeDiscretization, exercise);
+    }
 }

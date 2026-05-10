@@ -18,6 +18,6 @@ package net.finmath.finitedifference.boundaries;
  * @author Alessandro Gnoatto
  */
 public enum BoundaryConditionType {
-	DIRICHLET,
-	NONE
+    DIRICHLET,
+    NONE
 }

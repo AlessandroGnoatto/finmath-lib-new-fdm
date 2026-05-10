@@ -41,20 +41,20 @@ public final class ActivatedBarrierTrace2D {
             final TimeDiscretization timeGrid,
             final double[][] values) {
 
-        if(secondStateGrid == null || secondStateGrid.length == 0) {
+        if (secondStateGrid == null || secondStateGrid.length == 0) {
             throw new IllegalArgumentException("secondStateGrid must not be null or empty.");
         }
-        if(timeGrid == null) {
+        if (timeGrid == null) {
             throw new IllegalArgumentException("timeGrid must not be null.");
         }
-        if(values == null || values.length != secondStateGrid.length) {
+        if (values == null || values.length != secondStateGrid.length) {
             throw new IllegalArgumentException(
                     "values must have one row for each second-state grid point.");
         }
 
         final int expectedTimeCount = timeGrid.getNumberOfTimes();
-        for(int i = 0; i < values.length; i++) {
-            if(values[i] == null || values[i].length != expectedTimeCount) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == null || values[i].length != expectedTimeCount) {
                 throw new IllegalArgumentException(
                         "Each values row must have length equal to timeGrid.getNumberOfTimes().");
             }
@@ -132,32 +132,32 @@ public final class ActivatedBarrierTrace2D {
         validateSecondIndex(secondIndex);
 
         final int numberOfTimes = timeGrid.getNumberOfTimes();
-        if(numberOfTimes == 1) {
+        if (numberOfTimes == 1) {
             return values[secondIndex][0];
         }
 
         final double firstTime = timeGrid.getTime(0);
         final double lastTime = timeGrid.getTime(numberOfTimes - 1);
 
-        if(tau <= firstTime + TOLERANCE) {
+        if (tau <= firstTime + TOLERANCE) {
             return values[secondIndex][0];
         }
-        if(tau >= lastTime - TOLERANCE) {
+        if (tau >= lastTime - TOLERANCE) {
             return values[secondIndex][numberOfTimes - 1];
         }
 
         final int upperIndex = timeGrid.getTimeIndexNearestGreaterOrEqual(tau);
-        if(upperIndex < 0) {
+        if (upperIndex < 0) {
             return values[secondIndex][numberOfTimes - 1];
         }
 
         final double upperTime = timeGrid.getTime(upperIndex);
-        if(Math.abs(upperTime - tau) <= TOLERANCE) {
+        if (Math.abs(upperTime - tau) <= TOLERANCE) {
             return values[secondIndex][upperIndex];
         }
 
         final int lowerIndex = upperIndex - 1;
-        if(lowerIndex < 0) {
+        if (lowerIndex < 0) {
             return values[secondIndex][upperIndex];
         }
 
@@ -188,14 +188,14 @@ public final class ActivatedBarrierTrace2D {
     }
 
     private void validateSecondIndex(final int secondIndex) {
-        if(secondIndex < 0 || secondIndex >= secondStateGrid.length) {
+        if (secondIndex < 0 || secondIndex >= secondStateGrid.length) {
             throw new IndexOutOfBoundsException(
                     "secondIndex out of bounds: " + secondIndex);
         }
     }
 
     private void validateTimeIndex(final int timeIndex) {
-        if(timeIndex < 0 || timeIndex >= timeGrid.getNumberOfTimes()) {
+        if (timeIndex < 0 || timeIndex >= timeGrid.getNumberOfTimes()) {
             throw new IndexOutOfBoundsException(
                     "timeIndex out of bounds: " + timeIndex);
         }
@@ -203,7 +203,7 @@ public final class ActivatedBarrierTrace2D {
 
     private static double[][] deepCopy(final double[][] source) {
         final double[][] copy = new double[source.length][];
-        for(int i = 0; i < source.length; i++) {
+        for (int i = 0; i < source.length; i++) {
             copy[i] = source[i].clone();
         }
         return copy;

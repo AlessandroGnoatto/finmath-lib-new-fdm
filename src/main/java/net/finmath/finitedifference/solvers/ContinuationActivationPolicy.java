@@ -41,51 +41,51 @@ package net.finmath.finitedifference.solvers;
  */
 public class ContinuationActivationPolicy implements TwoStateActivationPolicy {
 
-	/**
-	 * Returns the already-hit value at maturity.
-	 *
-	 * @param stateVariable State variable.
-	 * @param activePayoffValue Active-regime payoff value at maturity.
-	 * @param inactiveNoHitValue Inactive no-hit value at maturity.
-	 * @return The already-hit value at maturity.
-	 */
-	@Override
-	public double getAlreadyHitValueAtMaturity(
-			final double stateVariable,
-			final double activePayoffValue,
-			final double inactiveNoHitValue) {
-		return activePayoffValue;
-	}
+    /**
+     * Returns the already-hit value at maturity.
+     *
+     * @param stateVariable State variable.
+     * @param activePayoffValue Active-regime payoff value at maturity.
+     * @param inactiveNoHitValue Inactive no-hit value at maturity.
+     * @return The already-hit value at maturity.
+     */
+    @Override
+    public double getAlreadyHitValueAtMaturity(
+            final double stateVariable,
+            final double activePayoffValue,
+            final double inactiveNoHitValue) {
+        return activePayoffValue;
+    }
 
-	/**
-	 * Returns the already-hit value before maturity.
-	 *
-	 * @param currentTime Current running time.
-	 * @param stateVariable State variable.
-	 * @param activeValue Active-regime continuation value.
-	 * @return The already-hit value.
-	 */
-	@Override
-	public double getAlreadyHitValue(
-			final double currentTime,
-			final double stateVariable,
-			final double activeValue) {
-		return activeValue;
-	}
+    /**
+     * Returns the already-hit value before maturity.
+     *
+     * @param currentTime Current running time.
+     * @param stateVariable State variable.
+     * @param activeValue Active-regime continuation value.
+     * @return The already-hit value.
+     */
+    @Override
+    public double getAlreadyHitValue(
+            final double currentTime,
+            final double stateVariable,
+            final double activeValue) {
+        return activeValue;
+    }
 
-	/**
-	 * Returns the interface value at the activation boundary.
-	 *
-	 * @param currentTime Current running time.
-	 * @param barrierStateVariable State variable at the barrier.
-	 * @param activeValueAtBarrier Active-regime value at the barrier.
-	 * @return The interface value.
-	 */
-	@Override
-	public double getInterfaceValue(
-			final double currentTime,
-			final double barrierStateVariable,
-			final double activeValueAtBarrier) {
-		return activeValueAtBarrier;
-	}
+    /**
+     * Returns the interface value at the activation boundary.
+     *
+     * @param currentTime Current running time.
+     * @param barrierStateVariable State variable at the barrier.
+     * @param activeValueAtBarrier Active-regime value at the barrier.
+     * @return The interface value.
+     */
+    @Override
+    public double getInterfaceValue(
+            final double currentTime,
+            final double barrierStateVariable,
+            final double activeValueAtBarrier) {
+        return activeValueAtBarrier;
+    }
 }

@@ -9,6 +9,6 @@ package net.finmath.modelling.products;
  * </p>
  */
 public enum SwingQuantityMode {
-	BANG_BANG,
-	DISCRETE_QUANTITY_GRID
+    BANG_BANG,
+    DISCRETE_QUANTITY_GRID
 }

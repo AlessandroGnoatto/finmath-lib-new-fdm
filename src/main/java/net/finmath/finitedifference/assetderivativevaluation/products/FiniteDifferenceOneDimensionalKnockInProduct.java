@@ -36,36 +36,36 @@ import net.finmath.modelling.products.BarrierType;
  */
 public interface FiniteDifferenceOneDimensionalKnockInProduct {
 
-	/**
-	 * Returns the maturity.
-	 *
-	 * @return The maturity.
-	 */
-	double getMaturity();
+    /**
+     * Returns the maturity.
+     *
+     * @return The maturity.
+     */
+    double getMaturity();
 
-	/**
-	 * Returns the barrier level.
-	 *
-	 * @return The barrier level.
-	 */
-	double getBarrierValue();
+    /**
+     * Returns the barrier level.
+     *
+     * @return The barrier level.
+     */
+    double getBarrierValue();
 
-	/**
-	 * Returns the barrier type.
-	 *
-	 * @return The barrier type.
-	 */
-	BarrierType getBarrierType();
+    /**
+     * Returns the barrier type.
+     *
+     * @return The barrier type.
+     */
+    BarrierType getBarrierType();
 
-	/**
-	 * Returns the value prescribed in the inactive regime at maturity.
-	 *
-	 * <p>
-	 * This is the terminal value in the no-hit region. For vanilla barrier options this is
-	 * typically the rebate. For digital barrier options it is typically {@code 0.0}.
-	 * </p>
-	 *
-	 * @return The inactive value at maturity.
-	 */
-	double getInactiveValueAtMaturity();
+    /**
+     * Returns the value prescribed in the inactive regime at maturity.
+     *
+     * <p>
+     * This is the terminal value in the no-hit region. For vanilla barrier options this is
+     * typically the rebate. For digital barrier options it is typically {@code 0.0}.
+     * </p>
+     *
+     * @return The inactive value at maturity.
+     */
+    double getInactiveValueAtMaturity();
 }

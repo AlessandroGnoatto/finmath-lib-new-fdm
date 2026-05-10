@@ -13,6 +13,6 @@ package net.finmath.modelling.products;
  * @author Alessandro Gnoatto
  */
 public enum MonitoringType {
-	CONTINUOUS,
-	DISCRETE
+    CONTINUOUS,
+    DISCRETE
 }

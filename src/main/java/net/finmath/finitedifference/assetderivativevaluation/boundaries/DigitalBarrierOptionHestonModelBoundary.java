@@ -46,19 +46,15 @@ public class DigitalBarrierOptionHestonModelBoundary implements FiniteDifference
         final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
-        if(barrierType == BarrierType.DOWN_OUT) {
+        if (barrierType == BarrierType.DOWN_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else if(sign == CallOrPut.CALL) {
+        } else if (sign == CallOrPut.CALL) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
+        } else if (payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
             result[0] = StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time));
-        }
-        else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
+        } else if (payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
             result[0] = StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(S, option, time));
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Unsupported digital payoff type.");
         }
 
@@ -82,19 +78,15 @@ public class DigitalBarrierOptionHestonModelBoundary implements FiniteDifference
         final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
-        if(barrierType == BarrierType.UP_OUT) {
+        if (barrierType == BarrierType.UP_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else if(sign == CallOrPut.PUT) {
+        } else if (sign == CallOrPut.PUT) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
+        } else if (payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
             result[0] = StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time));
-        }
-        else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
+        } else if (payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
             result[0] = StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(S, option, time));
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Unsupported digital payoff type.");
         }
 

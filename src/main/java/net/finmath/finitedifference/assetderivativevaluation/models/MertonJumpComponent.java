@@ -31,93 +31,93 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
  */
 public class MertonJumpComponent extends AbstractStateIndependentJumpComponent {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	private final double intensity;
-	private final double jumpMean;
-	private final double jumpStdDev;
-	private final double normalizationFactor;
+    private final double intensity;
+    private final double jumpMean;
+    private final double jumpStdDev;
+    private final double normalizationFactor;
 
-	/**
-	 * Creates a Merton jump component acting on the first state variable.
-	 *
-	 * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-	 * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-	 * @param intensity Jump intensity.
-	 * @param jumpMean Mean of the log-jump size.
-	 * @param jumpStdDev Standard deviation of the log-jump size.
-	 */
-	public MertonJumpComponent(
-			final double lowerIntegrationBound,
-			final double upperIntegrationBound,
-			final double intensity,
-			final double jumpMean,
-			final double jumpStdDev) {
-		this(0, lowerIntegrationBound, upperIntegrationBound, intensity, jumpMean, jumpStdDev);
-	}
+    /**
+     * Creates a Merton jump component acting on the first state variable.
+     *
+     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param intensity Jump intensity.
+     * @param jumpMean Mean of the log-jump size.
+     * @param jumpStdDev Standard deviation of the log-jump size.
+     */
+    public MertonJumpComponent(
+            final double lowerIntegrationBound,
+            final double upperIntegrationBound,
+            final double intensity,
+            final double jumpMean,
+            final double jumpStdDev) {
+        this(0, lowerIntegrationBound, upperIntegrationBound, intensity, jumpMean, jumpStdDev);
+    }
 
-	/**
-	 * Creates a Merton jump component.
-	 *
-	 * @param stateVariableIndex Index of the affected state variable.
-	 * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-	 * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-	 * @param intensity Jump intensity.
-	 * @param jumpMean Mean of the log-jump size.
-	 * @param jumpStdDev Standard deviation of the log-jump size.
-	 */
-	public MertonJumpComponent(
-			final int stateVariableIndex,
-			final double lowerIntegrationBound,
-			final double upperIntegrationBound,
-			final double intensity,
-			final double jumpMean,
-			final double jumpStdDev) {
-		super(stateVariableIndex, lowerIntegrationBound, upperIntegrationBound, true, true);
+    /**
+     * Creates a Merton jump component.
+     *
+     * @param stateVariableIndex Index of the affected state variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param intensity Jump intensity.
+     * @param jumpMean Mean of the log-jump size.
+     * @param jumpStdDev Standard deviation of the log-jump size.
+     */
+    public MertonJumpComponent(
+            final int stateVariableIndex,
+            final double lowerIntegrationBound,
+            final double upperIntegrationBound,
+            final double intensity,
+            final double jumpMean,
+            final double jumpStdDev) {
+        super(stateVariableIndex, lowerIntegrationBound, upperIntegrationBound, true, true);
 
-		if(intensity < 0.0) {
-			throw new IllegalArgumentException("Jump intensity must be non-negative.");
-		}
-		if(jumpStdDev <= 0.0) {
-			throw new IllegalArgumentException("Jump standard deviation must be positive.");
-		}
+        if (intensity < 0.0) {
+            throw new IllegalArgumentException("Jump intensity must be non-negative.");
+        }
+        if (jumpStdDev <= 0.0) {
+            throw new IllegalArgumentException("Jump standard deviation must be positive.");
+        }
 
-		this.intensity = intensity;
-		this.jumpMean = jumpMean;
-		this.jumpStdDev = jumpStdDev;
-		normalizationFactor = 1.0 / (jumpStdDev * Math.sqrt(2.0 * Math.PI));
-	}
+        this.intensity = intensity;
+        this.jumpMean = jumpMean;
+        this.jumpStdDev = jumpStdDev;
+        normalizationFactor = 1.0 / (jumpStdDev * Math.sqrt(2.0 * Math.PI));
+    }
 
-	@Override
-	protected double getLevyDensity(final double time, final double jumpSize) {
-		final double standardizedJump = (jumpSize - jumpMean) / jumpStdDev;
-		return intensity * normalizationFactor * Math.exp(-0.5 * standardizedJump * standardizedJump);
-	}
+    @Override
+    protected double getLevyDensity(final double time, final double jumpSize) {
+        final double standardizedJump = (jumpSize - jumpMean) / jumpStdDev;
+        return intensity * normalizationFactor * Math.exp(-0.5 * standardizedJump * standardizedJump);
+    }
 
-	/**
-	 * Returns the jump intensity.
-	 *
-	 * @return The jump intensity.
-	 */
-	public double getIntensity() {
-		return intensity;
-	}
+    /**
+     * Returns the jump intensity.
+     *
+     * @return The jump intensity.
+     */
+    public double getIntensity() {
+        return intensity;
+    }
 
-	/**
-	 * Returns the mean of the log-jump size.
-	 *
-	 * @return The mean of the log-jump size.
-	 */
-	public double getJumpMean() {
-		return jumpMean;
-	}
+    /**
+     * Returns the mean of the log-jump size.
+     *
+     * @return The mean of the log-jump size.
+     */
+    public double getJumpMean() {
+        return jumpMean;
+    }
 
-	/**
-	 * Returns the standard deviation of the log-jump size.
-	 *
-	 * @return The standard deviation of the log-jump size.
-	 */
-	public double getJumpStdDev() {
-		return jumpStdDev;
-	}
+    /**
+     * Returns the standard deviation of the log-jump size.
+     *
+     * @return The standard deviation of the log-jump size.
+     */
+    public double getJumpStdDev() {
+        return jumpStdDev;
+    }
 }

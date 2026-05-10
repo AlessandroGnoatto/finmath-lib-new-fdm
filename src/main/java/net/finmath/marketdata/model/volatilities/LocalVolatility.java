@@ -23,47 +23,47 @@ import net.finmath.stochastic.RandomVariable;
  */
 public interface LocalVolatility {
 
-	/**
-	 * Returns the local volatility {@code sigma(t, S)}.
-	 *
-	 * @param time The evaluation time.
-	 * @param assetValue The asset value.
-	 * @return The local volatility.
-	 */
-	double getValue(double time, double assetValue);
+    /**
+     * Returns the local volatility {@code sigma(t, S)}.
+     *
+     * @param time The evaluation time.
+     * @param assetValue The asset value.
+     * @return The local volatility.
+     */
+    double getValue(double time, double assetValue);
 
-	/**
-	 * Returns the local volatility {@code sigma(t, S)}.
-	 *
-	 * @param time The evaluation time.
-	 * @param assetValue The asset value.
-	 * @return The local volatility.
-	 */
-	default double getLocalVolatility(final double time, final double assetValue) {
-		return getValue(time, assetValue);
-	}
+    /**
+     * Returns the local volatility {@code sigma(t, S)}.
+     *
+     * @param time The evaluation time.
+     * @param assetValue The asset value.
+     * @return The local volatility.
+     */
+    default double getLocalVolatility(final double time, final double assetValue) {
+        return getValue(time, assetValue);
+    }
 
-	/**
-	 * Returns the local volatility path-wise for a random variable representing
-	 * the asset value.
-	 *
-	 * @param time The evaluation time.
-	 * @param assetValue The asset value random variable.
-	 * @return The local volatility random variable.
-	 */
-	default RandomVariable getValue(final double time, final RandomVariable assetValue) {
-		return assetValue.apply(x -> getValue(time, x));
-	}
+    /**
+     * Returns the local volatility path-wise for a random variable representing
+     * the asset value.
+     *
+     * @param time The evaluation time.
+     * @param assetValue The asset value random variable.
+     * @return The local volatility random variable.
+     */
+    default RandomVariable getValue(final double time, final RandomVariable assetValue) {
+        return assetValue.apply(x -> getValue(time, x));
+    }
 
-	/**
-	 * Returns the local volatility path-wise for a random variable representing
-	 * the asset value.
-	 *
-	 * @param time The evaluation time.
-	 * @param assetValue The asset value random variable.
-	 * @return The local volatility random variable.
-	 */
-	default RandomVariable getLocalVolatility(final double time, final RandomVariable assetValue) {
-		return getValue(time, assetValue);
-	}
+    /**
+     * Returns the local volatility path-wise for a random variable representing
+     * the asset value.
+     *
+     * @param time The evaluation time.
+     * @param assetValue The asset value random variable.
+     * @return The local volatility random variable.
+     */
+    default RandomVariable getLocalVolatility(final double time, final RandomVariable assetValue) {
+        return getValue(time, assetValue);
+    }
 }

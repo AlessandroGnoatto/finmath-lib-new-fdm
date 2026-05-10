@@ -18,43 +18,43 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public final class ActiveBoundaryProviderFactory {
 
-	private ActiveBoundaryProviderFactory() {
-	}
+    private ActiveBoundaryProviderFactory() {
+    }
 
-	public static TwoStateActiveBoundaryProvider createProvider(
-			final FiniteDifferenceEquityModel model,
-			final double strike,
-			final double maturity,
-			final CallOrPut callOrPut) {
+    public static TwoStateActiveBoundaryProvider createProvider(
+            final FiniteDifferenceEquityModel model,
+            final double strike,
+            final double maturity,
+            final CallOrPut callOrPut) {
 
-		if(model instanceof FDMBlackScholesModel) {
-			return new BlackScholesActiveBoundaryProvider(
-					model,
-					strike,
-					maturity,
-					callOrPut
-			);
-		}
+        if (model instanceof FDMBlackScholesModel) {
+            return new BlackScholesActiveBoundaryProvider(
+                    model,
+                    strike,
+                    maturity,
+                    callOrPut
+            );
+        }
 
-		if(model instanceof FDMBachelierModel) {
-			return new BachelierActiveBoundaryProvider(
-					model,
-					strike,
-					maturity,
-					callOrPut
-			);
-		}
+        if (model instanceof FDMBachelierModel) {
+            return new BachelierActiveBoundaryProvider(
+                    model,
+                    strike,
+                    maturity,
+                    callOrPut
+            );
+        }
 
-		if(model instanceof FDMCevModel) {
-			return new CevActiveBoundaryProvider(
-					model,
-					strike,
-					maturity,
-					callOrPut
-			);
-		}
+        if (model instanceof FDMCevModel) {
+            return new CevActiveBoundaryProvider(
+                    model,
+                    strike,
+                    maturity,
+                    callOrPut
+            );
+        }
 
-		throw new IllegalArgumentException(
-				"No active boundary provider available for model type: " + model.getClass().getName());
-	}
+        throw new IllegalArgumentException(
+                "No active boundary provider available for model type: " + model.getClass().getName());
+    }
 }

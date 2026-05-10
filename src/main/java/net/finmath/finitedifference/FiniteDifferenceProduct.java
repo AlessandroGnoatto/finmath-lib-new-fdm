@@ -18,26 +18,25 @@ import net.finmath.modelling.Product;
  */
 public interface FiniteDifferenceProduct<M extends FiniteDifferenceModel> extends Product {
 
-	double[] getValue(double evaluationTime, M model);
+    double[] getValue(double evaluationTime, M model);
 
-	double[][] getValues(M model);
+    double[][] getValues(M model);
 
-	Class<M> getModelClass();
+    Class<M> getModelClass();
 
-	@Override
-	default Object getValue(final double evaluationTime, final Model model) {
+    @Override
+    default Object getValue(final double evaluationTime, final Model model) {
 
-		if(getModelClass().isInstance(model)) {
-			return getValue(evaluationTime, getModelClass().cast(model));
-		}
-		else {
-			throw new IllegalArgumentException(
-					"The product " + this.getClass()
-					+ " cannot be valued against a model "
-					+ model.getClass() + ". "
-					+ "It requires a model of type "
-					+ getModelClass() + "."
-			);
-		}
-	}
+        if (getModelClass().isInstance(model)) {
+            return getValue(evaluationTime, getModelClass().cast(model));
+        } else {
+            throw new IllegalArgumentException(
+                    "The product " + this.getClass()
+                    + " cannot be valued against a model "
+                    + model.getClass() + ". "
+                    + "It requires a model of type "
+                    + getModelClass() + "."
+            );
+        }
+    }
 }

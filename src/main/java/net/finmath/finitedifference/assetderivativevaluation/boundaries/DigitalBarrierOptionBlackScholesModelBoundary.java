@@ -44,13 +44,13 @@ public class DigitalBarrierOptionBlackScholesModelBoundary implements FiniteDiff
         final CallOrPut sign = option.getCallOrPut();
         final DigitalPayoffType payoffType = option.getDigitalPayoffType();
 
-        if(barrierType == BarrierType.DOWN_OUT) {
+        if (barrierType == BarrierType.DOWN_OUT) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };
         }
 
-        if(sign == CallOrPut.CALL) {
+        if (sign == CallOrPut.CALL) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };
@@ -58,18 +58,16 @@ public class DigitalBarrierOptionBlackScholesModelBoundary implements FiniteDiff
 
         time = Math.max(time, EPSILON);
 
-        if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
+        if (payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
             };
-        }
-        else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
+        } else if (payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
             final double stateVariable = stateVariables[0];
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(stateVariable, option, time))
             };
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Unsupported digital payoff type.");
         }
     }
@@ -85,13 +83,13 @@ public class DigitalBarrierOptionBlackScholesModelBoundary implements FiniteDiff
         final CallOrPut sign = option.getCallOrPut();
         final DigitalPayoffType payoffType = option.getDigitalPayoffType();
 
-        if(barrierType == BarrierType.UP_OUT) {
+        if (barrierType == BarrierType.UP_OUT) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };
         }
 
-        if(sign == CallOrPut.PUT) {
+        if (sign == CallOrPut.PUT) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };
@@ -99,18 +97,16 @@ public class DigitalBarrierOptionBlackScholesModelBoundary implements FiniteDiff
 
         time = Math.max(time, EPSILON);
 
-        if(payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
+        if (payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time))
             };
-        }
-        else if(payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
+        } else if (payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
             final double stateVariable = stateVariables[0];
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(stateVariable, option, time))
             };
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Unsupported digital payoff type.");
         }
     }

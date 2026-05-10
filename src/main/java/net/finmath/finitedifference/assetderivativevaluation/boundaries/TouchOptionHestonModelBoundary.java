@@ -57,10 +57,9 @@ public class TouchOptionHestonModelBoundary implements FiniteDifferenceBoundary 
          * Otherwise (DOWN_IN one-touch, or continuation side of UP_OUT no-touch):
          * discounted expiry cash.
          */
-        if(barrierType == BarrierType.DOWN_OUT) {
+        if (barrierType == BarrierType.DOWN_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else {
+        } else {
             result[0] = StandardBoundaryCondition.dirichlet(
                     getDiscountedCashValue(option, time)
             );
@@ -92,10 +91,9 @@ public class TouchOptionHestonModelBoundary implements FiniteDifferenceBoundary 
          * Otherwise (UP_IN one-touch, or continuation side of DOWN_OUT no-touch):
          * discounted expiry cash.
          */
-        if(barrierType == BarrierType.UP_OUT) {
+        if (barrierType == BarrierType.UP_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(0.0);
-        }
-        else {
+        } else {
             result[0] = StandardBoundaryCondition.dirichlet(
                     getDiscountedCashValue(option, time)
             );
@@ -108,7 +106,7 @@ public class TouchOptionHestonModelBoundary implements FiniteDifferenceBoundary 
     }
 
     private double getDiscountedCashValue(final TouchOption option, final double evaluationTime) {
-        if(evaluationTime >= option.getMaturity()) {
+        if (evaluationTime >= option.getMaturity()) {
             return option.getPayoffAmount();
         }
 

@@ -26,79 +26,78 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class EuropeanOptionHestonModelBoundary implements FiniteDifferenceBoundary {
 
-	private static final double EPSILON = 1E-6;
+    private static final double EPSILON = 1E-6;
 
-	private final FDMHestonModel model;
+    private final FDMHestonModel model;
 
-	public EuropeanOptionHestonModelBoundary(final FDMHestonModel model) {
-		this.model = model;
-	}
+    public EuropeanOptionHestonModelBoundary(final FDMHestonModel model) {
+        this.model = model;
+    }
 
-	@Override
-	public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
-			final FiniteDifferenceEquityProduct product,
-			double time,
-			final double... stateVariables) {
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
+            final FiniteDifferenceEquityProduct product,
+            double time,
+            final double... stateVariables) {
 
-		final EuropeanOption option = (EuropeanOption) product;
-		time = Math.max(time, EPSILON);
+        final EuropeanOption option = (EuropeanOption) product;
+        time = Math.max(time, EPSILON);
 
-		final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
-		final BoundaryCondition[] result = new BoundaryCondition[2];
+        final BoundaryCondition[] result = new BoundaryCondition[2];
 
-		result[0] = StandardBoundaryCondition.dirichlet(
-				getDiscountedIntrinsicValue(option, time, S)
-		);
+        result[0] = StandardBoundaryCondition.dirichlet(
+                getDiscountedIntrinsicValue(option, time, S)
+        );
 
-		// v -> lower boundary: leave PDE row intact
-		result[1] = StandardBoundaryCondition.none();
+        // v -> lower boundary: leave PDE row intact
+        result[1] = StandardBoundaryCondition.none();
 
-		return result;
-	}
+        return result;
+    }
 
-	@Override
-	public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
-			final FiniteDifferenceEquityProduct product,
-			double time,
-			final double... stateVariables) {
+    @Override
+    public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
+            final FiniteDifferenceEquityProduct product,
+            double time,
+            final double... stateVariables) {
 
-		final EuropeanOption option = (EuropeanOption) product;
-		time = Math.max(time, EPSILON);
+        final EuropeanOption option = (EuropeanOption) product;
+        time = Math.max(time, EPSILON);
 
-		final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
-		final BoundaryCondition[] result = new BoundaryCondition[2];
+        final BoundaryCondition[] result = new BoundaryCondition[2];
 
-		result[0] = StandardBoundaryCondition.dirichlet(
-				getDiscountedIntrinsicValue(option, time, S)
-		);
+        result[0] = StandardBoundaryCondition.dirichlet(
+                getDiscountedIntrinsicValue(option, time, S)
+        );
 
-		// v -> upper boundary: leave PDE row intact
-		result[1] = StandardBoundaryCondition.none();
+        // v -> upper boundary: leave PDE row intact
+        result[1] = StandardBoundaryCondition.none();
 
-		return result;
-	}
+        return result;
+    }
 
-	private double getDiscountedIntrinsicValue(
-			final EuropeanOption option,
-			final double evaluationTime,
-			final double stock) {
+    private double getDiscountedIntrinsicValue(
+            final EuropeanOption option,
+            final double evaluationTime,
+            final double stock) {
 
-		final double maturity = option.getMaturity();
-		final double tau = Math.max(maturity - evaluationTime, 0.0);
+        final double maturity = option.getMaturity();
+        final double tau = Math.max(maturity - evaluationTime, 0.0);
 
-		final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(tau);
-		final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(tau);
+        final double discountFactorRiskFree = model.getRiskFreeCurve().getDiscountFactor(tau);
+        final double discountFactorDividend = model.getDividendYieldCurve().getDiscountFactor(tau);
 
-		final double discountedForwardLikeSpot = stock * discountFactorDividend;
-		final double discountedStrike = option.getStrike() * discountFactorRiskFree;
+        final double discountedForwardLikeSpot = stock * discountFactorDividend;
+        final double discountedStrike = option.getStrike() * discountFactorRiskFree;
 
-		if(option.getCallOrPut() == CallOrPut.CALL) {
-			return Math.max(discountedForwardLikeSpot - discountedStrike, 0.0);
-		}
-		else {
-			return Math.max(discountedStrike - discountedForwardLikeSpot, 0.0);
-		}
-	}
+        if (option.getCallOrPut() == CallOrPut.CALL) {
+            return Math.max(discountedForwardLikeSpot - discountedStrike, 0.0);
+        } else {
+            return Math.max(discountedStrike - discountedForwardLikeSpot, 0.0);
+        }
+    }
 }

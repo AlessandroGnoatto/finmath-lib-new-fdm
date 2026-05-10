@@ -29,7 +29,7 @@ public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBounda
         final TouchOption option = (TouchOption) product;
         final BarrierType barrierType = option.getBarrierType();
 
-        if(barrierType == BarrierType.DOWN_OUT) {
+        if (barrierType == BarrierType.DOWN_OUT) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };
@@ -51,7 +51,7 @@ public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBounda
         final TouchOption option = (TouchOption) product;
         final BarrierType barrierType = option.getBarrierType();
 
-        if(barrierType == BarrierType.UP_OUT) {
+        if (barrierType == BarrierType.UP_OUT) {
             return new BoundaryCondition[] {
                     StandardBoundaryCondition.dirichlet(0.0)
             };
@@ -65,7 +65,7 @@ public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBounda
     }
 
     private double getDiscountedCashValue(final TouchOption option, final double time) {
-        if(time >= option.getMaturity()) {
+        if (time >= option.getMaturity()) {
             return option.getPayoffAmount();
         }
 
