@@ -24,6 +24,11 @@ public class BermudanOptionBachelierModelBoundary
      */
     private final FDMBachelierModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BermudanOptionBachelierModelBoundary(final FDMBachelierModel model) {
         this.model = model;
     }

@@ -60,6 +60,13 @@ public class ADI2DStencilBuilder {
      */
     private final int n1;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param x0Grid The value.
+     * @param x1Grid The value.
+     */
     public ADI2DStencilBuilder(
             final FiniteDifferenceEquityModel model,
             final double[] x0Grid,
@@ -92,6 +99,14 @@ public class ADI2DStencilBuilder {
          */
         private final double upper;
 
+        /**
+         * Performs the operation.
+         *
+         * @param lower The value.
+         * @param diag The value.
+         * @param upper The value.
+         * @return The value.
+         */
         public DirectionalCoefficients(
                 final double lower,
                 final double diag,
@@ -101,19 +116,43 @@ public class ADI2DStencilBuilder {
             this.upper = upper;
         }
 
+        /**
+         * Returns the value.
+         *
+         * @return The value.
+         */
         public double getLower() {
             return lower;
         }
 
+        /**
+         * Returns the value.
+         *
+         * @return The value.
+         */
         public double getDiag() {
             return diag;
         }
 
+        /**
+         * Returns the value.
+         *
+         * @return The value.
+         */
         public double getUpper() {
             return upper;
         }
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param time The value.
+     * @param dt The value.
+     * @param theta The value.
+     * @param x1Index The value.
+     * @return The value.
+     */
     public TridiagonalMatrix buildFirstDirectionLineMatrix(
             final double time,
             final double dt,
@@ -136,6 +175,15 @@ public class ADI2DStencilBuilder {
         return m;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param time The value.
+     * @param dt The value.
+     * @param theta The value.
+     * @param x0Index The value.
+     * @return The value.
+     */
     public TridiagonalMatrix buildSecondDirectionLineMatrix(
             final double time,
             final double dt,
@@ -158,6 +206,13 @@ public class ADI2DStencilBuilder {
         return m;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param u The value.
+     * @param time The value.
+     * @return The value.
+     */
     public double[] applyFirstDirectionOperator(final double[] u, final double time) {
         if (u.length != n0 * n1) {
             throw new IllegalArgumentException("State vector has wrong length.");
@@ -172,6 +227,13 @@ public class ADI2DStencilBuilder {
         return out;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param u The value.
+     * @param time The value.
+     * @return The value.
+     */
     public double[] applySecondDirectionOperator(final double[] u, final double time) {
         if (u.length != n0 * n1) {
             throw new IllegalArgumentException("State vector has wrong length.");
@@ -186,6 +248,14 @@ public class ADI2DStencilBuilder {
         return out;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param u The value.
+     * @param out The value.
+     * @param time The value.
+     * @param x1Index The value.
+     */
     public void applyFirstDirectionOperatorOnSlice(
             final double[] u,
             final double[] out,
@@ -203,6 +273,14 @@ public class ADI2DStencilBuilder {
         }
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param u The value.
+     * @param out The value.
+     * @param time The value.
+     * @param x0Index The value.
+     */
     public void applySecondDirectionOperatorOnSlice(
             final double[] u,
             final double[] out,
@@ -220,6 +298,14 @@ public class ADI2DStencilBuilder {
         }
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param time The value.
+     * @param x0Index The value.
+     * @param x1Index The value.
+     * @return The value.
+     */
     public DirectionalCoefficients getFirstDirectionCoefficients(
             final double time,
             final int x0Index,
@@ -250,6 +336,14 @@ public class ADI2DStencilBuilder {
         return new DirectionalCoefficients(lower, diag, upper);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param time The value.
+     * @param x0Index The value.
+     * @param x1Index The value.
+     * @return The value.
+     */
     public DirectionalCoefficients getSecondDirectionCoefficients(
             final double time,
             final int x0Index,

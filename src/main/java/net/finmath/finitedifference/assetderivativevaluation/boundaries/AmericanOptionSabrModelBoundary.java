@@ -33,6 +33,11 @@ public class AmericanOptionSabrModelBoundary
      */
     private final FDMSabrModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public AmericanOptionSabrModelBoundary(final FDMSabrModel model) {
         this.model = model;
     }

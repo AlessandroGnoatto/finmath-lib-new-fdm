@@ -22,6 +22,11 @@ public class TouchOptionCevModelBoundary implements FiniteDifferenceBoundary {
      */
     private final FDMCevModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public TouchOptionCevModelBoundary(final FDMCevModel model) {
         this.model = model;
     }

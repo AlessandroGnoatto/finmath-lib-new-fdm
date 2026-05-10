@@ -27,6 +27,11 @@ public class DigitalBarrierOptionCevModelBoundary implements FiniteDifferenceBou
      */
     private final FDMCevModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DigitalBarrierOptionCevModelBoundary(final FDMCevModel model) {
         this.model = model;
     }

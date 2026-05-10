@@ -49,6 +49,11 @@ public class BarrierOptionSabrModelBoundary implements FiniteDifferenceBoundary 
      */
     private final FDMSabrModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BarrierOptionSabrModelBoundary(final FDMSabrModel model) {
         this.model = model;
     }

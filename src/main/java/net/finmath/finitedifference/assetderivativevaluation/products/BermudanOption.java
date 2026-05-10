@@ -44,6 +44,14 @@ public class BermudanOption implements FiniteDifferenceEquityProduct {
      */
     private final Exercise exercise;
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param exerciseTimes The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public BermudanOption(
             final String underlyingName,
             final double[] exerciseTimes,
@@ -57,6 +65,14 @@ public class BermudanOption implements FiniteDifferenceEquityProduct {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param exerciseTimes The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public BermudanOption(
             final String underlyingName,
             final double[] exerciseTimes,
@@ -74,6 +90,13 @@ public class BermudanOption implements FiniteDifferenceEquityProduct {
         this.callOrPutSign = callOrPutSign;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param exerciseTimes The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public BermudanOption(
             final double[] exerciseTimes,
             final double strike,
@@ -81,6 +104,13 @@ public class BermudanOption implements FiniteDifferenceEquityProduct {
         this(null, exerciseTimes, strike, callOrPutSign);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param exerciseTimes The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public BermudanOption(
             final double[] exerciseTimes,
             final double strike,
@@ -165,22 +195,47 @@ public class BermudanOption implements FiniteDifferenceEquityProduct {
         throw new IllegalArgumentException("Unknown option type");
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getUnderlyingName() {
         return underlyingName;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getMaturity() {
         return maturity;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getStrike() {
         return strike;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public CallOrPut getCallOrPut() {
         return callOrPutSign;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public Exercise getExercise() {
         return exercise;
     }

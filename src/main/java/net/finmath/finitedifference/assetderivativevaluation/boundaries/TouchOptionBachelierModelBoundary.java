@@ -22,6 +22,11 @@ public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBounda
      */
     private final FDMBachelierModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public TouchOptionBachelierModelBoundary(final FDMBachelierModel model) {
         this.model = model;
     }

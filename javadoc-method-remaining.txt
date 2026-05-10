@@ -1,0 +1,84 @@
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/adi/ADI2DStencilBuilder.java:[108] (javadoc) JavadocMethod: Unused Javadoc tag.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/adi/AbstractADI3D.java:[383] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/adi/AbstractADI3D.java:[383,55] (javadoc) JavadocMethod: Expected @param tag for 'u'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/adi/AbstractADI3D.java:[383,71] (javadoc) JavadocMethod: Expected @param tag for 'time'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/ThetaMethod1DAssembly.java:[70] (javadoc) JavadocMethod: Unused Javadoc tag.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[110] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[111,26] (javadoc) JavadocMethod: Expected @param tag for 'evaluationTime'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[112,26] (javadoc) JavadocMethod: Expected @param tag for 'time'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[113,40] (javadoc) JavadocMethod: Expected @param tag for 'valueAtMaturity'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[121] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[122,26] (javadoc) JavadocMethod: Expected @param tag for 'time'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[123,40] (javadoc) JavadocMethod: Expected @param tag for 'valueAtMaturity'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[131] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[132,26] (javadoc) JavadocMethod: Expected @param tag for 'evaluationTime'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[133,26] (javadoc) JavadocMethod: Expected @param tag for 'time'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[134,28] (javadoc) JavadocMethod: Expected @param tag for 'terminalValues'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[135,39] (javadoc) JavadocMethod: Expected @param tag for 'exerciseValue'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[144] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[145,26] (javadoc) JavadocMethod: Expected @param tag for 'time'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[146,28] (javadoc) JavadocMethod: Expected @param tag for 'terminalValues'.
+[ERROR] src/main/java/net/finmath/finitedifference/solvers/FDMSolver.java:[147,39] (javadoc) JavadocMethod: Expected @param tag for 'exerciseValue'.
+[ERROR] src/main/java/net/finmath/finitedifference/grids/BarrierAlignedSpotGridFactory.java:[202] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/net/finmath/finitedifference/grids/BarrierAlignedSpotGridFactory.java:[203,23] (javadoc) JavadocMethod: Expected @param tag for 'numberOfSteps'.
+[ERROR] src/main/java/net/finmath/finitedifference/grids/BarrierAlignedSpotGridFactory.java:[204,26] (javadoc) JavadocMethod: Expected @param tag for 'sMin'.
+[ERROR] src/main/java/net/finmath/finitedifference/grids/BarrierAlignedSpotGridFactory.java:[205,26] (javadoc) JavadocMethod: Expected @param tag for 'sMax'.
+[ERROR] src/main/java/net/finmath/finitedifference/grids/BarrierAlignedSpotGridFactory.java:[206,26] (javadoc) JavadocMethod: Expected @param tag for 'barrier'.
+[ERROR] src/main/java/net/finmath/finitedifference/grids/BarrierAlignedSpotGridFactory.java:[240,66] (javadoc) JavadocMethod: Expected @param tag for 'grid'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[28] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[29,29] (javadoc) JavadocMethod: Expected @param tag for 'optionType'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[30,26] (javadoc) JavadocMethod: Expected @param tag for 'forward'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[31,26] (javadoc) JavadocMethod: Expected @param tag for 'strike'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[32,26] (javadoc) JavadocMethod: Expected @param tag for 'stdDev'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[33,26] (javadoc) JavadocMethod: Expected @param tag for 'discountFactor'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[77] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[78,29] (javadoc) JavadocMethod: Expected @param tag for 'optionType'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[105] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[106,29] (javadoc) JavadocMethod: Expected @param tag for 'optionType'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[107,26] (javadoc) JavadocMethod: Expected @param tag for 'spot'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[108,26] (javadoc) JavadocMethod: Expected @param tag for 'strike'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[109,26] (javadoc) JavadocMethod: Expected @param tag for 'riskFreeRate'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[110,26] (javadoc) JavadocMethod: Expected @param tag for 'dividendYield'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[111,26] (javadoc) JavadocMethod: Expected @param tag for 'volatility'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[164] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[165,29] (javadoc) JavadocMethod: Expected @param tag for 'optionType'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[166,26] (javadoc) JavadocMethod: Expected @param tag for 'spot'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[167,26] (javadoc) JavadocMethod: Expected @param tag for 'riskFreeRate'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[168,26] (javadoc) JavadocMethod: Expected @param tag for 'dividendYield'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[169,26] (javadoc) JavadocMethod: Expected @param tag for 'volatility'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[172,23] (javadoc) JavadocMethod: Expected @param tag for 'pastFixings'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[248] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[249,29] (javadoc) JavadocMethod: Expected @param tag for 'optionType'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[250,26] (javadoc) JavadocMethod: Expected @param tag for 'spot'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[251,26] (javadoc) JavadocMethod: Expected @param tag for 'strike'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[252,26] (javadoc) JavadocMethod: Expected @param tag for 'riskFreeRate'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[253,26] (javadoc) JavadocMethod: Expected @param tag for 'dividendYield'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[254,26] (javadoc) JavadocMethod: Expected @param tag for 'volatility'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[347] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[348,29] (javadoc) JavadocMethod: Expected @param tag for 'optionType'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[349,26] (javadoc) JavadocMethod: Expected @param tag for 'spot'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[350,26] (javadoc) JavadocMethod: Expected @param tag for 'strike'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[351,26] (javadoc) JavadocMethod: Expected @param tag for 'riskFreeRate'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[352,26] (javadoc) JavadocMethod: Expected @param tag for 'dividendYield'.
+[ERROR] src/main/java/it/univr/fima/correction/AsianOption.java:[353,26] (javadoc) JavadocMethod: Expected @param tag for 'volatility'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1054] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1055,26] (javadoc) JavadocMethod: Expected @param tag for 'initialStockValue'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1056,26] (javadoc) JavadocMethod: Expected @param tag for 'riskFreeRate'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1057,26] (javadoc) JavadocMethod: Expected @param tag for 'dividendYield'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1058,26] (javadoc) JavadocMethod: Expected @param tag for 'volatility'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1059,26] (javadoc) JavadocMethod: Expected @param tag for 'optionMaturity'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1060,26] (javadoc) JavadocMethod: Expected @param tag for 'barrierValue'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1061,31] (javadoc) JavadocMethod: Expected @param tag for 'barrierType'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1062,36] (javadoc) JavadocMethod: Expected @param tag for 'binaryPayoffType'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1063,26] (javadoc) JavadocMethod: Expected @param tag for 'cashPayoff'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1083] (javadoc) JavadocMethod: @return tag should be present and have description.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1084,26] (javadoc) JavadocMethod: Expected @param tag for 'initialStockValue'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1085,26] (javadoc) JavadocMethod: Expected @param tag for 'riskFreeRate'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1086,26] (javadoc) JavadocMethod: Expected @param tag for 'dividendYield'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1087,26] (javadoc) JavadocMethod: Expected @param tag for 'volatility'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1088,26] (javadoc) JavadocMethod: Expected @param tag for 'optionMaturity'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1089,26] (javadoc) JavadocMethod: Expected @param tag for 'barrierValue'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1090,31] (javadoc) JavadocMethod: Expected @param tag for 'barrierType'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1091,42] (javadoc) JavadocMethod: Expected @param tag for 'eventType'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1092,36] (javadoc) JavadocMethod: Expected @param tag for 'binaryPayoffType'.
+[ERROR] src/main/java/it/univr/fima/correction/BarrierOptions.java:[1093,26] (javadoc) JavadocMethod: Expected @param tag for 'cashPayoff'.

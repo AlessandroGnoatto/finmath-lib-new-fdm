@@ -24,6 +24,11 @@ public class BermudanOptionCevModelBoundary
      */
     private final FDMCevModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BermudanOptionCevModelBoundary(final FDMCevModel model) {
         this.model = model;
     }

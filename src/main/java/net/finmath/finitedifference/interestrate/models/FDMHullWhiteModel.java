@@ -392,7 +392,7 @@ public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
 
     /**
      * Returns the affine coefficient
-     * </p>
+     *
      *
      * <p>
      * <i>
@@ -439,7 +439,7 @@ public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
 
     /**
      * Returns the conditional variance
-     * </p>
+     *
      *
      * <p>
      * <i>
@@ -579,6 +579,13 @@ public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
         return -(Math.log(discountFactorAtRight) - Math.log(discountFactorAtLeft)) / (rightTime - leftTime);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param time The value.
+     * @param maturity The value.
+     * @return The value.
+     */
     public double getMRTime(final double time, final double maturity) {
         if (maturity <= time) {
             return 0.0;

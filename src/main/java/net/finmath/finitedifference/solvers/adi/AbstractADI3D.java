@@ -58,6 +58,15 @@ public abstract class AbstractADI3D implements FDMSolver {
      */
     @FunctionalInterface
     public interface DoubleQuaternaryOperator {
+        /**
+         * Performs the operation.
+         *
+         * @param x0 The value.
+         * @param x1 The value.
+         * @param x2 The value.
+         * @param x3 The value.
+         * @return The value.
+         */
         double applyAsDouble(double x0, double x1, double x2, double x3);
     }
 
@@ -152,6 +161,13 @@ public abstract class AbstractADI3D implements FDMSolver {
                 (runningTime, x0, x1, x2) -> valueAtMaturity.applyAsDouble(x0));
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param time The value.
+     * @param valueAtMaturity The value.
+     * @return The value.
+     */
     public double[][] getValues(final double time, final DoubleBinaryOperator valueAtMaturity) {
         return getValues(
                 time,
@@ -159,6 +175,13 @@ public abstract class AbstractADI3D implements FDMSolver {
                 (runningTime, x0, x1, x2) -> valueAtMaturity.applyAsDouble(x0, x1));
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param time The value.
+     * @param valueAtMaturity The value.
+     * @return The value.
+     */
     public double[][] getValues(
             final double time,
             final DoubleTernaryOperator valueAtMaturity) {
@@ -168,6 +191,14 @@ public abstract class AbstractADI3D implements FDMSolver {
                 (runningTime, x0, x1, x2) -> valueAtMaturity.applyAsDouble(x0, x1, x2));
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param time The value.
+     * @param valueAtMaturity The value.
+     * @param exerciseValue The value.
+     * @return The value.
+     */
     public double[][] getValues(
             final double time,
             final DoubleTernaryOperator valueAtMaturity,
@@ -230,6 +261,14 @@ public abstract class AbstractADI3D implements FDMSolver {
         return values.getColumn(timeIndex);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param evaluationTime The value.
+     * @param time The value.
+     * @param valueAtMaturity The value.
+     * @return The value.
+     */
     public double[] getValue(
             final double evaluationTime,
             final double time,
@@ -241,6 +280,14 @@ public abstract class AbstractADI3D implements FDMSolver {
         return values.getColumn(timeIndex);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param evaluationTime The value.
+     * @param time The value.
+     * @param valueAtMaturity The value.
+     * @return The value.
+     */
     public double[] getValue(
             final double evaluationTime,
             final double time,
@@ -252,6 +299,15 @@ public abstract class AbstractADI3D implements FDMSolver {
         return values.getColumn(timeIndex);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param evaluationTime The value.
+     * @param time The value.
+     * @param valueAtMaturity The value.
+     * @param exerciseValue The value.
+     * @return The value.
+     */
     public double[] getValue(
             final double evaluationTime,
             final double time,
@@ -824,6 +880,14 @@ public abstract class AbstractADI3D implements FDMSolver {
      */
     @FunctionalInterface
     public interface DoubleTernaryOperator {
+        /**
+         * Performs the operation.
+         *
+         * @param x0 The value.
+         * @param x1 The value.
+         * @param x2 The value.
+         * @return The value.
+         */
         double applyAsDouble(double x0, double x1, double x2);
     }
 }

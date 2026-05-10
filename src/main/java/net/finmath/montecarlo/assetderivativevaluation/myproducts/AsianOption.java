@@ -281,26 +281,56 @@ public class AsianOption extends AbstractAssetMonteCarloProduct {
         return values;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getMaturity() {
         return maturity;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getStrike() {
         return strike;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public TimeDiscretization getTimesForAveraging() {
         return timesForAveraging;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public Integer getUnderlyingIndex() {
         return underlyingIndex;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public CallOrPut getCallOrPut() {
         return callOrPut;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public AsianStrike getAsianStrike() {
         return asianStrike;
     }

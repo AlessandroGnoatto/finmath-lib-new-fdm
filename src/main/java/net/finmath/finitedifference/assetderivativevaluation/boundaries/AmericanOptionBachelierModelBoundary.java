@@ -32,6 +32,11 @@ public class AmericanOptionBachelierModelBoundary
      */
     private final FDMBachelierModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public AmericanOptionBachelierModelBoundary(final FDMBachelierModel model) {
         this.model = model;
     }

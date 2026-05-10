@@ -43,6 +43,11 @@ public class EuropeanOptionBatesModelBoundary implements FiniteDifferenceBoundar
      */
     private final FDMBatesModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public EuropeanOptionBatesModelBoundary(final FDMBatesModel model) {
         this.model = model;
     }

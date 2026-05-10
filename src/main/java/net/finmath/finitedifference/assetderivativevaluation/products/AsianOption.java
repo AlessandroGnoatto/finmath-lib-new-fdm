@@ -95,6 +95,16 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
      */
     private final Exercise exercise;
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     * @param asianStrike The value.
+     * @param exercise The value.
+     */
     public AsianOption(
             final String underlyingName,
             final double maturity,
@@ -124,6 +134,14 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         this.exercise = exercise;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public AsianOption(
             final String underlyingName,
             final double maturity,
@@ -138,6 +156,14 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
                 new EuropeanExercise(maturity));
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public AsianOption(
             final String underlyingName,
             final double maturity,
@@ -146,6 +172,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         this(underlyingName, maturity, strike, callOrPutFromDouble(callOrPutSign));
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public AsianOption(
             final double maturity,
             final double strike,
@@ -153,6 +186,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         this(null, maturity, strike, callOrPutSign);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param callOrPutSign The value.
+     */
     public AsianOption(
             final double maturity,
             final double strike,
@@ -160,6 +200,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         this(null, maturity, strike, callOrPutSign);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     */
     public AsianOption(
             final String underlyingName,
             final double maturity,
@@ -167,12 +214,26 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         this(underlyingName, maturity, strike, CallOrPut.CALL);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     */
     public AsianOption(
             final double maturity,
             final double strike) {
         this(null, maturity, strike, CallOrPut.CALL);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param callOrPutSign The value.
+     * @param asianStrike The value.
+     */
     public AsianOption(
             final String underlyingName,
             final double maturity,
@@ -187,6 +248,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
                 new EuropeanExercise(maturity));
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param callOrPutSign The value.
+     * @param asianStrike The value.
+     */
     public AsianOption(
             final double maturity,
             final CallOrPut callOrPutSign,
@@ -274,6 +342,12 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         throw new IllegalArgumentException("Unsupported solver type for AsianOption.");
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param model The value.
+     * @return The value.
+     */
     public FDMSolver getSolver(final FiniteDifferenceEquityModel model) {
         if (model instanceof LiftedFDMBlackScholesModelDecorator
                 || model instanceof LiftedFDMCevModelDecorator
@@ -289,6 +363,12 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
                 "AsianOption currently supports only FDMBlackScholesModel, FDMCevModel, FDMBachelierModel and FDMHestonModel.");
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param model The value.
+     * @return The value.
+     */
     public FiniteDifferenceEquityModel getLiftedModel(final FiniteDifferenceEquityModel model) {
 
         final SpaceTimeDiscretization baseDiscretization = model.getSpaceTimeDiscretization();
@@ -402,26 +482,56 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         }
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getUnderlyingName() {
         return underlyingName;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getMaturity() {
         return maturity;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getStrike() {
         return strike;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public CallOrPut getCallOrPut() {
         return callOrPutSign;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public AsianStrike getAsianStrike() {
         return asianStrike;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public Exercise getExercise() {
         return exercise;
     }

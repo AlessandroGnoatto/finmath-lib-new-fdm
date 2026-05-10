@@ -24,6 +24,11 @@ public class BermudanOptionBlackScholesModelBoundary
      */
     private final FDMBlackScholesModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BermudanOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
         this.model = model;
     }

@@ -56,6 +56,14 @@ public class CevActiveBoundaryProvider implements TwoStateActiveBoundaryProvider
      */
     private final CallOrPut callOrPut;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param strike The value.
+     * @param maturity The value.
+     * @param callOrPut The value.
+     */
     public CevActiveBoundaryProvider(
             final FiniteDifferenceEquityModel model,
             final double strike,

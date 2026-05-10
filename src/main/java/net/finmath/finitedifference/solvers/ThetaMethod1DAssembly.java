@@ -61,6 +61,14 @@ public final class ThetaMethod1DAssembly {
          */
         private final double shortRate;
 
+        /**
+         * Performs the operation.
+         *
+         * @param drift The value.
+         * @param variance The value.
+         * @param shortRate The value.
+         * @return The value.
+         */
         public ModelCoefficients(
                 final double[] drift,
                 final double[] variance,
@@ -70,14 +78,29 @@ public final class ThetaMethod1DAssembly {
             this.shortRate = shortRate;
         }
 
+        /**
+         * Returns the value.
+         *
+         * @return The value.
+         */
         public double[] getDrift() {
             return drift;
         }
 
+        /**
+         * Returns the value.
+         *
+         * @return The value.
+         */
         public double[] getVariance() {
             return variance;
         }
 
+        /**
+         * Returns the value.
+         *
+         * @return The value.
+         */
         public double getShortRate() {
             return shortRate;
         }

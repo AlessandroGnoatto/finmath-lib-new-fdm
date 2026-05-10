@@ -21,6 +21,15 @@ public final class ActiveBoundaryProviderFactory {
     private ActiveBoundaryProviderFactory() {
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param strike The value.
+     * @param maturity The value.
+     * @param callOrPut The value.
+     * @return The value.
+     */
     public static TwoStateActiveBoundaryProvider createProvider(
             final FiniteDifferenceEquityModel model,
             final double strike,

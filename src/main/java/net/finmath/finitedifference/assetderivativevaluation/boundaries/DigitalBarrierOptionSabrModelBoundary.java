@@ -32,6 +32,11 @@ public class DigitalBarrierOptionSabrModelBoundary implements FiniteDifferenceBo
      */
     private final FDMSabrModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DigitalBarrierOptionSabrModelBoundary(final FDMSabrModel model) {
         this.model = model;
     }

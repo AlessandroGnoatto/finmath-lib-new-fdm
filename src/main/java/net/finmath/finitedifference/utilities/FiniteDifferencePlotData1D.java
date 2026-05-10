@@ -81,30 +81,65 @@ public final class FiniteDifferencePlotData1D {
         this.yAxisLabel = yAxisLabel;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getXMin() {
         return xMin;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getXMax() {
         return xMax;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public int getNumberOfPoints() {
         return numberOfPoints;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public DoubleUnaryOperator getFunction() {
         return function;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getTitle() {
         return title;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getXAxisLabel() {
         return xAxisLabel;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getYAxisLabel() {
         return yAxisLabel;
     }

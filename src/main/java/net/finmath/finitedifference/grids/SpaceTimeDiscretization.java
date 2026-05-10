@@ -30,10 +30,20 @@ public class SpaceTimeDiscretization {
 	 * The space grids.
 	 */
     private final HashMap<Integer, Grid> spaceGrids = new HashMap<>();
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public HashMap<Integer, Grid> getSpaceGrids() {
         return spaceGrids;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double[] getCenter() {
         return center;
     }
@@ -136,6 +146,11 @@ public class SpaceTimeDiscretization {
         return center[dimension];
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public int getNumberOfSpaceGrids() {
         return spaceGrids.size();
     }

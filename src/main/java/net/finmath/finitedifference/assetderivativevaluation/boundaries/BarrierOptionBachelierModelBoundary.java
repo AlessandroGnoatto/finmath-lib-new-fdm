@@ -32,6 +32,11 @@ public class BarrierOptionBachelierModelBoundary
      */
     private final FDMBachelierModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BarrierOptionBachelierModelBoundary(final FDMBachelierModel model) {
         this.model = model;
     }

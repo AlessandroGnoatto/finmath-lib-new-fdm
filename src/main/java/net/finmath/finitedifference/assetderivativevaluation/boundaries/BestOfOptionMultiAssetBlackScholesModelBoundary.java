@@ -69,6 +69,11 @@ public class BestOfOptionMultiAssetBlackScholesModelBoundary implements FiniteDi
      */
     private final FDMMultiAssetBlackScholesModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BestOfOptionMultiAssetBlackScholesModelBoundary(final FDMMultiAssetBlackScholesModel model) {
         if (model == null) {
             throw new IllegalArgumentException("model must not be null.");

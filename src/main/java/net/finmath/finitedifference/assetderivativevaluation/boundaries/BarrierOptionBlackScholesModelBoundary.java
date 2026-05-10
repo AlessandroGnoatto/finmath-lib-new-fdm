@@ -49,6 +49,11 @@ public class BarrierOptionBlackScholesModelBoundary implements FiniteDifferenceB
      */
     private final FDMBlackScholesModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BarrierOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
         this.model = model;
     }

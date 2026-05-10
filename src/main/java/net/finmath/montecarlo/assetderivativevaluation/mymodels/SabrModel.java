@@ -77,6 +77,19 @@ public class SabrModel extends AbstractProcessModel {
      */
     private final RandomVariable[] initialStateVector = new RandomVariable[2];
 
+    /**
+     * Performs the operation.
+     *
+     * @param initialValue The value.
+     * @param discountCurveForForwardRate The value.
+     * @param discountCurveForDividendYield The value.
+     * @param alpha The value.
+     * @param beta The value.
+     * @param nu The value.
+     * @param rho The value.
+     * @param discountCurveForDiscountRate The value.
+     * @param randomVariableFactory The value.
+     */
     public SabrModel(
             final RandomVariable initialValue,
             final DiscountCurve discountCurveForForwardRate,
@@ -106,6 +119,18 @@ public class SabrModel extends AbstractProcessModel {
         this.randomVariableFactory = randomVariableFactory;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param initialValue The value.
+     * @param discountCurveForForwardRate The value.
+     * @param alpha The value.
+     * @param beta The value.
+     * @param nu The value.
+     * @param rho The value.
+     * @param discountCurveForDiscountRate The value.
+     * @param randomVariableFactory The value.
+     */
     public SabrModel(
             final RandomVariable initialValue,
             final DiscountCurve discountCurveForForwardRate,
@@ -128,6 +153,19 @@ public class SabrModel extends AbstractProcessModel {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param initialValue The value.
+     * @param riskFreeRate The value.
+     * @param dividendYieldRate The value.
+     * @param alpha The value.
+     * @param beta The value.
+     * @param nu The value.
+     * @param rho The value.
+     * @param discountRate The value.
+     * @param randomVariableFactory The value.
+     */
     public SabrModel(
             final RandomVariable initialValue,
             final RandomVariable riskFreeRate,
@@ -157,6 +195,18 @@ public class SabrModel extends AbstractProcessModel {
         this.randomVariableFactory = randomVariableFactory;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param initialValue The value.
+     * @param riskFreeRate The value.
+     * @param alpha The value.
+     * @param beta The value.
+     * @param nu The value.
+     * @param rho The value.
+     * @param discountRate The value.
+     * @param randomVariableFactory The value.
+     */
     public SabrModel(
             final RandomVariable initialValue,
             final RandomVariable riskFreeRate,
@@ -179,6 +229,19 @@ public class SabrModel extends AbstractProcessModel {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param initialValue The value.
+     * @param riskFreeRate The value.
+     * @param dividendYieldRate The value.
+     * @param alpha The value.
+     * @param beta The value.
+     * @param nu The value.
+     * @param rho The value.
+     * @param discountRate The value.
+     * @param randomVariableFactory The value.
+     */
     public SabrModel(
             final double initialValue,
             final double riskFreeRate,
@@ -202,6 +265,17 @@ public class SabrModel extends AbstractProcessModel {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param initialValue The value.
+     * @param riskFreeRate The value.
+     * @param dividendYieldRate The value.
+     * @param alpha The value.
+     * @param beta The value.
+     * @param nu The value.
+     * @param rho The value.
+     */
     public SabrModel(
             final double initialValue,
             final double riskFreeRate,
@@ -223,6 +297,16 @@ public class SabrModel extends AbstractProcessModel {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param initialValue The value.
+     * @param riskFreeRate The value.
+     * @param alpha The value.
+     * @param beta The value.
+     * @param nu The value.
+     * @param rho The value.
+     */
     public SabrModel(
             final double initialValue,
             final double riskFreeRate,
@@ -428,46 +512,101 @@ public class SabrModel extends AbstractProcessModel {
                 + "]";
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getInitialValue() {
         return initialValue;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getAlpha() {
         return alpha;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getBeta() {
         return beta;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getNu() {
         return nu;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getRho() {
         return rho;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public DiscountCurve getDiscountCurveForForwardRate() {
         return discountCurveForForwardRate;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public DiscountCurve getDiscountCurveForDividendYield() {
         return discountCurveForDividendYield;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public DiscountCurve getDiscountCurveForDiscountRate() {
         return discountCurveForDiscountRate;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getRiskFreeRate() {
         return riskFreeRate;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getDividendYieldRate() {
         return dividendYieldRate;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public RandomVariable getDiscountRate() {
         return discountRate;
     }

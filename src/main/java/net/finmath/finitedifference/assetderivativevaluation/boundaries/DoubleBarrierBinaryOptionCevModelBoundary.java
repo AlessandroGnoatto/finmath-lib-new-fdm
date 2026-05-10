@@ -24,6 +24,11 @@ public class DoubleBarrierBinaryOptionCevModelBoundary implements FiniteDifferen
      */
     private final FDMCevModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DoubleBarrierBinaryOptionCevModelBoundary(final FDMCevModel model) {
         this.model = model;
     }

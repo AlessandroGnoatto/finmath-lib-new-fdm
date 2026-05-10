@@ -108,46 +108,101 @@ public final class FiniteDifferencePlotData2D {
         this.zAxisLabel = zAxisLabel;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getXMin() {
         return xMin;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getXMax() {
         return xMax;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getYMin() {
         return yMin;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getYMax() {
         return yMax;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public int getNumberOfPointsX() {
         return numberOfPointsX;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public int getNumberOfPointsY() {
         return numberOfPointsY;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public DoubleBinaryOperator getFunction() {
         return function;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getTitle() {
         return title;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getXAxisLabel() {
         return xAxisLabel;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getYAxisLabel() {
         return yAxisLabel;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getZAxisLabel() {
         return zAxisLabel;
     }

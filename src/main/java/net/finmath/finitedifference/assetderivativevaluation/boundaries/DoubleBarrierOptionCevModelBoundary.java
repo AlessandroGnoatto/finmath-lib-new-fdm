@@ -31,6 +31,11 @@ public class DoubleBarrierOptionCevModelBoundary implements FiniteDifferenceBoun
      */
     private final FDMCevModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DoubleBarrierOptionCevModelBoundary(final FDMCevModel model) {
         this.model = model;
     }

@@ -32,6 +32,11 @@ public class EuropeanOptionCevModelBoundary
      */
     private final FDMCevModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public EuropeanOptionCevModelBoundary(final FDMCevModel model) {
         this.model = model;
     }

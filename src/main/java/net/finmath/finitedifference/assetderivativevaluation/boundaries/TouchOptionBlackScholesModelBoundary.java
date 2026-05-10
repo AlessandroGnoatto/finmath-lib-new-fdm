@@ -27,6 +27,11 @@ public class TouchOptionBlackScholesModelBoundary implements FiniteDifferenceBou
      */
     private final FDMBlackScholesModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public TouchOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
         this.model = model;
     }

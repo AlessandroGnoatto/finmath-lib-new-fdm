@@ -39,6 +39,11 @@ public class TouchOptionSabrModelBoundary implements FiniteDifferenceBoundary {
      */
     private final FDMSabrModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public TouchOptionSabrModelBoundary(final FDMSabrModel model) {
         this.model = model;
     }

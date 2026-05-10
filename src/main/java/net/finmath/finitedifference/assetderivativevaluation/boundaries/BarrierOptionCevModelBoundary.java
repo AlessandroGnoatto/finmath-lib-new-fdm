@@ -32,6 +32,11 @@ public class BarrierOptionCevModelBoundary
      */
     private final FDMCevModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public BarrierOptionCevModelBoundary(final FDMCevModel model) {
         this.model = model;
     }

@@ -27,6 +27,11 @@ public class DigitalBarrierOptionBachelierModelBoundary implements FiniteDiffere
      */
     private final FDMBachelierModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DigitalBarrierOptionBachelierModelBoundary(final FDMBachelierModel model) {
         this.model = model;
     }

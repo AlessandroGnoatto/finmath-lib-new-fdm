@@ -46,6 +46,11 @@ public class DoubleBarrierBinaryOptionHestonModelBoundary implements FiniteDiffe
      */
     private final FDMHestonModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DoubleBarrierBinaryOptionHestonModelBoundary(final FDMHestonModel model) {
         this.model = model;
     }

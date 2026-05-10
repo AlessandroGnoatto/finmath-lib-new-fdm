@@ -43,6 +43,14 @@ public class FDMAsianHestonADI3D extends AbstractADI3D {
      */
     private final ADI3DStencilBuilder stencilBuilder;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param product The value.
+     * @param spaceTimeDiscretization The value.
+     * @param exercise The value.
+     */
     public FDMAsianHestonADI3D(
             final FiniteDifferenceEquityModel model,
             final FiniteDifferenceEquityProduct product,

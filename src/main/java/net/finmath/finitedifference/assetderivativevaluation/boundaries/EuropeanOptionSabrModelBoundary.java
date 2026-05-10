@@ -38,6 +38,11 @@ public class EuropeanOptionSabrModelBoundary implements FiniteDifferenceBoundary
      */
     private final FDMSabrModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public EuropeanOptionSabrModelBoundary(final FDMSabrModel model) {
         this.model = model;
     }

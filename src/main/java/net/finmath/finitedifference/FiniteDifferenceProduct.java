@@ -18,10 +18,28 @@ import net.finmath.modelling.Product;
  */
 public interface FiniteDifferenceProduct<M extends FiniteDifferenceModel> extends Product {
 
+    /**
+     * Returns the value.
+     *
+     * @param evaluationTime The value.
+     * @param model The value.
+     * @return The value.
+     */
     double[] getValue(double evaluationTime, M model);
 
+    /**
+     * Returns the value.
+     *
+     * @param model The value.
+     * @return The value.
+     */
     double[][] getValues(M model);
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     Class<M> getModelClass();
 
     @Override

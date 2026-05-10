@@ -258,6 +258,14 @@ public class FDMThetaMethod1D implements FDMSolver {
         return extractTimeSlice(values, time, evaluationTime);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param time The value.
+     * @param terminalValues The value.
+     * @param continuousObstacleValue The value.
+     * @return The value.
+     */
     public double[][] getValues(
             final double time,
             final double[] terminalValues,
@@ -265,6 +273,15 @@ public class FDMThetaMethod1D implements FDMSolver {
         return getValuesInternal(time, terminalValues, null, continuousObstacleValue);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param evaluationTime The value.
+     * @param time The value.
+     * @param terminalValues The value.
+     * @param continuousObstacleValue The value.
+     * @return The value.
+     */
     public double[] getValue(
             final double evaluationTime,
             final double time,

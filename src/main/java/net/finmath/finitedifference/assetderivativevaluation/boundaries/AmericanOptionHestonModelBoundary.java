@@ -31,6 +31,11 @@ public class AmericanOptionHestonModelBoundary
      */
     private final FDMHestonModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public AmericanOptionHestonModelBoundary(final FDMHestonModel model) {
         this.model = model;
     }

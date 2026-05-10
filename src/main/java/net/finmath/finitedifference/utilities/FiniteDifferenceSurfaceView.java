@@ -53,17 +53,38 @@ public final class FiniteDifferenceSurfaceView {
         this.values = values;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param discretization The value.
+     * @param values The value.
+     * @return The value.
+     */
     public static FiniteDifferenceSurfaceView of(
             final SpaceTimeDiscretization discretization,
             final double[][] values) {
         return new FiniteDifferenceSurfaceView(discretization, values);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param timeIndex The value.
+     * @param indices The value.
+     * @return The value.
+     */
     public double getValue(final int timeIndex, final int... indices) {
         validateTimeIndex(timeIndex);
         return values[layout.flatten(indices)][timeIndex];
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param timeIndex The value.
+     * @param coordinates The value.
+     * @return The value.
+     */
     public double interpolate(final int timeIndex, final double... coordinates) {
         validateTimeIndex(timeIndex);
         return FiniteDifferenceValueInterpolator.interpolateTimeIndex(
@@ -74,6 +95,14 @@ public final class FiniteDifferenceSurfaceView {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param evaluationTime The value.
+     * @param maturity The value.
+     * @param coordinates The value.
+     * @return The value.
+     */
     public double interpolate(
             final double evaluationTime,
             final double maturity,
@@ -87,6 +116,12 @@ public final class FiniteDifferenceSurfaceView {
         );
     }
 
+    /**
+     * Returns the value.
+     *
+     * @param timeIndex The value.
+     * @return The value.
+     */
     public double[] getTimeSlice(final int timeIndex) {
         validateTimeIndex(timeIndex);
         return FiniteDifferenceValueInterpolator.getTimeSlice(
@@ -96,6 +131,12 @@ public final class FiniteDifferenceSurfaceView {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param timeIndex The value.
+     * @return The value.
+     */
     public DoubleUnaryOperator asFunction1D(final int timeIndex) {
         if (layout.getDimension() != 1) {
             throw new IllegalArgumentException("asFunction1D requires a one-dimensional surface.");
@@ -106,6 +147,15 @@ public final class FiniteDifferenceSurfaceView {
         return x -> interpolate(timeIndex, x);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param timeIndex The value.
+     * @param xDimension The value.
+     * @param yDimension The value.
+     * @param fixedCoordinates The value.
+     * @return The value.
+     */
     public DoubleBinaryOperator asFunction2D(
             final int timeIndex,
             final int xDimension,
@@ -125,6 +175,16 @@ public final class FiniteDifferenceSurfaceView {
         };
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param timeIndex The value.
+     * @param numberOfPoints The value.
+     * @param title The value.
+     * @param xAxisLabel The value.
+     * @param yAxisLabel The value.
+     * @return The value.
+     */
     public FiniteDifferencePlotData1D asPlotData1D(
             final int timeIndex,
             final int numberOfPoints,
@@ -149,6 +209,12 @@ public final class FiniteDifferenceSurfaceView {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param timeIndex The value.
+     * @return The value.
+     */
     public FiniteDifferencePlotData1D asPlotData1D(final int timeIndex) {
         return asPlotData1D(
                 timeIndex,
@@ -159,6 +225,21 @@ public final class FiniteDifferenceSurfaceView {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param timeIndex The value.
+     * @param xDimension The value.
+     * @param yDimension The value.
+     * @param numberOfPointsX The value.
+     * @param numberOfPointsY The value.
+     * @param title The value.
+     * @param xAxisLabel The value.
+     * @param yAxisLabel The value.
+     * @param zAxisLabel The value.
+     * @param fixedCoordinates The value.
+     * @return The value.
+     */
     public FiniteDifferencePlotData2D asPlotData2D(
             final int timeIndex,
             final int xDimension,
@@ -192,6 +273,14 @@ public final class FiniteDifferenceSurfaceView {
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param timeIndex The value.
+     * @param xDimension The value.
+     * @param yDimension The value.
+     * @return The value.
+     */
     public FiniteDifferencePlotData2D asPlotData2D(
             final int timeIndex,
             final int xDimension,
@@ -210,14 +299,29 @@ public final class FiniteDifferenceSurfaceView {
         );
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public SpaceTimeDiscretization getDiscretization() {
         return discretization;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double[][] getValues() {
         return values;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public FiniteDifferenceGridLayout getLayout() {
         return layout;
     }

@@ -35,6 +35,11 @@ public class DigitalBarrierOptionBlackScholesModelBoundary implements FiniteDiff
      */
     private final FDMBlackScholesModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DigitalBarrierOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
         this.model = model;
     }

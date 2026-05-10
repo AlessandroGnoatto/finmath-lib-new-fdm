@@ -36,6 +36,11 @@ public class EuropeanOptionHestonModelBoundary implements FiniteDifferenceBounda
      */
     private final FDMHestonModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public EuropeanOptionHestonModelBoundary(final FDMHestonModel model) {
         this.model = model;
     }

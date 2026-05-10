@@ -152,6 +152,17 @@ public class BarrierOption implements
      */
     private transient ProductEventStateStack<ActivatedVectorEventState> activatedVectorEventStateStack;
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -172,6 +183,17 @@ public class BarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -192,6 +214,18 @@ public class BarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -213,6 +247,18 @@ public class BarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -236,6 +282,20 @@ public class BarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -261,6 +321,20 @@ public class BarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -285,6 +359,16 @@ public class BarrierOption implements
         this.monitoringTimes = monitoringTimes == null ? null : monitoringTimes.clone();
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -295,6 +379,16 @@ public class BarrierOption implements
         this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -305,6 +399,17 @@ public class BarrierOption implements
         this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -316,6 +421,17 @@ public class BarrierOption implements
         this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType, exercise);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -327,6 +443,19 @@ public class BarrierOption implements
         this(null, maturity, strike, barrierValue, rebate, callOrPutSign, barrierType, exercise);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param rebate The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -351,6 +480,16 @@ public class BarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -361,6 +500,17 @@ public class BarrierOption implements
         this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     */
     public BarrierOption(
             final String underlyingName,
             final double maturity,
@@ -372,6 +522,15 @@ public class BarrierOption implements
         this(underlyingName, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType, exercise);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -381,6 +540,16 @@ public class BarrierOption implements
         this(null, maturity, strike, barrierValue, 0.0, callOrPutSign, barrierType);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param exercise The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -1683,42 +1852,92 @@ public class BarrierOption implements
         return model.getCloneWithModifiedSpaceTimeDiscretization(effectiveDiscretization);
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getUnderlyingName() {
         return underlyingName;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getMaturity() {
         return maturity;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getStrike() {
         return strike;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getBarrierValue() {
         return barrierValue;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getRebate() {
         return rebate;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public CallOrPut getCallOrPut() {
         return callOrPutSign;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public BarrierType getBarrierType() {
         return barrierType;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public Exercise getExercise() {
         return exercise;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public MonitoringType getMonitoringType() {
         return monitoringType;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double[] getMonitoringTimes() {
         return monitoringTimes == null ? null : monitoringTimes.clone();
     }

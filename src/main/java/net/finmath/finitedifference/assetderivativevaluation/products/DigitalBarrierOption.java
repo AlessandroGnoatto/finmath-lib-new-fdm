@@ -170,6 +170,19 @@ public class DigitalBarrierOption implements
      */
     private transient ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> discreteKnockInEventStateStack;
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     * @param exercise The value.
+     */
     public DigitalBarrierOption(
             final String underlyingName,
             final double maturity,
@@ -195,6 +208,21 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public DigitalBarrierOption(
             final String underlyingName,
             final double maturity,
@@ -249,6 +277,18 @@ public class DigitalBarrierOption implements
         validateMonitoringSpecification();
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     */
     public DigitalBarrierOption(
             final String underlyingName,
             final double maturity,
@@ -271,6 +311,20 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public DigitalBarrierOption(
             final String underlyingName,
             final double maturity,
@@ -297,6 +351,18 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     */
     public DigitalBarrierOption(
             final String underlyingName,
             final double maturity,
@@ -319,6 +385,17 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     */
     public DigitalBarrierOption(
             final double maturity,
             final double strike,
@@ -340,6 +417,18 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     * @param exercise The value.
+     */
     public DigitalBarrierOption(
             final double maturity,
             final double strike,
@@ -362,6 +451,20 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public DigitalBarrierOption(
             final double maturity,
             final double strike,
@@ -388,6 +491,17 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     */
     public DigitalBarrierOption(
             final double maturity,
             final double strike,
@@ -409,6 +523,18 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     * @param exercise The value.
+     */
     public DigitalBarrierOption(
             final double maturity,
             final double strike,
@@ -431,6 +557,20 @@ public class DigitalBarrierOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrierValue The value.
+     * @param callOrPutSign The value.
+     * @param barrierType The value.
+     * @param digitalPayoffType The value.
+     * @param cashPayoff The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public DigitalBarrierOption(
             final double maturity,
             final double strike,
@@ -2111,6 +2251,11 @@ public class DigitalBarrierOption implements
         throw new IllegalArgumentException("Unknown option type.");
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getUnderlyingName() {
         return underlyingName;
     }
@@ -2120,6 +2265,11 @@ public class DigitalBarrierOption implements
         return maturity;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getStrike() {
         return strike;
     }
@@ -2129,6 +2279,11 @@ public class DigitalBarrierOption implements
         return barrierValue;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public CallOrPut getCallOrPut() {
         return callOrPutSign;
     }
@@ -2138,22 +2293,47 @@ public class DigitalBarrierOption implements
         return barrierType;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public DigitalPayoffType getDigitalPayoffType() {
         return digitalPayoffType;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getCashPayoff() {
         return cashPayoff;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public Exercise getExercise() {
         return exercise;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public MonitoringType getMonitoringType() {
         return monitoringType;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double[] getMonitoringTimes() {
         return monitoringTimes == null ? null : monitoringTimes.clone();
     }

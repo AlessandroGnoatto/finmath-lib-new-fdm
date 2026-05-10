@@ -146,6 +146,17 @@ public class TouchOption implements
      */
     private final double[] monitoringTimes;
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @param settlementTiming The value.
+     * @param exercise The value.
+     */
     public TouchOption(
             final String underlyingName,
             final double maturity,
@@ -167,6 +178,19 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @param settlementTiming The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public TouchOption(
             final String underlyingName,
             final double maturity,
@@ -219,6 +243,16 @@ public class TouchOption implements
         validateMonitoringSpecification();
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @param settlementTiming The value.
+     */
     public TouchOption(
             final String underlyingName,
             final double maturity,
@@ -237,6 +271,16 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @param exercise The value.
+     */
     public TouchOption(
             final String underlyingName,
             final double maturity,
@@ -255,6 +299,15 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     */
     public TouchOption(
             final String underlyingName,
             final double maturity,
@@ -272,6 +325,15 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @param settlementTiming The value.
+     */
     public TouchOption(
             final double maturity,
             final double barrierValue,
@@ -289,6 +351,14 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     */
     public TouchOption(
             final double maturity,
             final double barrierValue,
@@ -305,6 +375,18 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @param settlementTiming The value.
+     * @param exercise The value.
+     * @param monitoringType The value.
+     * @param monitoringTimes The value.
+     */
     public TouchOption(
             final double maturity,
             final double barrierValue,
@@ -327,6 +409,16 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @param settlementTiming The value.
+     * @param exercise The value.
+     */
     public TouchOption(
             final double maturity,
             final double barrierValue,
@@ -347,6 +439,16 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @return The value.
+     */
     public static TouchOption oneTouchAtExpiry(
             final String underlyingName,
             final double maturity,
@@ -369,6 +471,15 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @return The value.
+     */
     public static TouchOption oneTouchAtExpiry(
             final double maturity,
             final double barrierValue,
@@ -377,6 +488,16 @@ public class TouchOption implements
         return oneTouchAtExpiry(null, maturity, barrierValue, barrierType, payoffAmount);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @return The value.
+     */
     public static TouchOption oneTouchAtHit(
             final String underlyingName,
             final double maturity,
@@ -399,6 +520,15 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @return The value.
+     */
     public static TouchOption oneTouchAtHit(
             final double maturity,
             final double barrierValue,
@@ -407,6 +537,16 @@ public class TouchOption implements
         return oneTouchAtHit(null, maturity, barrierValue, barrierType, payoffAmount);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param underlyingName The value.
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @return The value.
+     */
     public static TouchOption noTouchAtExpiry(
             final String underlyingName,
             final double maturity,
@@ -429,6 +569,15 @@ public class TouchOption implements
         );
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param barrierValue The value.
+     * @param barrierType The value.
+     * @param payoffAmount The value.
+     * @return The value.
+     */
     public static TouchOption noTouchAtExpiry(
             final double maturity,
             final double barrierValue,
@@ -1351,6 +1500,11 @@ public class TouchOption implements
         return 0.0;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public String getUnderlyingName() {
         return underlyingName;
     }
@@ -1370,22 +1524,47 @@ public class TouchOption implements
         return barrierType;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double getPayoffAmount() {
         return payoffAmount;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public TouchSettlementTiming getSettlementTiming() {
         return settlementTiming;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public Exercise getExercise() {
         return exercise;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public MonitoringType getMonitoringType() {
         return monitoringType;
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public double[] getMonitoringTimes() {
         return monitoringTimes == null ? null : monitoringTimes.clone();
     }

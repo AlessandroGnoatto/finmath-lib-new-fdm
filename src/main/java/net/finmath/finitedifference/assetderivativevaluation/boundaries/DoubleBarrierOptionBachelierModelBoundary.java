@@ -31,6 +31,11 @@ public class DoubleBarrierOptionBachelierModelBoundary implements FiniteDifferen
      */
     private final FDMBachelierModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DoubleBarrierOptionBachelierModelBoundary(final FDMBachelierModel model) {
         this.model = model;
     }

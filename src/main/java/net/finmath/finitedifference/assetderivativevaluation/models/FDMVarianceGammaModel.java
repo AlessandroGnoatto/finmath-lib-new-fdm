@@ -487,6 +487,11 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
         return new double[] {initialValue };
     }
 
+    /**
+     * Returns the value.
+     *
+     * @return The value.
+     */
     public VarianceGammaJumpComponent getVarianceGammaJumpComponent() {
         return jumpComponent;
     }

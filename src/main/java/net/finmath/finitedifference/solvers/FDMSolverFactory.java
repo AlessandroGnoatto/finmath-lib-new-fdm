@@ -79,6 +79,15 @@ public final class FDMSolverFactory {
         // Utility class
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param product The value.
+     * @param spaceTimeDiscretization The value.
+     * @param exercise The value.
+     * @return The value.
+     */
     public static FDMSolver createSolver(
             final FiniteDifferenceEquityModel model,
             final FiniteDifferenceEquityProduct product,
@@ -135,6 +144,17 @@ public final class FDMSolverFactory {
         }
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param product The value.
+     * @param spaceTimeDiscretization The value.
+     * @param exercise The value.
+     * @param barrierMode The value.
+     * @param preHitSpecification The value.
+     * @return The value.
+     */
     public static FDMSolver createSolver(
             final FiniteDifferenceEquityModel model,
             final FiniteDifferenceEquityProduct product,
@@ -224,6 +244,14 @@ public final class FDMSolverFactory {
         }
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param product The value.
+     * @param exercise The value.
+     * @return The value.
+     */
     public static FDMSolver createSolver(
             final FiniteDifferenceEquityModel model,
             final FiniteDifferenceEquityProduct product,
@@ -231,6 +259,16 @@ public final class FDMSolverFactory {
         return createSolver(model, product, model.getSpaceTimeDiscretization(), exercise);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     * @param product The value.
+     * @param exercise The value.
+     * @param barrierMode The value.
+     * @param preHitSpecification The value.
+     * @return The value.
+     */
     public static FDMSolver createSolver(
             final FiniteDifferenceEquityModel model,
             final FiniteDifferenceEquityProduct product,

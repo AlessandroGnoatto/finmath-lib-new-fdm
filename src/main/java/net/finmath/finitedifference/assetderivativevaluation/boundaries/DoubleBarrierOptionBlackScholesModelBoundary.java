@@ -31,6 +31,11 @@ public class DoubleBarrierOptionBlackScholesModelBoundary implements FiniteDiffe
      */
     private final FDMBlackScholesModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DoubleBarrierOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
         this.model = model;
     }

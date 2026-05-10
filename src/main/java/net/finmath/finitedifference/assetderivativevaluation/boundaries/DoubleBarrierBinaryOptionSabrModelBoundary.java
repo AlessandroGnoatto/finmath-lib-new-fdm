@@ -46,6 +46,11 @@ public class DoubleBarrierBinaryOptionSabrModelBoundary implements FiniteDiffere
      */
     private final FDMSabrModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DoubleBarrierBinaryOptionSabrModelBoundary(final FDMSabrModel model) {
         this.model = model;
     }

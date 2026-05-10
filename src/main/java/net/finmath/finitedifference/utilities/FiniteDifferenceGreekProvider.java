@@ -33,6 +33,14 @@ public final class FiniteDifferenceGreekProvider {
     private FiniteDifferenceGreekProvider() {
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param greek The value.
+     * @param values The value.
+     * @param discretization The value.
+     * @return The value.
+     */
     public static double[][] greekSurface(
             final FiniteDifferenceGreek greek,
             final double[][] values,
@@ -54,18 +62,40 @@ public final class FiniteDifferenceGreekProvider {
         }
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param values The value.
+     * @param discretization The value.
+     * @return The value.
+     */
     public static double[][] deltaSurface(
             final double[][] values,
             final SpaceTimeDiscretization discretization) {
         return firstDerivativeSurface(values, discretization, 0);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param values The value.
+     * @param discretization The value.
+     * @return The value.
+     */
     public static double[][] gammaSurface(
             final double[][] values,
             final SpaceTimeDiscretization discretization) {
         return secondDerivativeSurface(values, discretization, 0);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param values The value.
+     * @param discretization The value.
+     * @param dimension The value.
+     * @return The value.
+     */
     public static double[][] firstDerivativeSurface(
             final double[][] values,
             final SpaceTimeDiscretization discretization,
@@ -103,6 +133,14 @@ public final class FiniteDifferenceGreekProvider {
         return derivative;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param values The value.
+     * @param discretization The value.
+     * @param dimension The value.
+     * @return The value.
+     */
     public static double[][] secondDerivativeSurface(
             final double[][] values,
             final SpaceTimeDiscretization discretization,
@@ -140,6 +178,15 @@ public final class FiniteDifferenceGreekProvider {
         return derivative;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param values The value.
+     * @param discretization The value.
+     * @param firstDimension The value.
+     * @param secondDimension The value.
+     * @return The value.
+     */
     public static double[][] mixedSecondDerivativeSurface(
             final double[][] values,
             final SpaceTimeDiscretization discretization,
@@ -156,6 +203,13 @@ public final class FiniteDifferenceGreekProvider {
         return firstDerivativeSurface(firstDerivative, discretization, secondDimension);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param values The value.
+     * @param discretization The value.
+     * @return The value.
+     */
     public static double[][] thetaSurface(
             final double[][] values,
             final SpaceTimeDiscretization discretization) {

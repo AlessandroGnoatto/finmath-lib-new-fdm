@@ -63,6 +63,16 @@ public class BarrierOption extends AbstractAssetMonteCarloProduct {
      */
     private final int underlyingIndex;
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrier The value.
+     * @param rebate The value.
+     * @param callOrPut The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -73,6 +83,17 @@ public class BarrierOption extends AbstractAssetMonteCarloProduct {
         this(maturity, strike, barrier, rebate, callOrPut, barrierType, 0);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrier The value.
+     * @param rebate The value.
+     * @param callOrPut The value.
+     * @param barrierType The value.
+     * @param underlyingIndex The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -91,6 +112,15 @@ public class BarrierOption extends AbstractAssetMonteCarloProduct {
         this.underlyingIndex = underlyingIndex;
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrier The value.
+     * @param callOrPut The value.
+     * @param barrierType The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,
@@ -100,6 +130,16 @@ public class BarrierOption extends AbstractAssetMonteCarloProduct {
         this(maturity, strike, barrier, 0.0, callOrPut, barrierType, 0);
     }
 
+    /**
+     * Performs the operation.
+     *
+     * @param maturity The value.
+     * @param strike The value.
+     * @param barrier The value.
+     * @param callOrPut The value.
+     * @param barrierType The value.
+     * @param underlyingIndex The value.
+     */
     public BarrierOption(
             final double maturity,
             final double strike,

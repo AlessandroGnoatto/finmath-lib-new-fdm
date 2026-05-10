@@ -24,6 +24,11 @@ public class DoubleBarrierBinaryOptionBachelierModelBoundary implements FiniteDi
      */
     private final FDMBachelierModel model;
 
+    /**
+     * Performs the operation.
+     *
+     * @param model The value.
+     */
     public DoubleBarrierBinaryOptionBachelierModelBoundary(final FDMBachelierModel model) {
         this.model = model;
     }
