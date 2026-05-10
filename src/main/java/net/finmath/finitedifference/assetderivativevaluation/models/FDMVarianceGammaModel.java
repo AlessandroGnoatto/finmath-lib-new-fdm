@@ -47,6 +47,11 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**
+     * Minimum time used to avoid division by zero.
+     */
+    private static final double MINIMUM_TIME = 1.0E-6;
+
+    /**
      * Creates a Variance Gamma model from explicit discount curves and an explicit
      * jump component.
      *
@@ -477,18 +482,19 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
     }
 
     @Override
-    public double[] getDrift(double time, final double... stateVariables) {
-        if (time == 0.0) {
-            time = 1E-6;
-        }
+    public double[] getDrift(final double time, final double... stateVariables) {
+        final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
-        final double discountFactorRiskFree = riskFreeCurve.getDiscountFactor(time);
-        final double riskFreeRate = -Math.log(discountFactorRiskFree) / time;
+        final double[] result = new double[1];
 
-        final double discountFactorDividend = dividendYieldCurve.getDiscountFactor(time);
-        final double dividendYieldRate = -Math.log(discountFactorDividend) / time;
+        final double rF = getRiskFreeCurve().getDiscountFactor(effectiveTime);
+        final double riskFreeRate = -Math.log(rF) / effectiveTime;
 
-        return new double[] {(riskFreeRate - dividendYieldRate) * stateVariables[0] };
+        final double dY = getDividendYieldCurve().getDiscountFactor(effectiveTime);
+        final double dividendYieldRate = -Math.log(dY) / effectiveTime;
+
+        result[0] = (riskFreeRate - dividendYieldRate) * stateVariables[0];
+        return result;
     }
 
     @Override

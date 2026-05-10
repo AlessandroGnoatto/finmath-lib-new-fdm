@@ -294,16 +294,16 @@ public class FDMMultiAssetBlackScholesModel implements FiniteDifferenceEquityMod
     }
 
     @Override
-    public double[] getDrift(double time, final double... stateVariables) {
+    public double[] getDrift(final double time, final double... stateVariables) {
         validateStateVariables(stateVariables);
 
-        time = Math.max(time, TIME_FLOOR);
+        final double effectiveTime = Math.max(time, TIME_FLOOR);
 
-        final double riskFreeRate = getAnnualizedZeroRate(riskFreeCurve, time);
+        final double riskFreeRate = getAnnualizedZeroRate(riskFreeCurve, effectiveTime);
         final double[] drift = new double[initialValues.length];
 
         for (int i = 0; i < initialValues.length; i++) {
-            final double dividendYieldRate = getAnnualizedZeroRate(dividendYieldCurves[i], time);
+            final double dividendYieldRate = getAnnualizedZeroRate(dividendYieldCurves[i], effectiveTime);
             drift[i] = (riskFreeRate - dividendYieldRate) * stateVariables[i];
         }
 

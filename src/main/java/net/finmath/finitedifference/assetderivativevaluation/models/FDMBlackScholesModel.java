@@ -37,6 +37,11 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**
+     * Minimum time used to avoid division by zero.
+     */
+    private static final double MINIMUM_TIME = 1.0E-6;
+
+    /**
      * Constructs a Black-Scholes finite difference model for option pricing.
      *
      * @param initialValue Initial spot price.
@@ -325,18 +330,16 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
     }
 
     @Override
-    public double[] getDrift(double time, final double... stateVariables) {
-        if (time == 0) {
-            time = 0.000001;
-        }
+    public double[] getDrift(final double time, final double... stateVariables) {
+        final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
         final double[] result = new double[1];
 
-        final double rF = getRiskFreeCurve().getDiscountFactor(time);
-        final double riskFreeRate = -Math.log(rF) / time;
+        final double rF = getRiskFreeCurve().getDiscountFactor(effectiveTime);
+        final double riskFreeRate = -Math.log(rF) / effectiveTime;
 
-        final double dY = getDividendYieldCurve().getDiscountFactor(time);
-        final double dividendYieldRate = -Math.log(dY) / time;
+        final double dY = getDividendYieldCurve().getDiscountFactor(effectiveTime);
+        final double dividendYieldRate = -Math.log(dY) / effectiveTime;
 
         result[0] = (riskFreeRate - dividendYieldRate) * stateVariables[0];
         return result;

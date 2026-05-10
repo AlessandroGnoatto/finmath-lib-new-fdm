@@ -62,6 +62,11 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
     private static final double TIME_EPSILON_FOR_EXERCISE = 1E-12;
 
+    /**
+     * Minimum time used to avoid division by zero.
+     */
+    private static final double MINIMUM_TIME = 1.0E-6;
+
     private final String underlyingName;
     private final double maturity;
     private final double strike;
@@ -433,14 +438,12 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         }
 
         @Override
-        public double[] getDrift(double time, final double... stateVariables) {
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+        public double[] getDrift(final double time, final double... stateVariables) {
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double muS = delegate.getDrift(time, S)[0];
+            final double muS = delegate.getDrift(effectiveTime, S)[0];
             final double muI = S;
 
             return new double[] {muS, muI };
@@ -466,12 +469,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -479,8 +480,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
@@ -515,12 +516,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -528,9 +527,9 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
@@ -617,14 +616,12 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         }
 
         @Override
-        public double[] getDrift(double time, final double... stateVariables) {
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+        public double[] getDrift(final double time, final double... stateVariables) {
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double muS = delegate.getDrift(time, S)[0];
+            final double muS = delegate.getDrift(effectiveTime, S)[0];
             final double muI = S;
 
             return new double[] {muS, muI };
@@ -650,12 +647,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -663,8 +658,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
@@ -699,12 +694,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -712,9 +705,9 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
@@ -803,14 +796,12 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         }
 
         @Override
-        public double[] getDrift(double time, final double... stateVariables) {
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+        public double[] getDrift(final double time, final double... stateVariables) {
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double muS = delegate.getDrift(time, S)[0];
+            final double muS = delegate.getDrift(effectiveTime, S)[0];
             final double muI = S;
 
             return new double[] {muS, muI };
@@ -836,12 +827,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -849,8 +838,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
@@ -885,12 +874,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -898,9 +885,9 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
@@ -991,15 +978,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         }
 
         @Override
-        public double[] getDrift(double time, final double... stateVariables) {
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+        public double[] getDrift(final double time, final double... stateVariables) {
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
             final double v = stateVariables.length > 1 ? stateVariables[1] : delegate.getInitialValue()[1];
 
-            final double[] baseDrift = delegate.getDrift(time, S, v);
+            final double[] baseDrift = delegate.getDrift(effectiveTime, S, v);
 
             final double muS = baseDrift[0];
             final double muV = baseDrift[1];
@@ -1033,12 +1018,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -1046,8 +1029,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final BoundaryCondition[] result = new BoundaryCondition[3];
@@ -1202,15 +1185,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         }
 
         @Override
-        public double[] getDrift(double time, final double... stateVariables) {
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+        public double[] getDrift(final double time, final double... stateVariables) {
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final double s = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
             final double alpha = stateVariables.length > 1 ? stateVariables[1] : delegate.getInitialValue()[1];
 
-            final double[] baseDrift = delegate.getDrift(time, s, alpha);
+            final double[] baseDrift = delegate.getDrift(effectiveTime, s, alpha);
 
             final double muS = baseDrift[0];
             final double muAlpha = baseDrift[1];
@@ -1244,12 +1225,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -1257,8 +1236,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final BoundaryCondition[] result = new BoundaryCondition[3];
@@ -1308,12 +1287,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         @Override
         public BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(
                 final FiniteDifferenceEquityProduct product,
-                double time,
+                final double time,
                 final double... stateVariables) {
 
-            if (time == 0.0) {
-                time = 1e-6;
-            }
+            final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
             final AsianOption option = (AsianOption) product;
             final double maturity = option.getMaturity();
@@ -1321,9 +1298,9 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final CallOrPut callOrPut = option.getCallOrPut();
             final AsianStrike asianStrike = option.getAsianStrike();
 
-            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(time)) / time;
-            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(time)) / time;
-            final double delta = maturity - time;
+            final double r = -Math.log(getRiskFreeCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double q = -Math.log(getDividendYieldCurve().getDiscountFactor(effectiveTime)) / effectiveTime;
+            final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
             final double s = stateVariables.length > 0 ? stateVariables[0] : 0.0;

@@ -43,6 +43,11 @@ public class FDMCevModel implements FiniteDifferenceEquityModel {
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**
+     * Minimum time used to avoid division by zero.
+     */
+    private static final double MINIMUM_TIME = 1.0E-6;
+
+    /**
      * Creates a CEV model instance using explicit discount curves for {@code r} and {@code q}.
      *
      * @param initialValue Initial spot {@code S(0)}.
@@ -264,18 +269,19 @@ public class FDMCevModel implements FiniteDifferenceEquityModel {
     }
 
     @Override
-    public double[] getDrift(double time, final double... stateVariables) {
-        if (time == 0.0) {
-            time = 1e-6;
-        }
+    public double[] getDrift(final double time, final double... stateVariables) {
+        final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
-        final double rF = riskFreeCurve.getDiscountFactor(time);
-        final double riskFreeRate = -Math.log(rF) / time;
+        final double[] result = new double[1];
 
-        final double dY = dividendYieldCurve.getDiscountFactor(time);
-        final double dividendYieldRate = -Math.log(dY) / time;
+        final double rF = getRiskFreeCurve().getDiscountFactor(effectiveTime);
+        final double riskFreeRate = -Math.log(rF) / effectiveTime;
 
-        return new double[] {(riskFreeRate - dividendYieldRate) * stateVariables[0] };
+        final double dY = getDividendYieldCurve().getDiscountFactor(effectiveTime);
+        final double dividendYieldRate = -Math.log(dY) / effectiveTime;
+
+        result[0] = (riskFreeRate - dividendYieldRate) * stateVariables[0];
+        return result;
     }
 
     @Override

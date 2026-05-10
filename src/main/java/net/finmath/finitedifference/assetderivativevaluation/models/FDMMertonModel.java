@@ -51,6 +51,11 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**
+     * Minimum time used to avoid division by zero.
+     */
+    private static final double MINIMUM_TIME = 1.0E-6;
+
+    /**
      * Creates a finite-difference Merton model from discount curves and an explicit
      * jump component.
      *
@@ -330,18 +335,19 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     }
 
     @Override
-    public double[] getDrift(double time, final double... stateVariables) {
-        if (time == 0.0) {
-            time = 1E-6;
-        }
+    public double[] getDrift(final double time, final double... stateVariables) {
+        final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
-        final double rF = riskFreeCurve.getDiscountFactor(time);
-        final double riskFreeRate = -Math.log(rF) / time;
+        final double[] result = new double[1];
 
-        final double dY = dividendYieldCurve.getDiscountFactor(time);
-        final double dividendYieldRate = -Math.log(dY) / time;
+        final double rF = getRiskFreeCurve().getDiscountFactor(effectiveTime);
+        final double riskFreeRate = -Math.log(rF) / effectiveTime;
 
-        return new double[] {(riskFreeRate - dividendYieldRate) * stateVariables[0] };
+        final double dY = getDividendYieldCurve().getDiscountFactor(effectiveTime);
+        final double dividendYieldRate = -Math.log(dY) / effectiveTime;
+
+        result[0] = (riskFreeRate - dividendYieldRate) * stateVariables[0];
+        return result;
     }
 
     @Override
