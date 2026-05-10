@@ -20,9 +20,12 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
  * The PDE operator is split into the directional parts
  * </p>
  * <ul>
- *   <li>{@code A1}: drift and diffusion terms in the first spatial direction,</li>
- *   <li>{@code A2}: drift and diffusion terms in the second spatial direction,</li>
- *   <li>{@code A3}: drift and diffusion terms in the third spatial direction.</li>
+ * <li>{@code A1}: drift and diffusion terms in the first spatial
+ * direction,</li>
+ * <li>{@code A2}: drift and diffusion terms in the second spatial
+ * direction,</li>
+ * <li>{@code A3}: drift and diffusion terms in the third spatial
+ * direction.</li>
  * </ul>
  *
  * <p>
@@ -76,7 +79,8 @@ public class ADI3DStencilBuilder {
     /**
      * Creates a stencil builder for three-dimensional ADI line solves.
      *
-     * @param model The finite difference model providing drift and factor loadings.
+     * @param model The finite difference model providing drift and factor
+     *     loadings.
      * @param x0Grid The grid for the first state variable.
      * @param x1Grid The grid for the second state variable.
      * @param x2Grid The grid for the third state variable.
@@ -111,7 +115,8 @@ public class ADI3DStencilBuilder {
      * @param theta The ADI weight.
      * @param x1Index The fixed index in the second state-variable grid.
      * @param x2Index The fixed index in the third state-variable grid.
-     * @return The tridiagonal matrix for the first-direction implicit line solve.
+     * @return The tridiagonal matrix for the first-direction implicit line
+     *     solve.
      */
     public TridiagonalMatrix buildFirstDirectionLineMatrix(
             final double time,
@@ -163,7 +168,8 @@ public class ADI3DStencilBuilder {
     }
 
     /**
-     * Builds the tridiagonal matrix for the implicit solve in the second spatial
+     * Builds the tridiagonal matrix for the implicit solve in the second
+     * spatial
      * direction on a fixed slice of the first and third state variables.
      *
      * <p>
@@ -173,7 +179,8 @@ public class ADI3DStencilBuilder {
      * (I - theta * dt * A2)
      * </pre>
      * <p>
-     * where {@code A2} contains only second-direction drift and diffusion terms.
+     * where {@code A2} contains only second-direction drift and diffusion
+     * terms.
      * </p>
      *
      * @param time The running time at which coefficients are evaluated.
@@ -181,7 +188,8 @@ public class ADI3DStencilBuilder {
      * @param theta The ADI weight.
      * @param x0Index The fixed index in the first state-variable grid.
      * @param x2Index The fixed index in the third state-variable grid.
-     * @return The tridiagonal matrix for the second-direction implicit line solve.
+     * @return The tridiagonal matrix for the second-direction implicit line
+     *     solve.
      */
     public TridiagonalMatrix buildSecondDirectionLineMatrix(
             final double time,
@@ -251,7 +259,8 @@ public class ADI3DStencilBuilder {
      * @param theta The ADI weight.
      * @param x0Index The fixed index in the first state-variable grid.
      * @param x1Index The fixed index in the second state-variable grid.
-     * @return The tridiagonal matrix for the third-direction implicit line solve.
+     * @return The tridiagonal matrix for the third-direction implicit line
+     *     solve.
      */
     public TridiagonalMatrix buildThirdDirectionLineMatrix(
             final double time,

@@ -12,7 +12,8 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
 
 /**
- * Finite difference model for option pricing under the Constant Elasticity of Variance (CEV) model.
+ * Finite difference model for option pricing under the Constant Elasticity of
+ * Variance (CEV) model.
  *
  * <p>
  * Under the risk-neutral measure the CEV dynamics are typically written as
@@ -24,7 +25,8 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  * <p>
  * In this class, {@link #getDrift(double, double...)} returns the
  * <em>absolute drift</em>,
- * and {@link #getFactorLoading(double, double...)} returns the <em>absolute factor loading</em>.
+ * and {@link #getFactorLoading(double, double...)} returns the <em>absolute
+ * factor loading</em>.
  * Hence, for CEV we return
  * {@code sigma * S^(beta)}.
  * </p>
@@ -66,7 +68,8 @@ public class FDMCevModel implements FiniteDifferenceEquityModel {
     private static final double MINIMUM_TIME = 1.0E-6;
 
     /**
-     * Creates a CEV model instance using explicit discount curves for {@code r} and {@code q}.
+     * Creates a CEV model instance using explicit discount curves for {@code r}
+     * and {@code q}.
      *
      * @param initialValue Initial spot {@code S(0)}.
      * @param riskFreeCurve Risk-free discount curve.
@@ -92,7 +95,8 @@ public class FDMCevModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a CEV model instance assuming zero dividend yield ({@code q = 0}),
+     * Creates a CEV model instance assuming zero dividend yield ({@code q =
+     * 0}),
      * consistent with the constructor style of {@code FDMBlackScholesModel}.
      *
      * @param initialValue Initial spot {@code S(0)}.
@@ -133,7 +137,8 @@ public class FDMCevModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a CEV model instance using constant rates {@code r} and {@code q}.
+     * Creates a CEV model instance using constant rates {@code r} and {@code
+     * q}.
      *
      * @param initialValue Initial spot {@code S(0)}.
      * @param riskFreeRate Constant risk-free rate {@code r}.
@@ -190,7 +195,8 @@ public class FDMCevModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a CEV model instance using constant {@code r} and assuming zero dividend yield ({@code q = 0}).
+     * Creates a CEV model instance using constant {@code r} and assuming zero
+     * dividend yield ({@code q = 0}).
      *
      * @param initialValue Initial spot {@code S(0)}.
      * @param riskFreeRate Constant risk-free rate {@code r}.

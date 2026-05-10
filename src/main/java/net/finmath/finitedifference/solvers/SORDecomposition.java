@@ -4,12 +4,15 @@ import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 
 /**
- * Performs a Successive Over-Relaxation (SOR) decomposition for solving linear systems
+ * Performs a Successive Over-Relaxation (SOR) decomposition for solving linear
+ * systems
  * of the form {@code A x = b}.
  *
  * <p>
- * The input matrix {@code A} is decomposed into its diagonal part {@code D}, strictly
- * lower triangular part {@code L}, and strictly upper triangular part {@code U}. The
+ * The input matrix {@code A} is decomposed into its diagonal part {@code D},
+ * strictly
+ * lower triangular part {@code L}, and strictly upper triangular part {@code
+ * U}. The
  * solver then applies an iterative SOR (Gauss-Seidel with relaxation) sweep to
  * approximate the solution.
  * </p>
@@ -50,7 +53,8 @@ public class SORDecomposition {
     private final double[][] a;
 
     /**
-     * Constructs the decomposition of the given matrix {@code A} into {@code D}, {@code L}, and {@code U}.
+     * Constructs the decomposition of the given matrix {@code A} into {@code
+     * D}, {@code L}, and {@code U}.
      *
      * @param matrixA The input square matrix to decompose.
      */
@@ -72,7 +76,8 @@ public class SORDecomposition {
     }
 
     /**
-     * Returns the strictly lower triangular matrix {@code L} of the decomposition.
+     * Returns the strictly lower triangular matrix {@code L} of the
+     * decomposition.
      *
      * @return The strictly lower triangular part of {@code A}.
      */
@@ -81,7 +86,8 @@ public class SORDecomposition {
     }
 
     /**
-     * Returns the strictly upper triangular matrix {@code U} of the decomposition.
+     * Returns the strictly upper triangular matrix {@code U} of the
+     * decomposition.
      *
      * @return The strictly upper triangular part of {@code A}.
      */
@@ -120,21 +126,26 @@ public class SORDecomposition {
     }
 
     /**
-     * Performs a fixed number of SOR iterations to approximate the solution of {@code A x = b}.
+     * Performs a fixed number of SOR iterations to approximate the solution of
+     * {@code A x = b}.
      *
      * <p>
      * This method is a backwards-compatible entry point which delegates to
-     * {@link #getSol(RealMatrix, RealMatrix, double, int, double)} with {@code tol = 0.0}.
+     * {@link #getSol(RealMatrix, RealMatrix, double, int, double)} with {@code
+     * tol = 0.0}.
      * </p>
      *
      * @param x0   The initial guess for {@code x} (n x 1).
      * @param b     The right-hand side vector {@code b} (n x 1).
-     * @param w     The relaxation factor {@code omega} (typically {@code 0 < w < 2}).
+     * @param w The relaxation factor {@code omega} (typically {@code 0 < w <
+     *     2}).
      * @param steps The number of iterations to perform.
-     * @return The approximate solution after the specified number of iterations.
+     * @return The approximate solution after the specified number of
+     *     iterations.
      */
     public RealMatrix getSol(final RealMatrix x0, final RealMatrix b, final double w, final int steps) {
-        // Backwards compatible entry point: perform a fixed number of iterations.
+        // Backwards compatible entry point: perform a fixed number of
+        // iterations.
         return getSol(x0, b, w, steps, 0.0);
     }
 
@@ -142,16 +153,19 @@ public class SORDecomposition {
      * Performs SOR (Gauss-Seidel with relaxation) to solve {@code A x = b}.
      *
      * <p>
-     * If {@code tol > 0.0}, the iteration stops early when the infinity norm of the residual
-     * satisfies {@code ||A x - b||_inf <= tol}. If {@code tol == 0.0}, the solver always runs
+     * If {@code tol > 0.0}, the iteration stops early when the infinity norm of
+     * the residual
+     * satisfies {@code ||A x - b||_inf <= tol}. If {@code tol == 0.0}, the
+     * solver always runs
      * {@code maxIters} iterations.
      * </p>
      *
      * @param x0       Initial guess (n x 1).
      * @param b        Right-hand side (n x 1).
-     * @param w        Relaxation factor {@code omega} (typically {@code 0 < w < 2}).
+     * @param w Relaxation factor {@code omega} (typically {@code 0 < w < 2}).
      * @param maxIters Maximum number of sweeps.
-     * @param tol      Residual tolerance in infinity norm (set to 0 to disable early stopping).
+     * @param tol Residual tolerance in infinity norm (set to 0 to disable early
+     *     stopping).
      * @return Approximate solution.
      */
     public RealMatrix getSol(

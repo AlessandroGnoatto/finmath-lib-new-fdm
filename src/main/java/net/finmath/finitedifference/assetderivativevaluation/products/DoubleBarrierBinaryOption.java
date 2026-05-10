@@ -26,7 +26,8 @@ import net.finmath.time.TimeDiscretization;
  * Finite-difference valuation of a double-barrier cash binary option.
  *
  * <p>
- * The contract is defined by a maturity <i>T</i>, a cash amount <i>C</i>, and two barriers
+ * The contract is defined by a maturity <i>T</i>, a cash amount <i>C</i>, and
+ * two barriers
  * <i>L &lt; U</i>. Let <i>S(t)</i> denote the underlying and let
  * </p>
  *
@@ -50,22 +51,31 @@ import net.finmath.time.TimeDiscretization;
  * Supported barrier styles:
  * </p>
  * <ul>
- *   <li>{@link DoubleBarrierType#KNOCK_OUT}: pays <i>C</i> if neither barrier is hit before maturity,</li>
- *   <li>{@link DoubleBarrierType#KNOCK_IN}: pays <i>C</i> if either barrier is hit before or at maturity,</li>
- *   <li>{@link DoubleBarrierType#KIKO}: pays <i>C</i> if the lower barrier is hit first while the upper barrier acts as knock-out,</li>
- *   <li>{@link DoubleBarrierType#KOKI}: pays <i>C</i> if the upper barrier is hit first while the lower barrier acts as knock-out.</li>
+ * <li>{@link DoubleBarrierType#KNOCK_OUT}: pays <i>C</i> if neither barrier is
+ * hit before maturity,</li>
+ * <li>{@link DoubleBarrierType#KNOCK_IN}: pays <i>C</i> if either barrier is
+ * hit before or at maturity,</li>
+ * <li>{@link DoubleBarrierType#KIKO}: pays <i>C</i> if the lower barrier is hit
+ * first while the upper barrier acts as knock-out,</li>
+ * <li>{@link DoubleBarrierType#KOKI}: pays <i>C</i> if the upper barrier is hit
+ * first while the lower barrier acts as knock-out.</li>
  * </ul>
  *
  * <p>
- * For continuous monitoring, the implementation remains a direct one-state constrained PDE.
- * For discrete monitoring, barrier activation / knock-out is applied only at the supplied
+ * For continuous monitoring, the implementation remains a direct one-state
+ * constrained PDE.
+ * For discrete monitoring, barrier activation / knock-out is applied only at
+ * the supplied
  * monitoring dates via vector-level event conditions.
  * </p>
  *
  * <p>
- * For discretely monitored knock-in / KIKO / KOKI cases, the activated branch is represented
- * by cached activated cash vectors. The cache is stored in a thread-local stack so that nested
- * valuations and concurrent valuations of the same product instance do not overwrite each other.
+ * For discretely monitored knock-in / KIKO / KOKI cases, the activated branch
+ * is represented
+ * by cached activated cash vectors. The cache is stored in a thread-local stack
+ * so that nested
+ * valuations and concurrent valuations of the same product instance do not
+ * overwrite each other.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -274,7 +284,8 @@ public class DoubleBarrierBinaryOption implements
     }
 
     /**
-     * Creates a European double-barrier cash binary option with anonymous underlying.
+     * Creates a European double-barrier cash binary option with anonymous
+     * underlying.
      *
      * @param maturity Option maturity.
      * @param cashPayoff Cash payoff amount.
@@ -300,7 +311,8 @@ public class DoubleBarrierBinaryOption implements
     }
 
     /**
-     * Creates a European double-barrier cash binary option with anonymous underlying.
+     * Creates a European double-barrier cash binary option with anonymous
+     * underlying.
      *
      * @param maturity Option maturity.
      * @param cashPayoff Cash payoff amount.
@@ -424,7 +436,8 @@ public class DoubleBarrierBinaryOption implements
     }
 
     /**
-     * Returns the values at the specified evaluation time on the model space grid.
+     * Returns the values at the specified evaluation time on the model space
+     * grid.
      *
      * @param evaluationTime Evaluation time.
      * @param model The finite-difference model.
@@ -952,9 +965,12 @@ public class DoubleBarrierBinaryOption implements
      * Returns the immediate exercise payoff under the current binary state.
      *
      * <p>
-     * For continuous monitoring, this matches the terminal state classification.
-     * For discrete knock-in-like products, the pre-hit branch is solved as a European
-     * continuation problem; exercise rights are carried by the activated cash branch.
+     * For continuous monitoring, this matches the terminal state
+     * classification.
+     * For discrete knock-in-like products, the pre-hit branch is solved as a
+     * European
+     * continuation problem; exercise rights are carried by the activated cash
+     * branch.
      * </p>
      *
      * @param assetValue Current underlying level.

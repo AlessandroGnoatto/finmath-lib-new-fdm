@@ -40,7 +40,8 @@ public final class FiniteDifferenceSurfaceView {
      * Creates a surface view.
      *
      * @param discretization The space-time discretization.
-     * @param values The value surface indexed by flattened spatial index and time index.
+     * @param values The value surface indexed by flattened spatial index and
+     *     time index.
      */
     public FiniteDifferenceSurfaceView(
             final SpaceTimeDiscretization discretization,

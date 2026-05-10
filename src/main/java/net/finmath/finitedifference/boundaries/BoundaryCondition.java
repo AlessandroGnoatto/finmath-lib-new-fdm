@@ -23,7 +23,8 @@ public interface BoundaryCondition {
      * Returns the boundary value.
      *
      * <p>
-     * This is used only when the type is {@link BoundaryConditionType#DIRICHLET}.
+     * This is used only when the type is {@link
+     * BoundaryConditionType#DIRICHLET}.
      * </p>
      *
      * @return The boundary value.

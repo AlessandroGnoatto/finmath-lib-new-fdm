@@ -9,26 +9,34 @@ import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link BarrierOption} under the {@link FDMHestonModel}.
+ * Boundary conditions for {@link BarrierOption} under the {@link
+ * FDMHestonModel}.
  *
  * <p>
- * State variables are assumed to be (S, v), where S is the asset level and v the variance.
- * For knock-out options, Dirichlet conditions are imposed on the barrier side in the asset direction.
- * Variance-direction boundaries are left untouched via {@link StandardBoundaryCondition#none()}.
+ * State variables are assumed to be (S, v), where S is the asset level and v
+ * the variance.
+ * For knock-out options, Dirichlet conditions are imposed on the barrier side
+ * in the asset direction.
+ * Variance-direction boundaries are left untouched via {@link
+ * StandardBoundaryCondition#none()}.
  * </p>
  *
  * <p>
- * The barrier is assumed to coincide with the lower or upper boundary of the asset grid.
+ * The barrier is assumed to coincide with the lower or upper boundary of the
+ * asset grid.
  * In-options may still be handled elsewhere by the product logic.
  * </p>
  *
  * <p>
- * This version uses grid-aware continuation-side spot boundary values, with two targeted
+ * This version uses grid-aware continuation-side spot boundary values, with two
+ * targeted
  * exceptions motivated by the remaining Heston outlier cases:
  * </p>
  * <ul>
- *   <li>for UP_OUT CALL at the lower spot boundary, use {@code none()} instead of a hard zero,</li>
- *   <li>for DOWN_OUT PUT at the upper spot boundary, use {@code none()} instead of a hard zero.</li>
+ * <li>for UP_OUT CALL at the lower spot boundary, use {@code none()} instead of
+ * a hard zero,</li>
+ * <li>for DOWN_OUT PUT at the upper spot boundary, use {@code none()} instead
+ * of a hard zero.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto
@@ -76,7 +84,8 @@ public class BarrierOptionHestonModelBoundary implements FiniteDifferenceBoundar
          * If the lower boundary is the knock-out barrier, use rebate.
          *
          * Targeted relaxation:
-         * For UP_OUT CALL, the lower continuation-side spot boundary was previously
+         * For UP_OUT CALL, the lower continuation-side spot boundary was
+         * previously
          * clamped to zero. We now leave that PDE row free via none().
          */
         if (barrierType == BarrierType.DOWN_OUT) {
@@ -117,7 +126,8 @@ public class BarrierOptionHestonModelBoundary implements FiniteDifferenceBoundar
          * If the upper boundary is the knock-out barrier, use rebate.
          *
          * Targeted relaxation:
-         * For DOWN_OUT PUT, the upper continuation-side spot boundary was previously
+         * For DOWN_OUT PUT, the upper continuation-side spot boundary was
+         * previously
          * clamped to zero. We now leave that PDE row free via none().
          */
         if (barrierType == BarrierType.UP_OUT) {

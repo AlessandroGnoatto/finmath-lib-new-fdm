@@ -48,14 +48,17 @@ public final class BarrierPreHitSpecification {
     /**
      * Creates the pre-hit PDE specification.
      *
-     * @param barrierType The barrier type. Only DOWN_IN and UP_IN are valid here.
+     * @param barrierType The barrier type. Only DOWN_IN and UP_IN are valid
+     *     here.
      * @param barrierValue The barrier level.
-     * @param barrierSpotIndex The spot-grid index corresponding to the barrier node
+     * @param barrierSpotIndex The spot-grid index corresponding to the barrier
+     *     node
      *        on the pre-hit auxiliary grid.
      * @param spotMin The lower bound of the pre-hit spot grid.
      * @param spotMax The upper bound of the pre-hit spot grid.
      * @param numberOfSpotSteps The number of uniform spot steps.
-     * @param activatedTrace The activated post-hit trace prescribed on the barrier.
+     * @param activatedTrace The activated post-hit trace prescribed on the
+     *     barrier.
      */
     public BarrierPreHitSpecification(
             final BarrierType barrierType,

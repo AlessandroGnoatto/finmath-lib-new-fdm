@@ -21,7 +21,8 @@ import net.finmath.stochastic.Scalar;
  * </p>
  * <ul>
  *   <li>for knock-out options, the rebate is paid at hit,</li>
- *   <li>for knock-in options, the rebate is paid at maturity if the barrier has not been hit.</li>
+ * <li>for knock-in options, the rebate is paid at maturity if the barrier has
+ * not been hit.</li>
  * </ul>
  *
  * <p>

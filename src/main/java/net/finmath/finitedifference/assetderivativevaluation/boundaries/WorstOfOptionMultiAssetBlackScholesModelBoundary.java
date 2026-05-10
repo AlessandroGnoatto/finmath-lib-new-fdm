@@ -31,7 +31,8 @@ import net.finmath.modelling.products.CallOrPut;
  * The multidimensional boundary convention of the framework is used:
  * </p>
  * <ul>
- *   <li>index {@code 0} of the returned array corresponds to the first state variable,</li>
+ * <li>index {@code 0} of the returned array corresponds to the first state
+ * variable,</li>
  *   <li>index {@code 1} corresponds to the second state variable.</li>
  * </ul>
  *

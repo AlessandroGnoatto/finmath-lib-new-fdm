@@ -11,7 +11,8 @@ import net.finmath.marketdata.model.AnalyticModel;
  * Base interface for finite-difference interest-rate models.
  *
  * <p>
- * The interface is designed to remain close to the philosophy of the Monte Carlo
+ * The interface is designed to remain close to the philosophy of the Monte
+ * Carlo
  * interest-rate framework of finmath while exposing the additional ingredients
  * required by a partial-differential-equation discretization.
  * </p>
@@ -86,7 +87,8 @@ import net.finmath.marketdata.model.AnalyticModel;
 public interface FiniteDifferenceInterestRateModel extends FiniteDifferenceModel {
 
     /**
-     * Returns the analytic multi-curve model used as the initial condition of the
+     * Returns the analytic multi-curve model used as the initial condition of
+     * the
      * stochastic term-structure model.
      *
      * <p>
@@ -180,7 +182,8 @@ public interface FiniteDifferenceInterestRateModel extends FiniteDifferenceModel
             double... stateVariables);
 
     /**
-     * Alias for {@link #getForwardRate(String, double, double, double, double...)}
+     * Alias for {@link #getForwardRate(String, double, double, double,
+     * double...)}
      * using the Monte Carlo terminology.
      *
      * @param forwardCurveName The name of the forwarding curve.

@@ -32,7 +32,8 @@ import net.finmath.modelling.products.CallOrPut;
  * The multidimensional boundary convention of the framework is used:
  * </p>
  * <ul>
- *   <li>index {@code 0} of the returned array corresponds to the first state variable,</li>
+ * <li>index {@code 0} of the returned array corresponds to the first state
+ * variable,</li>
  *   <li>index {@code 1} corresponds to the second state variable.</li>
  * </ul>
  *
@@ -44,12 +45,14 @@ import net.finmath.modelling.products.CallOrPut;
  * multiplying the boundary asset:
  * </p>
  * <ul>
- *   <li>if {@code callOrPut.toInteger() * quantityBoundaryAsset > 0}, the option is
+ * <li>if {@code callOrPut.toInteger() * quantityBoundaryAsset > 0}, the option
+ * is
  *       asymptotically linear in the boundary asset and the discounted linear
  *       intrinsic approximation is used,</li>
- *   <li>if {@code callOrPut.toInteger() * quantityBoundaryAsset < 0}, the option
- *       tends to zero as the boundary asset grows and a zero Dirichlet value is used,</li>
- *   <li>if the boundary-asset quantity is zero, the boundary reduces exactly to a
+ * <li>if {@code callOrPut.toInteger() * quantityBoundaryAsset < 0}, the option
+ * tends to zero as the boundary asset grows and a zero Dirichlet value is
+ * used,</li>
+ * <li>if the boundary-asset quantity is zero, the boundary reduces exactly to a
  *       one-dimensional option on the remaining asset.</li>
  * </ul>
  *

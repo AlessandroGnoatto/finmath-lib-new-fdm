@@ -18,17 +18,23 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Generic three-dimensional alternating direction implicit finite difference solver.
+ * Generic three-dimensional alternating direction implicit finite difference
+ * solver.
  *
  * <p>
- * The solver works on three state variables and applies a stabilized Douglas-type
+ * The solver works on three state variables and applies a stabilized Douglas-
+ * type
  * ADI splitting. The operator is split into:
  * </p>
  * <ul>
- *   <li>{@code A0}: mixed derivative terms plus discount term, treated explicitly,</li>
- *   <li>{@code A1}: first-direction drift and diffusion terms, treated implicitly,</li>
- *   <li>{@code A2}: second-direction drift and diffusion terms, treated implicitly,</li>
- *   <li>{@code A3}: third-direction drift and diffusion terms, treated implicitly.</li>
+ * <li>{@code A0}: mixed derivative terms plus discount term, treated
+ * explicitly,</li>
+ * <li>{@code A1}: first-direction drift and diffusion terms, treated
+ * implicitly,</li>
+ * <li>{@code A2}: second-direction drift and diffusion terms, treated
+ * implicitly,</li>
+ * <li>{@code A3}: third-direction drift and diffusion terms, treated
+ * implicitly.</li>
  * </ul>
  *
  * <p>
@@ -42,9 +48,12 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * This class provides the generic explicit operator application, boundary handling,
- * obstacle projection and time stepping. The directional implicit line solves are
- * left abstract, so subclasses may use a dedicated 3D stencil builder or a custom
+ * This class provides the generic explicit operator application, boundary
+ * handling,
+ * obstacle projection and time stepping. The directional implicit line solves
+ * are
+ * left abstract, so subclasses may use a dedicated 3D stencil builder or a
+ * custom
  * transport discretization.
  * </p>
  *
@@ -53,7 +62,8 @@ import net.finmath.modelling.Exercise;
 public abstract class AbstractADI3D implements FDMSolver {
 
     /**
-     * This interface is needed for payoff depending explicitly on the time dimension
+     * This interface is needed for payoff depending explicitly on the time
+     * dimension
      * and three state variables.
      */
     @FunctionalInterface
@@ -378,7 +388,8 @@ public abstract class AbstractADI3D implements FDMSolver {
     }
 
     /**
-     * Explicit application of A0 containing all mixed derivative terms and the discount term.
+     * Explicit application of A0 containing all mixed derivative terms and the
+     * discount term.
       * @param u The value.
       * @param time The value.
       * @return The value.
@@ -879,7 +890,8 @@ public abstract class AbstractADI3D implements FDMSolver {
     }
 
     /**
-     * Ternary payoff operator used for terminal conditions depending on three state variables.
+     * Ternary payoff operator used for terminal conditions depending on three
+     * state variables.
      */
     @FunctionalInterface
     public interface DoubleTernaryOperator {

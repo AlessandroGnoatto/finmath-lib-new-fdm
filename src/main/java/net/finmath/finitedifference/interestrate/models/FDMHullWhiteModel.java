@@ -132,7 +132,8 @@ public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
      * Creates a one-factor Hull-White finite-difference model.
      *
      * @param analyticModel The initial analytic multi-curve model.
-     * @param discountCurve The discount curve used for discount-bond calibration.
+     * @param discountCurve The discount curve used for discount-bond
+     *     calibration.
      * @param volatilityModel The short-rate volatility model specifying mean
      *        reversion and volatility.
      * @param spaceTimeDiscretization The finite-difference space-time
@@ -365,7 +366,8 @@ public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
     }
 
     /**
-     * Returns the affine coefficient {@code A(t,T)} in the discount-bond formula
+     * Returns the affine coefficient {@code A(t,T)} in the discount-bond
+     * formula
      * {@code P(t,T) = A(t,T) exp(-B(t,T) x(t))}.
      *
      * @param time The time {@code t}.

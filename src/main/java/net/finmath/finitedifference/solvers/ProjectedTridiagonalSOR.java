@@ -63,7 +63,8 @@ public final class ProjectedTridiagonalSOR {
      * @param tolerance The stopping tolerance for the maximum absolute change
      * 		between two consecutive iterates. If {@code tolerance <= 0}, the
      * 		iteration runs for the full number of iterations.
-     * @return An approximate solution of the tridiagonal linear complementarity problem.
+     * @return An approximate solution of the tridiagonal linear complementarity
+     *     problem.
      */
     public static double[] solve(
             final TridiagonalMatrix matrix,
@@ -90,15 +91,19 @@ public final class ProjectedTridiagonalSOR {
      * Solves a tridiagonal linear complementarity problem using projected SOR.
      * <p>
      * Starting from the provided initial guess, the method performs
-     * Gauss-Seidel-style updates, applies over-relaxation, and then projects each
-     * updated component onto the obstacle constraint. Before the iteration starts,
+     * Gauss-Seidel-style updates, applies over-relaxation, and then projects
+     * each
+     * updated component onto the obstacle constraint. Before the iteration
+     * starts,
      * the initial guess is projected onto the admissible region
      * {@code x >= obstacle}.
      * </p>
      *
      * <p>
-     * At each iteration, the method monitors the maximum absolute update size. If
-     * this quantity falls below the specified tolerance, the iteration is stopped
+     * At each iteration, the method monitors the maximum absolute update size.
+     * If
+     * this quantity falls below the specified tolerance, the iteration is
+     * stopped
      * early.
      * </p>
      *
@@ -115,8 +120,10 @@ public final class ProjectedTridiagonalSOR {
      * @param tolerance The stopping tolerance for the maximum absolute change
      * 		between two consecutive iterates. If {@code tolerance <= 0}, the
      * 		iteration runs for the full number of iterations.
-     * @return An approximate solution of the tridiagonal linear complementarity problem.
-     * @throws ArithmeticException If a zero diagonal entry is encountered during
+     * @return An approximate solution of the tridiagonal linear complementarity
+     *     problem.
+     * @throws ArithmeticException If a zero diagonal entry is encountered
+     *     during
      * 		the iteration.
      */
     public static double[] solve(
@@ -168,7 +175,8 @@ public final class ProjectedTridiagonalSOR {
     }
 
     /**
-     * Computes the infinity norm of the complementarity residual for a candidate
+     * Computes the infinity norm of the complementarity residual for a
+     * candidate
      * solution.
      * <p>
      * This is a convenience overload accepting the system matrix in
@@ -197,14 +205,17 @@ public final class ProjectedTridiagonalSOR {
     }
 
     /**
-     * Computes the infinity norm of the complementarity residual for a candidate
+     * Computes the infinity norm of the complementarity residual for a
+     * candidate
      * solution.
      * <p>
      * For each component, the residual combines:
      * </p>
      * <ul>
-     *   <li>the primal feasibility violation {@code max(0, obstacle[i] - x[i])},</li>
-     *   <li>the dual feasibility violation {@code max(0, rhs[i] - (A x)[i])},</li>
+     * <li>the primal feasibility violation {@code max(0, obstacle[i] -
+     * x[i])},</li>
+     * <li>the dual feasibility violation {@code max(0, rhs[i] - (A
+     * x)[i])},</li>
      *   <li>the complementarity defect
      *       {@code |(x[i] - obstacle[i]) * ((A x)[i] - rhs[i])|}.</li>
      * </ul>
@@ -262,8 +273,9 @@ public final class ProjectedTridiagonalSOR {
      * @param rhs The right-hand side vector.
      * @param obstacle The obstacle vector.
      * @param initialGuess The initial guess or candidate solution vector.
-     * @throws IllegalArgumentException If an input array is {@code null}, if the
-     * 		system dimension is zero, or if the array lengths are inconsistent.
+     * @throws IllegalArgumentException If an input array is {@code null}, if
+     *     the
+     * system dimension is zero, or if the array lengths are inconsistent.
      */
     private static void validateInputs(
             final double[] lower,

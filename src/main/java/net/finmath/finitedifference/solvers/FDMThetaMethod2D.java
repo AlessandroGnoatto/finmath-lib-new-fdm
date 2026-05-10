@@ -23,11 +23,13 @@ import net.finmath.modelling.Exercise;
  * Theta-method solver for two-dimensional PDEs in <em>state-variable form</em>.
  *
  * <p>
- * This solver assumes the two state variables {@code (X0, X1)} follow a generic SDE
+ * This solver assumes the two state variables {@code (X0, X1)} follow a generic
+ * SDE
  * </p>
  *
  * <p>
- * {@code dX_i(t) = mu_i(t, X0, X1) dt + sum_k b_{i,k}(t, X0, X1) dW_k(t)}, i = 0,1.
+ * {@code dX_i(t) = mu_i(t, X0, X1) dt + sum_k b_{i,k}(t, X0, X1) dW_k(t)}, i =
+ * 0,1.
  * </p>
  *
  * <p>
@@ -36,31 +38,38 @@ import net.finmath.modelling.Exercise;
  *
  * <ul>
  *   <li>Drift: {@code sum_i mu_i * d/dx_i}</li>
- *   <li>Diffusion: {@code 0.5 * sum_{i,j} a_{i,j} * d^2/(dx_i dx_j)} with {@code a = b b^T}</li>
+ * <li>Diffusion: {@code 0.5 * sum_{i,j} a_{i,j} * d^2/(dx_i dx_j)} with {@code
+ * a = b b^T}</li>
  *   <li>Discounting: {@code -r(t) * u}</li>
  * </ul>
  *
  * <p>
- * Boundary conditions are enforced via explicit {@link BoundaryCondition} objects.
- * Dirichlet rows are overwritten only if the corresponding boundary condition is of Dirichlet type.
+ * Boundary conditions are enforced via explicit {@link BoundaryCondition}
+ * objects.
+ * Dirichlet rows are overwritten only if the corresponding boundary condition
+ * is of Dirichlet type.
  * If the boundary condition type is NONE, the PDE row is left intact.
  * </p>
  *
  * <p>
  * In addition, products may define internal state constraints through
- * {@link FiniteDifferenceInternalStateConstraint}. Constrained nodes are imposed
+ * {@link FiniteDifferenceInternalStateConstraint}. Constrained nodes are
+ * imposed
  * as internal Dirichlet rows.
  * </p>
  *
  * <p>
- * For American exercise, the solver formulates each backward step as a linear complementarity
- * problem and solves it with projected SOR. For non-American exercise, a direct linear solve is used.
+ * For American exercise, the solver formulates each backward step as a linear
+ * complementarity
+ * problem and solves it with projected SOR. For non-American exercise, a direct
+ * linear solve is used.
  * </p>
  *
  * <p>
  * The solver returns the full time history as a flattened matrix of dimension
  * {@code (n0*n1) x (nT+1)}.
- * Flattening convention: {@code k = i0 + i1*n0} where {@code i0} is the fastest index.
+ * Flattening convention: {@code k = i0 + i1*n0} where {@code i0} is the fastest
+ * index.
  * </p>
  *
  * @author Enrico De Vecchi
@@ -101,13 +110,16 @@ public class FDMThetaMethod2D implements FDMSolver {
     /**
      * Creates a two-dimensional theta-method finite-difference solver.
      *
-     * @param model The finite-difference equity model providing drift, factor loadings,
+     * @param model The finite-difference equity model providing drift, factor
+     *     loadings,
      *        discounting, and boundary conditions.
      * @param product The product to be valued. It may optionally implement
      *        {@link FiniteDifferenceInternalStateConstraint}.
-     * @param spaceTimeDiscretization The joint space-time discretization, including
+     * @param spaceTimeDiscretization The joint space-time discretization,
+     *     including
      *        both spatial grids and the theta parameter.
-     * @param exercise The exercise specification controlling whether and when exercise is allowed.
+     * @param exercise The exercise specification controlling whether and when
+     *     exercise is allowed.
      */
     public FDMThetaMethod2D(
             final FiniteDifferenceEquityModel model,
@@ -121,15 +133,18 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Solves the PDE using a payoff that depends only on the first state variable.
+     * Solves the PDE using a payoff that depends only on the first state
+     * variable.
      *
      * <p>
-     * This overload promotes the one-dimensional terminal payoff into a two-dimensional one by
+     * This overload promotes the one-dimensional terminal payoff into a two-
+     * dimensional one by
      * ignoring the second state variable.
      * </p>
      *
      * @param time The maturity time of the claim.
-     * @param valueAtMaturity The terminal payoff as a function of the first state variable.
+     * @param valueAtMaturity The terminal payoff as a function of the first
+     *     state variable.
      * @return The full flattened space-time solution surface.
      */
     @Override
@@ -141,8 +156,10 @@ public class FDMThetaMethod2D implements FDMSolver {
      * Solves the backward PDE on the full two-dimensional space-time grid.
      *
      * <p>
-     * The returned matrix is indexed as {@code values[flattenedSpaceIndex][timeIndex]}.
-     * The first column corresponds to maturity and subsequent columns correspond to earlier
+     * The returned matrix is indexed as {@code
+     * values[flattenedSpaceIndex][timeIndex]}.
+     * The first column corresponds to maturity and subsequent columns
+     * correspond to earlier
      * times in backward time-stepping order.
      * </p>
      *
@@ -153,14 +170,18 @@ public class FDMThetaMethod2D implements FDMSolver {
      *   <li>builds model coefficients at the two theta evaluation times,</li>
      *   <li>assembles the left- and right-hand-side theta operators,</li>
      *   <li>enforces outer boundary conditions and internal constraints,</li>
-     *   <li>solves either a linear system or a linear complementarity problem,</li>
-     *   <li>reimposes constraints and Dirichlet boundaries for numerical safety.</li>
+     * <li>solves either a linear system or a linear complementarity
+     * problem,</li>
+     * <li>reimposes constraints and Dirichlet boundaries for numerical
+     * safety.</li>
      * </ul>
      *
      * @param time The maturity time of the claim.
-     * @param valueAtMaturity The terminal payoff as a function of both state variables.
+     * @param valueAtMaturity The terminal payoff as a function of both state
+     *     variables.
      * @return The full flattened space-time solution surface.
-     * @throws IllegalArgumentException If the discretization does not provide two spatial grids.
+     * @throws IllegalArgumentException If the discretization does not provide
+     *     two spatial grids.
      */
     public double[][] getValues(final double time, final DoubleBinaryOperator valueAtMaturity) {
 
@@ -239,12 +260,14 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Returns the flattened value vector at a given evaluation time for a payoff that depends only
+     * Returns the flattened value vector at a given evaluation time for a
+     * payoff that depends only
      * on the first state variable.
      *
      * @param evaluationTime The time at which the value is requested.
      * @param time The maturity time of the claim.
-     * @param valueAtMaturity The terminal payoff as a function of the first state variable.
+     * @param valueAtMaturity The terminal payoff as a function of the first
+     *     state variable.
      * @return The flattened value vector at the requested evaluation time.
      */
     @Override
@@ -256,11 +279,13 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Returns the flattened value vector at a given evaluation time for a genuinely two-dimensional payoff.
+     * Returns the flattened value vector at a given evaluation time for a
+     * genuinely two-dimensional payoff.
      *
      * @param evaluationTime The time at which the value is requested.
      * @param time The maturity time of the claim.
-     * @param valueAtMaturity The terminal payoff as a function of both state variables.
+     * @param valueAtMaturity The terminal payoff as a function of both state
+     *     variables.
      * @return The flattened value vector at the requested evaluation time.
      */
     public double[] getValue(final double evaluationTime, final double time, final DoubleBinaryOperator valueAtMaturity) {
@@ -300,11 +325,13 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Builds a mask identifying whether each flattened grid node lies on the outer spatial boundary.
+     * Builds a mask identifying whether each flattened grid node lies on the
+     * outer spatial boundary.
      *
      * @param n0 The number of grid points in the first dimension.
      * @param n1 The number of grid points in the second dimension.
-     * @return A boolean array whose entries are {@code true} exactly on the outer boundary.
+     * @return A boolean array whose entries are {@code true} exactly on the
+     *     outer boundary.
      */
     private boolean[] buildBoundaryMask(final int n0, final int n1) {
         final boolean[] isBoundary = new boolean[n0 * n1];
@@ -320,10 +347,12 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Builds the discrete first- and second-order differential operators on the flattened two-dimensional grid.
+     * Builds the discrete first- and second-order differential operators on the
+     * flattened two-dimensional grid.
      *
      * <p>
-     * The flattening convention is {@code k = i0 + i1*n0}, where the first dimension is the fast index.
+     * The flattening convention is {@code k = i0 + i1*n0}, where the first
+     * dimension is the fast index.
      * </p>
      *
      * @param x0Grid The spatial grid in the first dimension.
@@ -353,7 +382,8 @@ public class FDMThetaMethod2D implements FDMSolver {
      * Builds the model coefficient matrices at a given time.
      *
      * <p>
-     * The returned object contains diagonal matrices for drift and covariance entries, together with
+     * The returned object contains diagonal matrices for drift and covariance
+     * entries, together with
      * the instantaneous short rate implied by the risk-free discount curve.
      * </p>
      *
@@ -425,8 +455,10 @@ public class FDMThetaMethod2D implements FDMSolver {
      * Builds the theta-method left-hand-side matrix for one backward step.
      *
      * @param operators The discrete differential operators.
-     * @param coefficients The model coefficients evaluated at the implicit theta time level.
-     * @param deltaTau The backward time step size in time-to-maturity coordinates.
+     * @param coefficients The model coefficients evaluated at the implicit
+     *     theta time level.
+     * @param deltaTau The backward time step size in time-to-maturity
+     *     coordinates.
      * @param theta The theta-method parameter.
      * @return The left-hand-side matrix of the theta step.
      */
@@ -460,8 +492,10 @@ public class FDMThetaMethod2D implements FDMSolver {
      * Builds the theta-method right-hand-side operator for one backward step.
      *
      * @param operators The discrete differential operators.
-     * @param coefficients The model coefficients evaluated at the explicit theta time level.
-     * @param deltaTau The backward time step size in time-to-maturity coordinates.
+     * @param coefficients The model coefficients evaluated at the explicit
+     *     theta time level.
+     * @param deltaTau The backward time step size in time-to-maturity
+     *     coordinates.
      * @param theta The theta-method parameter.
      * @return The right-hand-side operator of the theta step.
      */
@@ -492,14 +526,17 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Applies outer Dirichlet boundary conditions by overwriting the corresponding matrix rows.
+     * Applies outer Dirichlet boundary conditions by overwriting the
+     * corresponding matrix rows.
      *
      * @param lhs The left-hand-side matrix to be modified.
      * @param rhs The right-hand-side vector to be modified.
      * @param x0Grid The spatial grid in the first dimension.
      * @param x1Grid The spatial grid in the second dimension.
-     * @param isBoundary The mask indicating which nodes lie on the outer boundary.
-     * @param boundaryTime The current model time at which boundary values are evaluated.
+     * @param isBoundary The mask indicating which nodes lie on the outer
+     *     boundary.
+     * @param boundaryTime The current model time at which boundary values are
+     *     evaluated.
      */
     private void applyOuterBoundaryConditions(
             final RealMatrix lhs,
@@ -529,13 +566,15 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Applies internal state constraints by overwriting the corresponding matrix rows as internal Dirichlet rows.
+     * Applies internal state constraints by overwriting the corresponding
+     * matrix rows as internal Dirichlet rows.
      *
      * @param lhs The left-hand-side matrix to be modified.
      * @param rhs The right-hand-side vector to be modified.
      * @param x0Grid The spatial grid in the first dimension.
      * @param x1Grid The spatial grid in the second dimension.
-     * @param boundaryTime The current model time at which constraint values are evaluated.
+     * @param boundaryTime The current model time at which constraint values are
+     *     evaluated.
      */
     private void applyInternalConstraints(
             final RealMatrix lhs,
@@ -562,7 +601,8 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Builds the obstacle vector used in the projected SOR solve for American exercise.
+     * Builds the obstacle vector used in the projected SOR solve for American
+     * exercise.
      *
      * <p>
      * At each node the obstacle is chosen in the following order:
@@ -570,7 +610,7 @@ public class FDMThetaMethod2D implements FDMSolver {
      * <ul>
      *   <li>Dirichlet boundary value, if active,</li>
      *   <li>internal constrained value, if active,</li>
-     *   <li>otherwise the intrinsic value given by {@code valueAtMaturity}.</li>
+     * <li>otherwise the intrinsic value given by {@code valueAtMaturity}.</li>
      * </ul>
      *
      * @param x0Grid The spatial grid in the first dimension.
@@ -616,8 +656,10 @@ public class FDMThetaMethod2D implements FDMSolver {
      * together with the complementarity condition, using projected SOR.
      *
      * <p>
-     * The iteration performs a Gauss-Seidel SOR update at each row and then projects the result
-     * onto the obstacle set. The initial guess is typically the previous time-step solution.
+     * The iteration performs a Gauss-Seidel SOR update at each row and then
+     * projects the result
+     * onto the obstacle set. The initial guess is typically the previous time-
+     * step solution.
      * </p>
      *
      * @param lhs The system matrix.
@@ -683,11 +725,14 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Applies pointwise exercise projection to a solution vector at an exercise date.
+     * Applies pointwise exercise projection to a solution vector at an exercise
+     * date.
      *
      * <p>
-     * Dirichlet boundary values and internal state constraints take precedence over the intrinsic exercise value.
-     * At all remaining nodes the solution is replaced by the maximum of continuation value and intrinsic value.
+     * Dirichlet boundary values and internal state constraints take precedence
+     * over the intrinsic exercise value.
+     * At all remaining nodes the solution is replaced by the maximum of
+     * continuation value and intrinsic value.
      * </p>
      *
      * @param u The solution vector to be modified in place.
@@ -793,7 +838,8 @@ public class FDMThetaMethod2D implements FDMSolver {
      *
      * <p>
      * If a node lies on multiple boundaries, precedence follows the order
-     * x0-lower, x0-upper, x1-lower, x1-upper, matching the original implementation style.
+     * x0-lower, x0-upper, x1-lower, x1-upper, matching the original
+     * implementation style.
      * </p>
      *
      * @param i The first-dimension grid index.
@@ -801,7 +847,8 @@ public class FDMThetaMethod2D implements FDMSolver {
      * @param x0Grid The spatial grid in the first dimension.
      * @param x1Grid The spatial grid in the second dimension.
      * @param boundaryTime The current model time.
-     * @return The boundary condition applicable to the node, or {@code null} for interior points.
+     * @return The boundary condition applicable to the node, or {@code null}
+     *     for interior points.
      */
     private BoundaryCondition chooseBoundaryCondition(
             final int i,
@@ -856,10 +903,12 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Computes the instantaneous short rate implied by the risk-free discount curve.
+     * Computes the instantaneous short rate implied by the risk-free discount
+     * curve.
      *
      * @param time The time at which the short rate is required.
-     * @return The continuously compounded short rate inferred from the discount factor.
+     * @return The continuously compounded short rate inferred from the discount
+     *     factor.
      */
     private double getShortRate(final double time) {
         final double safeTime = (time == 0.0 ? 1E-6 : time);
@@ -867,12 +916,14 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Checks whether an internal state constraint is active at the specified grid point.
+     * Checks whether an internal state constraint is active at the specified
+     * grid point.
      *
      * @param time The model time.
      * @param x0 The first state variable.
      * @param x1 The second state variable.
-     * @return {@code true} if an internal constraint is active, {@code false} otherwise.
+     * @return {@code true} if an internal constraint is active, {@code false}
+     *     otherwise.
      */
     private boolean isInternalConstraintActive(final double time, final double x0, final double x1) {
         if (product instanceof FiniteDifferenceInternalStateConstraint) {
@@ -882,7 +933,8 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Returns the constrained value prescribed by the product at the specified point.
+     * Returns the constrained value prescribed by the product at the specified
+     * point.
      *
      * @param time The model time.
      * @param x0 The first state variable.
@@ -906,7 +958,8 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Builds a block-diagonal sparse matrix with identical blocks on the diagonal.
+     * Builds a block-diagonal sparse matrix with identical blocks on the
+     * diagonal.
      *
      * @param block The block to replicate.
      * @param numBlocks The number of blocks.
@@ -976,7 +1029,8 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Builds the sparse Kronecker product {@code A ⊗ I}, where {@code I} is an identity matrix.
+     * Builds the sparse Kronecker product {@code A ⊗ I}, where {@code I} is an
+     * identity matrix.
      *
      * @param a The left matrix.
      * @param nIdentity The dimension of the identity matrix.
@@ -1034,10 +1088,14 @@ public class FDMThetaMethod2D implements FDMSolver {
         /**
          * Creates a container for the discrete differential operators.
          *
-         * @param d0 The first derivative operator with respect to the first state variable.
-         * @param d1 The first derivative operator with respect to the second state variable.
-         * @param d00 The second derivative operator with respect to the first state variable.
-         * @param d11 The second derivative operator with respect to the second state variable.
+         * @param d0 The first derivative operator with respect to the first
+         *     state variable.
+         * @param d1 The first derivative operator with respect to the second
+         *     state variable.
+         * @param d00 The second derivative operator with respect to the first
+         *     state variable.
+         * @param d11 The second derivative operator with respect to the second
+         *     state variable.
          * @param d01 The mixed derivative operator.
          */
         private DifferentialOperators2D(
@@ -1054,7 +1112,8 @@ public class FDMThetaMethod2D implements FDMSolver {
         }
 
         /**
-         * Returns the first derivative operator with respect to the first state variable.
+         * Returns the first derivative operator with respect to the first state
+         * variable.
          *
          * @return The operator {@code d/dx0}.
          */
@@ -1063,7 +1122,8 @@ public class FDMThetaMethod2D implements FDMSolver {
         }
 
         /**
-         * Returns the first derivative operator with respect to the second state variable.
+         * Returns the first derivative operator with respect to the second
+         * state variable.
          *
          * @return The operator {@code d/dx1}.
          */
@@ -1072,7 +1132,8 @@ public class FDMThetaMethod2D implements FDMSolver {
         }
 
         /**
-         * Returns the second derivative operator with respect to the first state variable.
+         * Returns the second derivative operator with respect to the first
+         * state variable.
          *
          * @return The operator {@code d^2/dx0^2}.
          */
@@ -1081,7 +1142,8 @@ public class FDMThetaMethod2D implements FDMSolver {
         }
 
         /**
-         * Returns the second derivative operator with respect to the second state variable.
+         * Returns the second derivative operator with respect to the second
+         * state variable.
          *
          * @return The operator {@code d^2/dx1^2}.
          */
@@ -1100,7 +1162,8 @@ public class FDMThetaMethod2D implements FDMSolver {
     }
 
     /**
-     * Container for the model coefficients evaluated on the full flattened grid.
+     * Container for the model coefficients evaluated on the full flattened
+     * grid.
      */
     private static final class ModelCoefficients2D {
 

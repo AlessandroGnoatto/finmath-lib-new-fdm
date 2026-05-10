@@ -20,7 +20,8 @@ import net.finmath.modelling.Exercise;
  * This class supports:
  * </p>
  * <ul>
- *   <li>standard direct barrier solves via {@link BarrierPDEMode#OUT_STANDARD},</li>
+ * <li>standard direct barrier solves via {@link
+ * BarrierPDEMode#OUT_STANDARD},</li>
  *   <li>pre-hit continuation solves for direct knock-in pricing via
  *       {@link BarrierPDEMode#IN_PRE_HIT}.</li>
  * </ul>
@@ -57,7 +58,8 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
      * @param spaceTimeDiscretization The discretization to use.
      * @param exercise The exercise specification.
      * @param barrierMode The barrier PDE mode.
-     * @param preHitSpecification The pre-hit specification. Required in IN_PRE_HIT mode.
+     * @param preHitSpecification The pre-hit specification. Required in
+     *     IN_PRE_HIT mode.
      */
     public FDMBarrierSabrADI2D(
             final FDMSabrModel model,
@@ -212,7 +214,8 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
     }
 
     /**
-     * Overwrites the barrier interface row in a first-direction tridiagonal system.
+     * Overwrites the barrier interface row in a first-direction tridiagonal
+     * system.
      *
      * @param matrix The tridiagonal matrix.
      * @param rhs The corresponding right-hand side.
@@ -257,7 +260,8 @@ public class FDMBarrierSabrADI2D extends AbstractADI2D {
     }
 
     /**
-     * Returns the activated barrier trace value at the given second-state row and running time.
+     * Returns the activated barrier trace value at the given second-state row
+     * and running time.
      *
      * @param secondIndex The second-state index.
      * @param runningTime The running time.

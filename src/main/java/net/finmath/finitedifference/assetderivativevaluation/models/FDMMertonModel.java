@@ -15,7 +15,8 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
 
 /**
- * Finite-difference model for option pricing under the Merton jump-diffusion model.
+ * Finite-difference model for option pricing under the Merton jump-diffusion
+ * model.
  *
  * <p>
  * The local part of the dynamics is identical to Black-Scholes:
@@ -28,7 +29,8 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  * <p>
  * In line with the jump-interface convention adopted in this framework,
  * {@link #getDrift(double, double...)} returns only the local drift
- * {@code (r-q)S}, {@link #getFactorLoading(double, double...)} returns the local
+ * {@code (r-q)S}, {@link #getFactorLoading(double, double...)} returns the
+ * local
  * diffusion loading {@code sigma S}, and the non-local jump contribution is
  * supplied separately through {@link #getJumpComponent()}.
  * </p>
@@ -74,7 +76,8 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     private static final double MINIMUM_TIME = 1.0E-6;
 
     /**
-     * Creates a finite-difference Merton model from discount curves and an explicit
+     * Creates a finite-difference Merton model from discount curves and an
+     * explicit
      * jump component.
      *
      * @param initialValue Initial spot value.
@@ -105,7 +108,8 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a finite-difference Merton model from discount curves and jump parameters.
+     * Creates a finite-difference Merton model from discount curves and jump
+     * parameters.
      *
      * @param initialValue Initial spot value.
      * @param riskFreeCurve Risk-free discount curve.
@@ -114,8 +118,10 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization Space-time discretization.
      */
     public FDMMertonModel(
@@ -178,8 +184,10 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization Space-time discretization.
      */
     public FDMMertonModel(
@@ -208,7 +216,8 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a finite-difference Merton model from flat rates and an explicit jump component.
+     * Creates a finite-difference Merton model from flat rates and an explicit
+     * jump component.
      *
      * @param initialValue Initial spot value.
      * @param riskFreeRate Constant risk-free rate.
@@ -235,7 +244,8 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a finite-difference Merton model from flat rates and jump parameters.
+     * Creates a finite-difference Merton model from flat rates and jump
+     * parameters.
      *
      * @param initialValue Initial spot value.
      * @param riskFreeRate Constant risk-free rate.
@@ -244,8 +254,10 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization Space-time discretization.
      */
     public FDMMertonModel(
@@ -275,7 +287,8 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a finite-difference Merton model from a flat risk-free rate and zero dividend yield.
+     * Creates a finite-difference Merton model from a flat risk-free rate and
+     * zero dividend yield.
      *
      * @param initialValue Initial spot value.
      * @param riskFreeRate Constant risk-free rate.
@@ -300,7 +313,8 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a finite-difference Merton model from a flat risk-free rate and zero dividend yield.
+     * Creates a finite-difference Merton model from a flat risk-free rate and
+     * zero dividend yield.
      *
      * @param initialValue Initial spot value.
      * @param riskFreeRate Constant risk-free rate.
@@ -308,8 +322,10 @@ public class FDMMertonModel implements FiniteDifferenceEquityModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization Space-time discretization.
      */
     public FDMMertonModel(

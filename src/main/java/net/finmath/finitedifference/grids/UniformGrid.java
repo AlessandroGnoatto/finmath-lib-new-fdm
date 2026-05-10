@@ -1,10 +1,12 @@
 package net.finmath.finitedifference.grids;
 
 /**
- * Implementation of the {@link Grid} interface representing a uniform spatial grid.
+ * Implementation of the {@link Grid} interface representing a uniform spatial
+ * grid.
  *
  * <p>
- * This grid divides the interval between {@code minimumValue} and {@code maximumValue}
+ * This grid divides the interval between {@code minimumValue} and {@code
+ * maximumValue}
  * into equal-sized intervals defined by {@code numberOfSteps}.
  * </p>
  *

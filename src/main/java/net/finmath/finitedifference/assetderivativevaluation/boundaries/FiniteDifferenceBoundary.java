@@ -20,7 +20,8 @@ public interface FiniteDifferenceBoundary {
      *
      * @param product The product being valued.
      * @param time The running time.
-     * @param stateVariables The state variables specifying the boundary location.
+     * @param stateVariables The state variables specifying the boundary
+     *     location.
      * @return The lower-boundary conditions by dimension.
      */
     BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
@@ -37,7 +38,8 @@ public interface FiniteDifferenceBoundary {
      *
      * @param product The product being valued.
      * @param time The running time.
-     * @param stateVariables The state variables specifying the boundary location.
+     * @param stateVariables The state variables specifying the boundary
+     *     location.
      * @return The upper-boundary conditions by dimension.
      */
     BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(

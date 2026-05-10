@@ -65,7 +65,8 @@ public class TouchOptionHestonModelBoundary implements FiniteDifferenceBoundary 
          * Spot lower boundary.
          *
          * DOWN_OUT no-touch: knocked out -> 0.
-         * Otherwise (DOWN_IN one-touch, or continuation side of UP_OUT no-touch):
+         * Otherwise (DOWN_IN one-touch, or continuation side of UP_OUT no-
+         * touch):
          * discounted expiry cash.
          */
         if (barrierType == BarrierType.DOWN_OUT) {
@@ -99,7 +100,8 @@ public class TouchOptionHestonModelBoundary implements FiniteDifferenceBoundary 
          * Spot upper boundary.
          *
          * UP_OUT no-touch: knocked out -> 0.
-         * Otherwise (UP_IN one-touch, or continuation side of DOWN_OUT no-touch):
+         * Otherwise (UP_IN one-touch, or continuation side of DOWN_OUT no-
+         * touch):
          * discounted expiry cash.
          */
         if (barrierType == BarrierType.UP_OUT) {

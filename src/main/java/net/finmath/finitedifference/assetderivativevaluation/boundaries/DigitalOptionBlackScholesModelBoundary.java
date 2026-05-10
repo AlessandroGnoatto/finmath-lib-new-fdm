@@ -159,7 +159,8 @@ public class DigitalOptionBlackScholesModelBoundary implements FiniteDifferenceB
     }
 
     /**
-     * Returns the discounted cash payoff for a European cash-or-nothing digital.
+     * Returns the discounted cash payoff for a European cash-or-nothing
+     * digital.
      *
      * @param option The digital option.
      * @param time The current model time.

@@ -103,7 +103,8 @@ public class HyperbolicSineGrid extends AbstractGrid {
     }
 
     /**
-     * Generates the spacing (delta) array as differences between consecutive grid points.
+     * Generates the spacing (delta) array as differences between consecutive
+     * grid points.
      *
      * @param vector Array of values at grid points (usually the grid itself).
      */
@@ -123,7 +124,8 @@ public class HyperbolicSineGrid extends AbstractGrid {
     /**
      * Returns the grid points, generating them if necessary.
      *
-     * @return The grid points distributed via the hyperbolic sine transformation.
+     * @return The grid points distributed via the hyperbolic sine
+     *     transformation.
      */
     @Override
     public double[] getGrid() {

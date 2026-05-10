@@ -12,7 +12,8 @@ import net.finmath.modelling.Exercise;
  * <i>(S,I)</i>.
  *
  * <p>
- * The lifted formulation augments the spot process <i>S</i> by the running integral
+ * The lifted formulation augments the spot process <i>S</i> by the running
+ * integral
  * </p>
  *
  * <p>
@@ -20,7 +21,8 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * so that an arithmetic-average payoff can be represented as a terminal payoff in the
+ * so that an arithmetic-average payoff can be represented as a terminal payoff
+ * in the
  * two-dimensional state variables <i>(S_t,I_t)</i>. The state dynamics are
  * </p>
  *
@@ -33,7 +35,8 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * In time-to-maturity coordinates <i>\tau = T - t</i>, the backward pricing PDE is
+ * In time-to-maturity coordinates <i>\tau = T - t</i>, the backward pricing PDE
+ * is
  * written as
  * </p>
  *
@@ -58,19 +61,23 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * Hence there is no mixed derivative and no diffusion in the integral direction.
- * The second state direction is a pure transport direction. In <i>\tau</i>-time,
+ * Hence there is no mixed derivative and no diffusion in the integral
+ * direction.
+ * The second state direction is a pure transport direction. In
+ * <i>\tau</i>-time,
  * transport is propagated toward increasing <i>I</i>, so the consistent upwind
  * discretization is forward in the <i>I</i> direction.
  * </p>
  *
  * <p>
- * Relative to the generic {@link AbstractADI2D} implementation, this class therefore:
+ * Relative to the generic {@link AbstractADI2D} implementation, this class
+ * therefore:
  * </p>
  * <ul>
  *   <li>uses only discounting in the explicit {@code A0} part,</li>
  *   <li>uses a forward-upwind discretization for {@code A2},</li>
- *   <li>solves the second-direction implicit systems with the corresponding transport stencil.</li>
+ * <li>solves the second-direction implicit systems with the corresponding
+ * transport stencil.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto
@@ -78,7 +85,8 @@ import net.finmath.modelling.Exercise;
 public class FDMAsianADI2D extends AbstractADI2D {
 
     /**
-     * Creates the lifted two-dimensional ADI solver for arithmetic Asian products.
+     * Creates the lifted two-dimensional ADI solver for arithmetic Asian
+     * products.
      *
      * @param model The finite-difference model.
      * @param product The product to be valued.
@@ -97,7 +105,8 @@ public class FDMAsianADI2D extends AbstractADI2D {
      * Applies the explicit operator part {@code A0}.
      *
      * <p>
-     * For the lifted arithmetic Asian PDE, {@code A0} contains only the discounting term
+     * For the lifted arithmetic Asian PDE, {@code A0} contains only the
+     * discounting term
      * <i>-r u</i>.
      * </p>
      *
@@ -126,7 +135,8 @@ public class FDMAsianADI2D extends AbstractADI2D {
      * Applies the explicit transport operator {@code A2 u = S u_I}.
      *
      * <p>
-     * The derivative in the integral direction is approximated by forward upwinding:
+     * The derivative in the integral direction is approximated by forward
+     * upwinding:
      * </p>
      *
      * <p>
@@ -134,7 +144,8 @@ public class FDMAsianADI2D extends AbstractADI2D {
      * </p>
      *
      * <p>
-     * This is the appropriate upwind choice in time-to-maturity coordinates for the
+     * This is the appropriate upwind choice in time-to-maturity coordinates for
+     * the
      * transport equation induced by <i>dI_t = S_t dt</i>.
      * </p>
      *
@@ -164,7 +175,8 @@ public class FDMAsianADI2D extends AbstractADI2D {
      * Solves the implicit systems in the integral direction.
      *
      * <p>
-     * For each fixed spot index, the second-direction system corresponds to the transport
+     * For each fixed spot index, the second-direction system corresponds to the
+     * transport
      * discretization
      * </p>
      *
@@ -177,8 +189,10 @@ public class FDMAsianADI2D extends AbstractADI2D {
      * </p>
      *
      * <p>
-     * The upper integral boundary is the inflow side and is imposed if it is Dirichlet.
-     * The lower integral boundary is overwritten only when an explicit Dirichlet condition
+     * The upper integral boundary is the inflow side and is imposed if it is
+     * Dirichlet.
+     * The lower integral boundary is overwritten only when an explicit
+     * Dirichlet condition
      * is provided.
      * </p>
      *
@@ -220,7 +234,8 @@ public class FDMAsianADI2D extends AbstractADI2D {
             }
 
             /*
-             * Last row: default identity, then overwrite only if upper boundary is Dirichlet.
+             * Last row: default identity, then overwrite only if upper boundary
+             * is Dirichlet.
              */
             m.lower[n1 - 1] = 0.0;
             m.diag[n1 - 1] = 1.0;

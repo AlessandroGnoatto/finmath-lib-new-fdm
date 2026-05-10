@@ -35,9 +35,11 @@ public final class ActivatedVectorEventState {
      *
      * @param activatedVectorsAtEventTimes The activated value vectors keyed by
      *        event time.
-     * @param timeTolerance The non-negative absolute tolerance used when matching
+     * @param timeTolerance The non-negative absolute tolerance used when
+     *     matching
      *        requested event times to stored event times.
-     * @throws IllegalArgumentException Thrown if {@code activatedVectorsAtEventTimes}
+     * @throws IllegalArgumentException Thrown if {@code
+     *     activatedVectorsAtEventTimes}
      *         is {@code null} or if {@code timeTolerance} is negative.
      */
     public ActivatedVectorEventState(
@@ -60,12 +62,14 @@ public final class ActivatedVectorEventState {
      *
      * <p>
      * A stored vector is considered a match if the absolute difference between
-     * the stored event time and the requested event time is less than or equal to
+     * the stored event time and the requested event time is less than or equal
+     * to
      * the configured time tolerance.
      * </p>
      *
      * @param eventTime The requested event time.
-     * @return The activated value vector associated with the matching event time.
+     * @return The activated value vector associated with the matching event
+     *     time.
      * @throws IllegalArgumentException Thrown if no activated vector is found
      *         within the configured time tolerance.
      */

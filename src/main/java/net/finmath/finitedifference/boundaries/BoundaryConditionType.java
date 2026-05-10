@@ -7,8 +7,10 @@ package net.finmath.finitedifference.boundaries;
  * Minimal initial set:
  * </p>
  * <ul>
- *   <li>{@link #DIRICHLET}: overwrite the corresponding PDE row with a fixed value,</li>
- *   <li>{@link #NONE}: do not enforce a boundary row; leave the PDE operator intact.</li>
+ * <li>{@link #DIRICHLET}: overwrite the corresponding PDE row with a fixed
+ * value,</li>
+ * <li>{@link #NONE}: do not enforce a boundary row; leave the PDE operator
+ * intact.</li>
  * </ul>
  *
  * <p>

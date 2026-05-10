@@ -8,7 +8,8 @@ import net.finmath.time.FloatingpointDate;
  * American exercise: continuous exercise on an interval.
  *
  * <p>
- * The standard case is exercise from time 0 to maturity, but a later exercise start time
+ * The standard case is exercise from time 0 to maturity, but a later exercise
+ * start time
  * can also be specified.
  * </p>
  *
@@ -31,7 +32,8 @@ public class AmericanExercise extends AbstractExercise {
     }
 
     /**
-     * Creates an American exercise on the interval [exerciseStartTime, maturity].
+     * Creates an American exercise on the interval [exerciseStartTime,
+     * maturity].
      *
      * @param exerciseStartTime The first time at which exercise is allowed.
      * @param maturity The maturity.

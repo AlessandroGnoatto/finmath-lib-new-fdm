@@ -8,7 +8,8 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link EuropeanOption} under the {@link FDMBatesModel}.
+ * Boundary conditions for {@link EuropeanOption} under the {@link
+ * FDMBatesModel}.
  *
  * <p>
  * State variables are assumed to be {@code (S, v)}, where {@code S} is the

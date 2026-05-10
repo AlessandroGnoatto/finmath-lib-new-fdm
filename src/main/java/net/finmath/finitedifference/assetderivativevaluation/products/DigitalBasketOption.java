@@ -128,7 +128,7 @@ public class DigitalBasketOption implements FiniteDifferenceEquityProduct {
      * @param maturity Maturity.
      * @param basketDigitalType Payoff type.
      * @param quantities Signed quantities for
-     *        {@link BasketDigitalType#LINEAR_COMBINATION}. Ignored otherwise and
+     * {@link BasketDigitalType#LINEAR_COMBINATION}. Ignored otherwise and
      *        may be {@code null}.
      * @param strike Strike.
      * @param cashPayoff Cash payoff.
@@ -193,7 +193,7 @@ public class DigitalBasketOption implements FiniteDifferenceEquityProduct {
      * @param maturity Maturity.
      * @param basketDigitalType Payoff type.
      * @param quantities Signed quantities for
-     *        {@link BasketDigitalType#LINEAR_COMBINATION}. Ignored otherwise and
+     * {@link BasketDigitalType#LINEAR_COMBINATION}. Ignored otherwise and
      *        may be {@code null}.
      * @param strike Strike.
      * @param cashPayoff Cash payoff.

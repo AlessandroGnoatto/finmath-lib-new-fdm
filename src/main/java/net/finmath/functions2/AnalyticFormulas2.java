@@ -98,8 +98,10 @@ public final class AnalyticFormulas2 {
      *
      * @param initialValueFirstAsset Initial value of the first asset.
      * @param initialValueSecondAsset Initial value of the second asset.
-     * @param dividendYieldFirstAsset Continuous dividend yield of the first asset.
-     * @param dividendYieldSecondAsset Continuous dividend yield of the second asset.
+     * @param dividendYieldFirstAsset Continuous dividend yield of the first
+     *     asset.
+     * @param dividendYieldSecondAsset Continuous dividend yield of the second
+     *     asset.
      * @param volatilityFirstAsset Volatility of the first asset.
      * @param volatilitySecondAsset Volatility of the second asset.
      * @param correlation Instantaneous correlation between the two assets.

@@ -12,7 +12,8 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
 
 /**
- * Finite difference model for option pricing under the SABR stochastic volatility model.
+ * Finite difference model for option pricing under the SABR stochastic
+ * volatility model.
  *
  * <p>
  * The state variables are {@code (S, alpha)} where
@@ -38,7 +39,8 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  *
  * <p>
  * Although one may formulate the PDE in transformed coordinates such as
- * {@code log(S)}, this class deliberately works in the variables {@code (S, alpha)}
+ * {@code log(S)}, this class deliberately works in the variables {@code (S,
+ * alpha)}
  * so that payoff functions can continue to use the spot directly.
  * </p>
  *
@@ -228,7 +230,8 @@ public class FDMSabrModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Constructs a SABR finite difference model from a constant risk-free rate and zero dividend yield.
+     * Constructs a SABR finite difference model from a constant risk-free rate
+     * and zero dividend yield.
      *
      * @param initialSpot Initial spot price.
      * @param initialAlpha Initial volatility factor.
@@ -378,7 +381,8 @@ public class FDMSabrModel implements FiniteDifferenceEquityModel {
 
     @Override
     public double[][] getFactorLoading(final double time, final double... stateVariables) {
-        // Factors are independent. Correlation rho is embedded in the second row.
+        // Factors are independent. Correlation rho is embedded in the second
+        // row.
         final double s = stateVariables.length > 0 ? Math.max(0.0, stateVariables[0]) : initialSpot;
         final double alpha = stateVariables.length > 1 ? Math.max(0.0, stateVariables[1]) : initialAlpha;
 

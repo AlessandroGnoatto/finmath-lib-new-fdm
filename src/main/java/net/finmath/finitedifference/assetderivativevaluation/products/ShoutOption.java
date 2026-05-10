@@ -16,9 +16,12 @@ import net.finmath.modelling.products.CallOrPut;
  * Finite-difference valuation of a shout option.
  *
  * <p>
- * A shout option is a path-dependent extension of a vanilla option allowing the holder to
- * lock in intrinsic value a finite number of times before maturity. In this implementation,
- * the locked level is represented by a reset strike <i>K</i><sup>*</sup>, and the standard
+ * A shout option is a path-dependent extension of a vanilla option allowing the
+ * holder to
+ * lock in intrinsic value a finite number of times before maturity. In this
+ * implementation,
+ * the locked level is represented by a reset strike <i>K</i><sup>*</sup>, and
+ * the standard
  * shout rule
  * </p>
  *
@@ -28,12 +31,14 @@ import net.finmath.modelling.products.CallOrPut;
  *
  * <p>
  * is used at each shout time. The contract considered here has fixed maturity
- * <i>T</i>, a finite maximum number of shouts, continuous shout right, optional constant
+ * <i>T</i>, a finite maximum number of shouts, continuous shout right, optional
+ * constant
  * shout cash adjustment, and no maturity extension or yearly counter reset.
  * </p>
  *
  * <p>
- * For a fixed locked strike <i>K</i>, the terminal payoff is that of a vanilla option,
+ * For a fixed locked strike <i>K</i>, the terminal payoff is that of a vanilla
+ * option,
  * namely
  * </p>
  *
@@ -46,8 +51,10 @@ import net.finmath.modelling.products.CallOrPut;
  * </p>
  *
  * <p>
- * Let <i>V</i><sup>(u)</sup>(<i>t,S;K</i>) denote the value when <i>u</i> shouts have already
- * been used and the current locked strike is <i>K</i>. The shout feature induces the obstacle
+ * Let <i>V</i><sup>(u)</sup>(<i>t,S;K</i>) denote the value when <i>u</i>
+ * shouts have already
+ * been used and the current locked strike is <i>K</i>. The shout feature
+ * induces the obstacle
  * recursion
  * </p>
  *
@@ -60,21 +67,26 @@ import net.finmath.modelling.products.CallOrPut;
  * </p>
  *
  * <p>
- * where <i>c</i> is the constant shout cash adjustment. Hence the valuation proceeds
- * backward over planes indexed by the number of used shouts and, inside each plane,
+ * where <i>c</i> is the constant shout cash adjustment. Hence the valuation
+ * proceeds
+ * backward over planes indexed by the number of used shouts and, inside each
+ * plane,
  * over slices corresponding to fixed strike values taken from a strike grid.
  * </p>
  *
  * <p>
  * The implementation adapts to the present framework the ideas of H. Windcliff,
  * K.R. Vetzal, P.A. Forsyth, A. Verma, T.F. Coleman,
- * <i>An object-oriented framework for valuing shout options on high-performance computer architectures</i>,
+ * <i>An object-oriented framework for valuing shout options on high-performance
+ * computer architectures</i>,
  * JEDC.
  * </p>
  *
  * <p>
- * The recursion is performed over planes of used shout count and slices of fixed strike.
- * Each slice is a standard PDE solve with a continuous obstacle interpolated from the next
+ * The recursion is performed over planes of used shout count and slices of
+ * fixed strike.
+ * Each slice is a standard PDE solve with a continuous obstacle interpolated
+ * from the next
  * shout plane.
  * </p>
  *

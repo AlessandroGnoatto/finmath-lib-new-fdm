@@ -5,7 +5,8 @@ import java.util.HashMap;
 import net.finmath.time.TimeDiscretization;
 
 /**
- * Encapsulates the space-time discretization used in a finite difference scheme.
+ * Encapsulates the space-time discretization used in a finite difference
+ * scheme.
  *
  * <p>
  * The class contains:
@@ -91,7 +92,8 @@ public class SpaceTimeDiscretization {
      * @param spaceGrids         Array of grids, one per spatial dimension.
      * @param timeDiscretization The time discretization (time-to-maturity).
      * @param theta              The theta parameter of the theta-method.
-     * @param center             Center point per dimension (same length as {@code spaceGrids}).
+     * @param center Center point per dimension (same length as {@code
+     *     spaceGrids}).
      */
     public SpaceTimeDiscretization(
             final Grid[] spaceGrids,

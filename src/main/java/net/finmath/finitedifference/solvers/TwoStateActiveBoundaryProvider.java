@@ -17,7 +17,8 @@ package net.finmath.finitedifference.solvers;
 public interface TwoStateActiveBoundaryProvider {
 
     /**
-     * Returns the boundary value at the lower spatial boundary for the active regime.
+     * Returns the boundary value at the lower spatial boundary for the active
+     * regime.
      *
      * @param time The evaluation time.
      * @param stateVariable The state variable at the lower boundary.
@@ -26,7 +27,8 @@ public interface TwoStateActiveBoundaryProvider {
     double getLowerBoundaryValue(double time, double stateVariable);
 
     /**
-     * Returns the boundary value at the upper spatial boundary for the active regime.
+     * Returns the boundary value at the upper spatial boundary for the active
+     * regime.
      *
      * @param time The evaluation time.
      * @param stateVariable The state variable at the upper boundary.

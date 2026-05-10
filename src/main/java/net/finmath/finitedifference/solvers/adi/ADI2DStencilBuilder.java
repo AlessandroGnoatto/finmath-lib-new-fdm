@@ -20,8 +20,10 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
  * The PDE operator is split into the directional parts
  * </p>
  * <ul>
- *   <li>{@code A1}: drift and diffusion terms in the first spatial direction.</li>
- *   <li>{@code A2}: drift and diffusion terms in the second spatial direction.</li>
+ * <li>{@code A1}: drift and diffusion terms in the first spatial
+ * direction.</li>
+ * <li>{@code A2}: drift and diffusion terms in the second spatial
+ * direction.</li>
  * </ul>
  *
  * <p>

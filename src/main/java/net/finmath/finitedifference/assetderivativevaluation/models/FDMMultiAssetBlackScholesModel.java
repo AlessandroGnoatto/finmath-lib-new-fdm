@@ -47,7 +47,8 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  * </p>
  *
  * <p>
- * Here {@code r(t)} is the risk-free rate implied by a single risk-free discount
+ * Here {@code r(t)} is the risk-free rate implied by a single risk-free
+ * discount
  * curve, while each asset has its own dividend-yield discount curve and hence
  * its own dividend yield {@code q_i(t)}.
  * </p>
@@ -75,14 +76,16 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  *
  * <p>
  * The class is a model abstraction only. It is intentionally agnostic with
- * respect to the dimensional limits of the available PDE solvers. In particular,
+ * respect to the dimensional limits of the available PDE solvers. In
+ * particular,
  * the model may be created for any dimension, even if a given finite-difference
  * solver currently supports only dimensions one, two, or three.
  * </p>
  *
  * <p>
  * For boundary conditions, this first implementation returns
- * {@link StandardBoundaryCondition#none()} in every spatial direction by default.
+ * {@link StandardBoundaryCondition#none()} in every spatial direction by
+ * default.
  * This keeps the model generic and leaves product-specific asymptotic boundary
  * design to specialized boundary logic introduced later.
  * </p>
@@ -233,7 +236,8 @@ public class FDMMultiAssetBlackScholesModel implements FiniteDifferenceEquityMod
     }
 
     /**
-     * Creates a multi-asset Black-Scholes finite-difference model with zero dividend
+     * Creates a multi-asset Black-Scholes finite-difference model with zero
+     * dividend
      * yield for every asset.
      *
      * @param initialValues Initial asset values.
@@ -267,7 +271,8 @@ public class FDMMultiAssetBlackScholesModel implements FiniteDifferenceEquityMod
      * Returns the legacy single-asset dividend-yield accessor.
      *
      * <p>
-     * For true multi-asset models with more than one dividend curve, callers should
+     * For true multi-asset models with more than one dividend curve, callers
+     * should
      * use {@link #getDividendYieldCurves()} instead.
      * </p>
      *

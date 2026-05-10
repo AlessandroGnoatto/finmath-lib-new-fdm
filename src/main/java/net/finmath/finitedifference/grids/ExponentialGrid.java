@@ -1,11 +1,13 @@
 package net.finmath.finitedifference.grids;
 
 /**
- * Non-uniform exponential grid between {@code minimumValue} and {@code maximumValue}.
+ * Non-uniform exponential grid between {@code minimumValue} and {@code
+ * maximumValue}.
  *
  * <p>
  * The grid points are distributed exponentially, with density concentrated near
- * {@code minimumValue} or {@code maximumValue} depending on the parameter {@code alpha}.
+ * {@code minimumValue} or {@code maximumValue} depending on the parameter
+ * {@code alpha}.
  * </p>
  *
  * <p>
@@ -55,8 +57,8 @@ public class ExponentialGrid extends AbstractGrid {
      * @param maximumValue  The upper bound of the grid interval.
      * @param alpha         Parameter controlling grid density:
      *                      <ul>
-     *                      <li>If {@code alpha > 0}, points cluster near {@code maximumValue}.</li>
-     *                      <li>If {@code alpha < 0}, points cluster near {@code minimumValue}.</li>
+     * <li>If {@code alpha > 0}, points cluster near {@code maximumValue}.</li>
+     * <li>If {@code alpha < 0}, points cluster near {@code minimumValue}.</li>
      *                      <li>If {@code alpha = 0}, the grid is uniform.</li>
      *                      </ul>
      */

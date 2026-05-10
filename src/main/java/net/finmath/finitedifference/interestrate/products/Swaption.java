@@ -35,15 +35,17 @@ import net.finmath.time.TimeDiscretization;
  * The sign convention is determined by {@link SwaptionType}:
  * </p>
  * <ul>
- *   <li>{@code PAYER}: intrinsic value is based on float leg minus fixed leg,</li>
- *   <li>{@code RECEIVER}: intrinsic value is based on fixed leg minus float leg.</li>
+ * <li>{@code PAYER}: intrinsic value is based on float leg minus fixed
+ * leg,</li>
+ * <li>{@code RECEIVER}: intrinsic value is based on fixed leg minus float
+ * leg.</li>
  * </ul>
  *
  * <p>
  * The class supports:
  * </p>
  * <ul>
- *   <li>a single underlying swap (European or American-style grid exercise),</li>
+ * <li>a single underlying swap (European or American-style grid exercise),</li>
  *   <li>one underlying swap per exercise date (Bermudan style).</li>
  * </ul>
  *
@@ -123,10 +125,11 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
      * </p>
      * <ul>
      *   <li>European exercise uses {@code exercise.getMaturity()},</li>
-     *   <li>Bermudan exercise derives exercise dates from the first period start of
-     *       the supplied schedules if more than one underlying swap is provided,</li>
+     * <li>Bermudan exercise derives exercise dates from the first period start
+     * of
+     * the supplied schedules if more than one underlying swap is provided,</li>
      *   <li>American exercise uses all solver time-grid points up to
-     *       {@code exercise.getMaturity()} and requires exactly one underlying swap
+     * {@code exercise.getMaturity()} and requires exactly one underlying swap
      *       definition.</li>
      * </ul>
      *
@@ -619,7 +622,8 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
             final double paymentTime = floatingSchedule.getPayment(periodIndex);
 
             /*
-             * The intended use is that the schedule supplied for a given exercise
+             * The intended use is that the schedule supplied for a given
+             * exercise
              * date is already the remaining forward swap from that date onward.
              * We therefore ignore already-started periods here.
              */

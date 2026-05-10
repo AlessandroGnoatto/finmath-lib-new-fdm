@@ -31,11 +31,13 @@ import net.finmath.modelling.products.CallOrPut;
  * <ul>
  *   <li>arithmetic basket options, when both quantities are positive,</li>
  *   <li>spread options, for example with quantities {@code (1,-1)},</li>
- *   <li>exchange options, for example with quantities {@code (1,-1)} and strike {@code 0}.</li>
+ * <li>exchange options, for example with quantities {@code (1,-1)} and strike
+ * {@code 0}.</li>
  * </ul>
  *
  * <p>
- * The class is written in a dimension-agnostic style through the quantity vector,
+ * The class is written in a dimension-agnostic style through the quantity
+ * vector,
  * but the current finite-difference implementation supports only the two-asset
  * case, that is, exactly two quantities and a two-dimensional model state.
  * </p>

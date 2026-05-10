@@ -52,7 +52,8 @@ import net.finmath.finitedifference.interestrate.models.FiniteDifferenceInterest
  * <p>
  * Products without intermediate events may return an empty array from
  * {@link #getEventTimes()} and use the default implementation of
- * {@link #applyEventCondition(double, double[], FiniteDifferenceInterestRateModel)}.
+ * {@link #applyEventCondition(double, double[],
+ * FiniteDifferenceInterestRateModel)}.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -69,7 +70,8 @@ public interface FiniteDifferenceInterestRateProduct
      * Returns the event times of the product.
      *
      * <p>
-     * Event times are the dates where the backward induction may have to apply a
+     * Event times are the dates where the backward induction may have to apply
+     * a
      * jump or another event condition, for example because of coupon accrual,
      * coupon payment, fixing, exercise, callability, or redemption.
      * </p>
@@ -88,7 +90,8 @@ public interface FiniteDifferenceInterestRateProduct
      * Applies the event condition at a given event time.
      *
      * <p>
-     * The input array {@code valuesAfterEvent} represents the continuation values
+     * The input array {@code valuesAfterEvent} represents the continuation
+     * values
      * immediately after the event time, that is
      * </p>
      *
@@ -99,7 +102,8 @@ public interface FiniteDifferenceInterestRateProduct
      * </p>
      *
      * <p>
-     * The returned array represents the values immediately before the event time,
+     * The returned array represents the values immediately before the event
+     * time,
      * that is
      * </p>
      *
@@ -119,7 +123,8 @@ public interface FiniteDifferenceInterestRateProduct
      * </p>
      *
      * @param time The event time.
-     * @param valuesAfterEvent The continuation values immediately after the event.
+     * @param valuesAfterEvent The continuation values immediately after the
+     *     event.
      * @param model The finite-difference interest-rate model.
      * @return The values immediately before the event.
      */

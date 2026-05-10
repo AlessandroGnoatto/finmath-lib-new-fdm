@@ -66,7 +66,8 @@ public class Swap implements FiniteDifferenceInterestRateProduct {
      * @param forwardCurvePayName The payer-leg forwarding-curve name.
      * @param notionalsPay The payer-leg notionals.
      * @param spreadsPay The payer-leg spreads.
-     * @param isNotionalExchanged True if notional exchange is included on both legs.
+     * @param isNotionalExchanged True if notional exchange is included on both
+     *     legs.
      */
     public Swap(
             final Schedule scheduleReceiveLeg,

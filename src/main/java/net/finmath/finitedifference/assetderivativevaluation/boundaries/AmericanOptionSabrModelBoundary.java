@@ -8,7 +8,8 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link AmericanOption} under the {@link FDMSabrModel}.
+ * Boundary conditions for {@link AmericanOption} under the {@link
+ * FDMSabrModel}.
  *
  * <p>
  * State variables are assumed to be {@code (S, alpha)}, where {@code S} is the

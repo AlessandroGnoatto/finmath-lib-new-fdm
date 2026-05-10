@@ -24,7 +24,8 @@ public interface FDMSolver {
      * </p>
      * <ul>
      *   <li>1D: {@code [nS]} representing values at the evaluation time.</li>
-     *   <li>2D: {@code [nS * nV]} representing values at the evaluation time.</li>
+     * <li>2D: {@code [nS * nV]} representing values at the evaluation
+     * time.</li>
      * </ul>
      *
      * @param evaluationTime   The evaluation time.
@@ -105,7 +106,8 @@ public interface FDMSolver {
 
     /**
      * Default binary-payoff version.
-     * For solvers that are effectively 1D, the second state variable is ignored.
+     * For solvers that are effectively 1D, the second state variable is
+     * ignored.
       * @param evaluationTime The value.
       * @param time The value.
       * @param valueAtMaturity The value.
@@ -120,7 +122,8 @@ public interface FDMSolver {
 
     /**
      * Default binary-payoff version.
-     * For solvers that are effectively 1D, the second state variable is ignored.
+     * For solvers that are effectively 1D, the second state variable is
+     * ignored.
       * @param time The value.
       * @param valueAtMaturity The value.
       * @return The value.
@@ -133,7 +136,8 @@ public interface FDMSolver {
 
     /**
      * Default binary-payoff version with early exercise
-     * For solvers that are effectively 1D, the second state variable is ignored.
+     * For solvers that are effectively 1D, the second state variable is
+     * ignored.
       * @param evaluationTime The value.
       * @param time The value.
       * @param terminalValues The value.
@@ -151,7 +155,8 @@ public interface FDMSolver {
 
     /**
      * Default binary-payoff version with early exercise
-     * For solvers that are effectively 1D, the second state variable is ignored.
+     * For solvers that are effectively 1D, the second state variable is
+     * ignored.
       * @param time The value.
       * @param terminalValues The value.
       * @param exerciseValue The value.

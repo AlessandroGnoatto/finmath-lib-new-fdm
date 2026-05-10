@@ -8,11 +8,14 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link BermudanOption} under the {@link FDMHestonModel}.
+ * Boundary conditions for {@link BermudanOption} under the {@link
+ * FDMHestonModel}.
  *
  * <p>
- * State variables are assumed to be (S, v), where S is the asset level and v the variance.
- * Dirichlet conditions are imposed in the asset direction, while the variance-direction
+ * State variables are assumed to be (S, v), where S is the asset level and v
+ * the variance.
+ * Dirichlet conditions are imposed in the asset direction, while the variance-
+ * direction
  * boundaries are left untouched via {@link StandardBoundaryCondition#none()}.
  * </p>
  */

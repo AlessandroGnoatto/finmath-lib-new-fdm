@@ -58,7 +58,8 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param sigma Vol-of-vol parameter.
      * @param rho Correlation between the Brownian motions.
      * @param jumpComponent Bates jump component.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,
@@ -105,9 +106,12 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,
@@ -156,7 +160,8 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param sigma Vol-of-vol parameter.
      * @param rho Correlation between the Brownian motions.
      * @param jumpComponent Bates jump component.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,
@@ -200,9 +205,12 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,
@@ -250,7 +258,8 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param sigma Vol-of-vol parameter.
      * @param rho Correlation between the Brownian motions.
      * @param jumpComponent Bates jump component.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,
@@ -297,9 +306,12 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,
@@ -348,7 +360,8 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param sigma Vol-of-vol parameter.
      * @param rho Correlation between the Brownian motions.
      * @param jumpComponent Bates jump component.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,
@@ -392,9 +405,12 @@ public class FDMBatesModel extends FDMHestonModel {
      * @param jumpIntensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBatesModel(
             final double initialSpot,

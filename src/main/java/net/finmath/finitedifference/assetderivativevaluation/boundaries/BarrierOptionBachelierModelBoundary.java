@@ -9,7 +9,8 @@ import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link BarrierOption} under the {@link FDMBachelierModel}.
+ * Boundary conditions for {@link BarrierOption} under the {@link
+ * FDMBachelierModel}.
  *
  * <p>
  * This class supports both the legacy boundary API returning {@code double[]}

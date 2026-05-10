@@ -260,7 +260,8 @@ public class BestOfOption implements FiniteDifferenceEquityProduct {
     /**
      * Returns the name of the second underlying.
      *
-     * @return The name of the second underlying, or {@code null} if unspecified.
+     * @return The name of the second underlying, or {@code null} if
+     *     unspecified.
      */
     public String getSecondUnderlyingName() {
         return secondUnderlyingName;

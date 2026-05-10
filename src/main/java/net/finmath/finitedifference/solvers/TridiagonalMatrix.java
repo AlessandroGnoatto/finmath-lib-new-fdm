@@ -10,9 +10,11 @@ package net.finmath.finitedifference.solvers;
  * <p>
  * For a matrix of dimension {@code n}:
  * <ul>
- *   <li>{@code lower[i]} stores the entry below the main diagonal in row {@code i},</li>
+ * <li>{@code lower[i]} stores the entry below the main diagonal in row {@code
+ * i},</li>
  *   <li>{@code diag[i]} stores the main diagonal entry in row {@code i},</li>
- *   <li>{@code upper[i]} stores the entry above the main diagonal in row {@code i}.</li>
+ * <li>{@code upper[i]} stores the entry above the main diagonal in row {@code
+ * i}.</li>
  * </ul>
  * <p>
  * By convention, {@code lower[0]} and {@code upper[n-1]} are typically unused.
@@ -25,14 +27,16 @@ public class TridiagonalMatrix {
      * The lower diagonal of the matrix.
      * <p>
      * Entry {@code lower[i]} represents the coefficient below the main
-     * diagonal in row {@code i}. The value {@code lower[0]} is typically unused.
+     * diagonal in row {@code i}. The value {@code lower[0]} is typically
+     * unused.
      */
     public final double[] lower;
 
     /**
      * The main diagonal of the matrix.
      * <p>
-     * Entry {@code diag[i]} represents the diagonal coefficient in row {@code i}.
+     * Entry {@code diag[i]} represents the diagonal coefficient in row {@code
+     * i}.
      */
     public final double[] diag;
 
@@ -40,7 +44,8 @@ public class TridiagonalMatrix {
      * The upper diagonal of the matrix.
      * <p>
      * Entry {@code upper[i]} represents the coefficient above the main
-     * diagonal in row {@code i}. The value {@code upper[n-1]} is typically unused.
+     * diagonal in row {@code i}. The value {@code upper[n-1]} is typically
+     * unused.
      */
     public final double[] upper;
 

@@ -8,7 +8,8 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.BarrierType;
 
 /**
- * Boundary conditions for {@link TouchOption} under {@link FDMBlackScholesModel}.
+ * Boundary conditions for {@link TouchOption} under {@link
+ * FDMBlackScholesModel}.
  *
  * <p>
  * Current milestone scope:

@@ -12,7 +12,8 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
 
 /**
- * Finite difference model for option pricing under the Bachelier (normal) model.
+ * Finite difference model for option pricing under the Bachelier (normal)
+ * model.
  *
  * <p>
  * The model assumes an arithmetic Brownian motion for the underlying:
@@ -23,14 +24,18 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  * </pre>
  *
  * <p>
- * where {@code r(t)} is the risk-free rate, {@code q(t)} is the dividend yield, and {@code sigma} is a
+ * where {@code r(t)} is the risk-free rate, {@code q(t)} is the dividend yield,
+ * and {@code sigma} is a
  * constant (normal) volatility.
  * </p>
  *
  * <p>
- * This class follows the same design principles as the other finite-difference equity model implementations:
- * it provides drift and factor loadings via {@link #getDrift(double, double...)} and
- * {@link #getFactorLoading(double, double...)}, and delegates boundary values to a boundary implementation
+ * This class follows the same design principles as the other finite-difference
+ * equity model implementations:
+ * it provides drift and factor loadings via {@link #getDrift(double,
+ * double...)} and
+ * {@link #getFactorLoading(double, double...)}, and delegates boundary values
+ * to a boundary implementation
  * created through {@link FDBoundaryFactory}.
  * </p>
  *
@@ -86,7 +91,8 @@ public class FDMBachelierModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Convenience constructor without dividend yield curve (i.e., {@code q = 0}).
+     * Convenience constructor without dividend yield curve (i.e., {@code q =
+     * 0}).
      *
      * @param initialValue            Initial underlying value {@code S(0)}.
      * @param riskFreeCurve           Risk-free discount curve.
@@ -132,7 +138,8 @@ public class FDMBachelierModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Convenience constructor from a constant risk-free rate (flat curve) and {@code q = 0}.
+     * Convenience constructor from a constant risk-free rate (flat curve) and
+     * {@code q = 0}.
      *
      * @param initialValue            Initial underlying value {@code S(0)}.
      * @param riskFreeRate            Constant risk-free rate {@code r}.

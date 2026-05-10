@@ -14,13 +14,15 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Barrier-aware ADI finite difference solver for the two-dimensional Heston PDE.
+ * Barrier-aware ADI finite difference solver for the two-dimensional Heston
+ * PDE.
  *
  * <p>
  * This class supports:
  * </p>
  * <ul>
- *   <li>standard direct barrier solves via {@link BarrierPDEMode#OUT_STANDARD},</li>
+ * <li>standard direct barrier solves via {@link
+ * BarrierPDEMode#OUT_STANDARD},</li>
  *   <li>pre-hit continuation solves for direct knock-in pricing via
  *       {@link BarrierPDEMode#IN_PRE_HIT}.</li>
  * </ul>
@@ -62,7 +64,8 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
      * @param spaceTimeDiscretization The discretization to use.
      * @param exercise The exercise specification.
      * @param barrierMode The barrier PDE mode.
-     * @param preHitSpecification The pre-hit specification. Required in IN_PRE_HIT mode.
+     * @param preHitSpecification The pre-hit specification. Required in
+     *     IN_PRE_HIT mode.
      */
     public FDMBarrierHestonADI2D(
             final FDMHestonModel model,
@@ -217,7 +220,8 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
     }
 
     /**
-     * Overwrites the barrier interface row in a first-direction tridiagonal system.
+     * Overwrites the barrier interface row in a first-direction tridiagonal
+     * system.
      *
      * @param matrix The tridiagonal matrix.
      * @param rhs The corresponding right-hand side.
@@ -262,7 +266,8 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
     }
 
     /**
-     * Returns the activated barrier trace value at the given variance row and running time.
+     * Returns the activated barrier trace value at the given variance row and
+     * running time.
      *
      * @param secondIndex The variance index.
      * @param runningTime The running time.

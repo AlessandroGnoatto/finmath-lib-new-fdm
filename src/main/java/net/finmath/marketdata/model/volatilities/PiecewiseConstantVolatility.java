@@ -24,7 +24,7 @@ import net.finmath.time.TimeDiscretization;
  *     {@code timeDiscretization.getTime(i+1)} exclusive;</li>
  *     <li>the last volatility applies from the last discretization time
  *     onward;</li>
- *     <li>before the first discretization time, the first volatility is used.</li>
+ * <li>before the first discretization time, the first volatility is used.</li>
  * </ul>
  *
  * <p>
@@ -88,7 +88,8 @@ public class PiecewiseConstantVolatility implements LocalVolatility {
      * Returns the local volatility {@code sigma(t,S)}.
      *
      * <p>
-     * Since this implementation is piecewise constant in time and independent of
+     * Since this implementation is piecewise constant in time and independent
+     * of
      * the asset value, the argument {@code assetValue} is ignored.
      * </p>
      *
@@ -187,7 +188,8 @@ public class PiecewiseConstantVolatility implements LocalVolatility {
     }
 
     /**
-     * Creates a clone with a modified time discretization and the same volatility
+     * Creates a clone with a modified time discretization and the same
+     * volatility
      * values.
      *
      * @param newTimeDiscretization The new time discretization.

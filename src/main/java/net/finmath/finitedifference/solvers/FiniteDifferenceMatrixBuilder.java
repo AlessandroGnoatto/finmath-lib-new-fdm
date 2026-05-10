@@ -9,7 +9,8 @@ import org.apache.commons.math3.linear.RealMatrix;
  *
  * <p>
  * The matrices returned by this class are linear operators which, when applied
- * to a vector of function values {@code f(x_i)}, approximate {@code f'(x_i)} and
+ * to a vector of function values {@code f(x_i)}, approximate {@code f'(x_i)}
+ * and
  * {@code f''(x_i)} at the grid points {@code x_i}.
  * </p>
  *

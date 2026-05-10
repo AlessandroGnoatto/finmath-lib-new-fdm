@@ -10,7 +10,8 @@ import net.finmath.finitedifference.interestrate.products.Swaption;
  * {@link FDMHullWhiteModel}.
  *
  * <p>
- * The internal product {@link Swaption.ResolvedSwaption} is only an adapter used
+ * The internal product {@link Swaption.ResolvedSwaption} is only an adapter
+ * used
  * to resolve exercise dates and event conditions. Boundary conditions should
  * still be taken from the original outer {@link Swaption}.
  * </p>

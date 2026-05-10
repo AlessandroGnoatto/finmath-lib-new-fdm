@@ -3,7 +3,8 @@ package net.finmath.finitedifference.utilities;
 import java.util.function.DoubleBinaryOperator;
 
 /**
- * Dependency-free plot descriptor for a two-dimensional finite-difference surface.
+ * Dependency-free plot descriptor for a two-dimensional finite-difference
+ * surface.
  *
  * <p>
  * The descriptor is compatible with plotting tools that consume a

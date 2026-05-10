@@ -23,7 +23,8 @@ import net.finmath.modelling.products.DigitalPayoffType;
  *
  * <p>
  * As in the existing two-dimensional equity boundaries, the digital asymptotics
- * are imposed only in the asset direction. In the variance direction, no explicit
+ * are imposed only in the asset direction. In the variance direction, no
+ * explicit
  * boundary condition is imposed.
  * </p>
  *
@@ -149,7 +150,8 @@ public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundar
     }
 
     /**
-     * Returns the discounted cash payoff for a European cash-or-nothing digital.
+     * Returns the discounted cash payoff for a European cash-or-nothing
+     * digital.
      *
      * @param option The digital option.
      * @param time The current model time.

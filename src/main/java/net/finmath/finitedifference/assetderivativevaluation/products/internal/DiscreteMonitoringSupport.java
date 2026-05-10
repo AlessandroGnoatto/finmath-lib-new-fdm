@@ -95,7 +95,7 @@ public final class DiscreteMonitoringSupport {
      * @param maturity The product maturity.
      * @param tolerance The absolute tolerance used for validation.
      * @throws IllegalArgumentException Thrown if the monitoring type is
-     *         {@code null}, if continuous monitoring specifies monitoring times,
+     * {@code null}, if continuous monitoring specifies monitoring times,
      *         or if discrete monitoring has missing, unordered, or out-of-range
      *         monitoring times.
      */
@@ -156,9 +156,10 @@ public final class DiscreteMonitoringSupport {
      * @param baseTimeDiscretization The original solver time discretization.
      * @param maturity The product maturity.
      * @param monitoringTimes The monitoring schedule.
-     * @return A refined time discretization containing the original grid and the
+     * @return A refined time discretization containing the original grid and
+     *     the
      *         monitoring dates converted to backward time, or the original
-     *         discretization if the monitoring schedule is {@code null} or empty.
+     * discretization if the monitoring schedule is {@code null} or empty.
      */
     public static TimeDiscretization refineTimeDiscretizationWithMonitoring(
             final TimeDiscretization baseTimeDiscretization,

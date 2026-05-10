@@ -21,12 +21,15 @@ import net.finmath.finitedifference.solvers.adi.FDMSabrADI2D;
 import net.finmath.modelling.Exercise;
 
 /**
- * Centralized factory for selecting the finite-difference solver associated with a given
+ * Centralized factory for selecting the finite-difference solver associated
+ * with a given
  * model, product, discretization, and exercise specification.
  *
  * <p>
- * The purpose of this class is to map a model class to the solver implementation capable
- * of handling the corresponding PDE or PIDE. In abstract terms, if the model leads to a
+ * The purpose of this class is to map a model class to the solver
+ * implementation capable
+ * of handling the corresponding PDE or PIDE. In abstract terms, if the model
+ * leads to a
  * pricing equation of the form
  * </p>
  *
@@ -37,10 +40,13 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * with generator <i>\mathcal{L}</i>, then this factory selects the discretization engine
+ * with generator <i>\mathcal{L}</i>, then this factory selects the
+ * discretization engine
  * used to approximate the operator <i>\mathcal{L}</i> on the supplied
- * {@link SpaceTimeDiscretization}. For one-dimensional diffusion models this is typically
- * a theta-method solver, while for two-dimensional stochastic-volatility or multi-asset
+ * {@link SpaceTimeDiscretization}. For one-dimensional diffusion models this is
+ * typically
+ * a theta-method solver, while for two-dimensional stochastic-volatility or
+ * multi-asset
  * diffusion models this is typically an ADI-based solver.
  * </p>
  *
@@ -49,7 +55,8 @@ import net.finmath.modelling.Exercise;
  * </p>
  * <ul>
  *   <li>one-dimensional jump models &rarr; {@link FDMThetaMethod1DJump},</li>
- *   <li>Black-Scholes, CEV, and Bachelier models &rarr; {@link FDMThetaMethod1D},</li>
+ * <li>Black-Scholes, CEV, and Bachelier models &rarr; {@link
+ * FDMThetaMethod1D},</li>
  *   <li>multi-asset Black-Scholes models:
  *       1D &rarr; {@link FDMThetaMethod1D},
  *       2D &rarr; {@link FDMMultiAssetBlackScholesADI2D},</li>
@@ -61,9 +68,11 @@ import net.finmath.modelling.Exercise;
  * </ul>
  *
  * <p>
- * For barrier-aware two-dimensional Heston and SABR problems, the factory may select a
+ * For barrier-aware two-dimensional Heston and SABR problems, the factory may
+ * select a
  * specialized pre-hit / barrier solver depending on the supplied
- * {@link BarrierPDEMode} and {@link BarrierPreHitSpecification}. If no barrier mode is
+ * {@link BarrierPDEMode} and {@link BarrierPreHitSpecification}. If no barrier
+ * mode is
  * provided, the corresponding vanilla solver is returned.
  * </p>
  *
@@ -194,7 +203,8 @@ public final class FDMSolverFactory {
         } else if (model instanceof FDMBatesModel) {
             /*
              * Barrier-specific Bates handling is not implemented yet.
-             * For the time being, ignore barrierMode and return the vanilla Bates solver.
+             * For the time being, ignore barrierMode and return the vanilla
+             * Bates solver.
              */
             return new FDMBatesADI2D(
                     (FDMBatesModel) model,

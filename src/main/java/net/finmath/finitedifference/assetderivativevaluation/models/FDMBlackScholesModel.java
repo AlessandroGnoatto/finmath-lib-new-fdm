@@ -63,7 +63,8 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
      * @param riskFreeCurve Risk-free discount curve.
      * @param dividendYieldCurve Dividend yield discount curve.
      * @param volatility Constant volatility of the underlying asset.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,
@@ -88,7 +89,8 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
      * @param riskFreeCurve Risk-free discount curve.
      * @param dividendYieldCurve Dividend yield discount curve.
      * @param volatility Local volatility function.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,
@@ -105,13 +107,15 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Constructs a Black-Scholes finite difference model for option pricing without
+     * Constructs a Black-Scholes finite difference model for option pricing
+     * without
      * dividend yield.
      *
      * @param initialValue Initial spot price.
      * @param riskFreeCurve Risk-free discount curve.
      * @param volatility Constant volatility of the underlying asset.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,
@@ -134,7 +138,8 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
      * @param initialValue Initial spot price.
      * @param riskFreeCurve Risk-free discount curve.
      * @param volatility Local volatility function.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,
@@ -174,7 +179,8 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
      * @param riskFreeRate Constant risk-free rate.
      * @param dividendYieldRate Constant dividend yield rate.
      * @param volatility Constant volatility of the underlying asset.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,
@@ -199,7 +205,8 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
      * @param riskFreeRate Constant risk-free rate.
      * @param dividendYieldRate Constant dividend yield rate.
      * @param volatility Local volatility function.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,
@@ -251,13 +258,15 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Constructs a Black-Scholes finite difference model for option pricing without
+     * Constructs a Black-Scholes finite difference model for option pricing
+     * without
      * dividend yield.
      *
      * @param initialValue Initial spot price.
      * @param riskFreeRate Constant risk-free rate.
      * @param volatility Constant volatility of the underlying asset.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,
@@ -280,7 +289,8 @@ public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
      * @param initialValue Initial spot price.
      * @param riskFreeRate Constant risk-free rate.
      * @param volatility Local volatility function.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMBlackScholesModel(
             final double initialValue,

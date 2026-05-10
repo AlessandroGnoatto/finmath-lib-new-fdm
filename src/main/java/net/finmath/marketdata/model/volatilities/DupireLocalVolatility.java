@@ -12,7 +12,8 @@ import net.finmath.marketdata.model.volatilities.VolatilitySurface.QuotingConven
  * </p>
  * <ul>
  *     <li>Dupire's formula from option prices,</li>
- *     <li>Gatheral's formula from Black-Scholes implied lognormal volatilities.</li>
+ * <li>Gatheral's formula from Black-Scholes implied lognormal
+ * volatilities.</li>
  * </ul>
  *
  * <p>
@@ -23,7 +24,8 @@ import net.finmath.marketdata.model.volatilities.VolatilitySurface.QuotingConven
  *
  * <p>
  * The supplied {@link OptionSurfaceDataInterpolated} remains responsible only
- * for interpolation and quoting-convention conversion. This class is responsible
+ * for interpolation and quoting-convention conversion. This class is
+ * responsible
  * only for computing the local volatility from that surface.
  * </p>
  *
@@ -32,13 +34,15 @@ import net.finmath.marketdata.model.volatilities.VolatilitySurface.QuotingConven
  * </p>
  * <ul>
  *     <li>{@link QuotingConvention#PRICE} uses Dupire's price formula,</li>
- *     <li>{@link QuotingConvention#VOLATILITYLOGNORMAL} uses Gatheral's formula.</li>
+ * <li>{@link QuotingConvention#VOLATILITYLOGNORMAL} uses Gatheral's
+ * formula.</li>
  * </ul>
  *
  * <p>
  * If a formula is selected explicitly, the constructor creates the appropriate
  * converted surface at the original nodes by using
- * {@link OptionSurfaceDataInterpolated#getCloneForQuotingConvention(QuotingConvention)}.
+ * {@link OptionSurfaceDataInterpolated#getCloneForQuotingConvention(QuotingConv
+ * ention)}.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -63,7 +67,8 @@ public class DupireLocalVolatility implements LocalVolatility {
         DUPIRE_FROM_PRICES,
 
         /**
-         * Use Gatheral's formula from Black-Scholes implied lognormal volatilities.
+         * Use Gatheral's formula from Black-Scholes implied lognormal
+         * volatilities.
          */
         GATHERAL_FROM_IMPLIED_VOLATILITIES
     }
@@ -142,7 +147,8 @@ public class DupireLocalVolatility implements LocalVolatility {
     private final NegativeLocalVarianceHandling negativeLocalVarianceHandling;
 
     /**
-     * Creates a Dupire local volatility provider using automatic formula selection.
+     * Creates a Dupire local volatility provider using automatic formula
+     * selection.
      *
      * @param quoteSurface The interpolated option surface.
      */
@@ -185,7 +191,8 @@ public class DupireLocalVolatility implements LocalVolatility {
      * @param timeEpsilon The finite-difference bump in time.
      * @param strikeEpsilonFactor The relative finite-difference bump in strike.
      * @param varianceFloor The local variance floor.
-     * @param negativeLocalVarianceHandling The policy for negative local variances.
+     * @param negativeLocalVarianceHandling The policy for negative local
+     *     variances.
      */
     public DupireLocalVolatility(
             final OptionSurfaceDataInterpolated quoteSurface,
@@ -242,10 +249,12 @@ public class DupireLocalVolatility implements LocalVolatility {
     }
 
     /**
-     * Returns the local variance from Dupire's formula applied to option prices.
+     * Returns the local variance from Dupire's formula applied to option
+     * prices.
      *
      * @param time The option maturity.
-     * @param strike The strike, interpreted as the asset value at which local volatility is evaluated.
+     * @param strike The strike, interpreted as the asset value at which local
+     *     volatility is evaluated.
      * @return The local variance.
      */
     public double getLocalVarianceFromOptionPrices(final double time, final double strike) {
@@ -276,10 +285,12 @@ public class DupireLocalVolatility implements LocalVolatility {
     }
 
     /**
-     * Returns the local volatility from Dupire's formula applied to option prices.
+     * Returns the local volatility from Dupire's formula applied to option
+     * prices.
      *
      * @param time The option maturity.
-     * @param strike The strike, interpreted as the asset value at which local volatility is evaluated.
+     * @param strike The strike, interpreted as the asset value at which local
+     *     volatility is evaluated.
      * @return The local volatility.
      */
     public double getLocalVolatilityFromOptionPrices(final double time, final double strike) {
@@ -290,7 +301,8 @@ public class DupireLocalVolatility implements LocalVolatility {
      * Returns the local variance from Gatheral's implied-volatility formula.
      *
      * @param time The option maturity.
-     * @param strike The strike, interpreted as the asset value at which local volatility is evaluated.
+     * @param strike The strike, interpreted as the asset value at which local
+     *     volatility is evaluated.
      * @return The local variance.
      */
     public double getLocalVarianceFromImpliedVolatilities(final double time, final double strike) {
@@ -361,7 +373,8 @@ public class DupireLocalVolatility implements LocalVolatility {
      * Returns the local volatility from Gatheral's implied-volatility formula.
      *
      * @param time The option maturity.
-     * @param strike The strike, interpreted as the asset value at which local volatility is evaluated.
+     * @param strike The strike, interpreted as the asset value at which local
+     *     volatility is evaluated.
      * @return The local volatility.
      */
     public double getLocalVolatilityFromImpliedVolatilities(final double time, final double strike) {

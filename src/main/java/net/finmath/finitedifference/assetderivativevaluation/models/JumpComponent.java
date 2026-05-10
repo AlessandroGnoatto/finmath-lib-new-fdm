@@ -3,23 +3,28 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
 import java.io.Serializable;
 
 /**
- * Describes the jump part of the infinitesimal generator used by a finite-difference
+ * Describes the jump part of the infinitesimal generator used by a finite-
+ * difference
  * equity model.
  *
  * <p>
  * This interface is intentionally narrow: it does not attempt to expose a fully
- * generic non-local operator, but only the ingredients needed to assemble the jump
+ * generic non-local operator, but only the ingredients needed to assemble the
+ * jump
  * term in the pricing PIDE.
  * </p>
  *
  * <p>
- * The current convention is that jumps act on one selected state variable through a
- * log-relative jump size {@code y}. In the standard stock-coordinate case, this means
+ * The current convention is that jumps act on one selected state variable
+ * through a
+ * log-relative jump size {@code y}. In the standard stock-coordinate case, this
+ * means
  * the affected state variable {@code x} is mapped to {@code x * exp(y)}.
  * </p>
  *
  * <p>
- * For an affected state variable {@code x}, the jump contribution is interpreted as
+ * For an affected state variable {@code x}, the jump contribution is
+ * interpreted as
  * </p>
  *
  * <pre>
@@ -58,7 +63,8 @@ public interface JumpComponent extends Serializable {
      *
      * <p>
      * The jump variable is interpreted as a log-relative jump size {@code y}.
-     * For infinite-support models this bound will typically be a numerical truncation
+     * For infinite-support models this bound will typically be a numerical
+     * truncation
      * chosen by the implementation.
      * </p>
      *
@@ -73,7 +79,8 @@ public interface JumpComponent extends Serializable {
      *
      * <p>
      * The jump variable is interpreted as a log-relative jump size {@code y}.
-     * For infinite-support models this bound will typically be a numerical truncation
+     * For infinite-support models this bound will typically be a numerical
+     * truncation
      * chosen by the implementation.
      * </p>
      *
@@ -88,7 +95,8 @@ public interface JumpComponent extends Serializable {
      *
      * <p>
      * The argument {@code jumpSize} is interpreted as the log-relative jump
-     * {@code y}. In the standard stock-coordinate convention, the affected state
+     * {@code y}. In the standard stock-coordinate convention, the affected
+     * state
      * variable {@code x} jumps to {@code x * exp(y)}.
      * </p>
      *
@@ -103,11 +111,13 @@ public interface JumpComponent extends Serializable {
      * Returns whether the jump density depends explicitly on the current state.
      *
      * <p>
-     * Bates and Variance Gamma in their standard forms are typically state-independent
+     * Bates and Variance Gamma in their standard forms are typically state-
+     * independent
      * in the jump part, so the default is {@code false}.
      * </p>
      *
-     * @return {@code true} if the jump density depends on the current state variables.
+     * @return {@code true} if the jump density depends on the current state
+     *     variables.
      */
     default boolean isStateDependent() {
         return false;

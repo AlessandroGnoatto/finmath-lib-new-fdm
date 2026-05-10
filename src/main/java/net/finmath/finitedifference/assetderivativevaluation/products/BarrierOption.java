@@ -44,13 +44,25 @@ import net.finmath.time.TimeDiscretization;
  * Current implementation policy:
  * </p>
  * <ul>
- *   <li>continuously monitored knock-out options are priced directly by the finite-difference solver,</li>
- *   <li>discretely monitored knock-out options are implemented for 1D models and for 2D Heston/SABR models via internal constraints active only on monitoring dates,</li>
- *   <li>continuously monitored 1D knock-in options are priced directly through a coupled two-state PDE on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
- *   <li>discretely monitored 1D knock-in options are implemented via event-time replacement by the activated vanilla continuation surface,</li>
- *   <li>continuously monitored 2D Heston / SABR knock-in options are priced directly through an activated-vanilla + pre-hit PDE / interface formulation,</li>
- *   <li>discretely monitored 2D Heston / SABR knock-in options are implemented on the full 2D grid via event-time replacement by the activated vanilla continuation surface,</li>
- *   <li>for discrete monitored knock-ins with Bermudan/American exercise, only the activated state carries exercise rights; the pre-hit state is always solved as a European continuation problem,</li>
+ * <li>continuously monitored knock-out options are priced directly by the
+ * finite-difference solver,</li>
+ * <li>discretely monitored knock-out options are implemented for 1D models and
+ * for 2D Heston/SABR models via internal constraints active only on monitoring
+ * dates,</li>
+ * <li>continuously monitored 1D knock-in options are priced directly through a
+ * coupled two-state PDE on an auxiliary spatial grid where the barrier is
+ * placed on an interior node,</li>
+ * <li>discretely monitored 1D knock-in options are implemented via event-time
+ * replacement by the activated vanilla continuation surface,</li>
+ * <li>continuously monitored 2D Heston / SABR knock-in options are priced
+ * directly through an activated-vanilla + pre-hit PDE / interface
+ * formulation,</li>
+ * <li>discretely monitored 2D Heston / SABR knock-in options are implemented on
+ * the full 2D grid via event-time replacement by the activated vanilla
+ * continuation surface,</li>
+ * <li>for discrete monitored knock-ins with Bermudan/American exercise, only
+ * the activated state carries exercise rights; the pre-hit state is always
+ * solved as a European continuation problem,</li>
  *   <li>other 2D knock-in options fall back to in-out parity.</li>
  * </ul>
  *

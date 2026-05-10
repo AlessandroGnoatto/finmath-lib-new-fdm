@@ -1,14 +1,19 @@
 package net.finmath.finitedifference.solvers;
 
 /**
- * Activation policy for two-state finite-difference products with immediate cash settlement
+ * Activation policy for two-state finite-difference products with immediate
+ * cash settlement
  * upon barrier activation.
  *
  * <p>
- * In a two-state barrier formulation, the contract value is decomposed into an inactive
- * no-hit regime and an already-hit regime. Under an immediate-cash activation rule, once
- * the barrier event occurs, the contract is replaced by a deterministic cash amount
- * <i>P</i>, independently of the current state variable and independently of any active
+ * In a two-state barrier formulation, the contract value is decomposed into an
+ * inactive
+ * no-hit regime and an already-hit regime. Under an immediate-cash activation
+ * rule, once
+ * the barrier event occurs, the contract is replaced by a deterministic cash
+ * amount
+ * <i>P</i>, independently of the current state variable and independently of
+ * any active
  * continuation value.
  * </p>
  *
@@ -21,14 +26,18 @@ package net.finmath.finitedifference.solvers;
  * </p>
  *
  * <p>
- * for all times <i>t</i> after activation and all states <i>x</i>. In particular, at
- * maturity, at intermediate times, and at the activation interface, the value is always
+ * for all times <i>t</i> after activation and all states <i>x</i>. In
+ * particular, at
+ * maturity, at intermediate times, and at the activation interface, the value
+ * is always
  * the same cash amount.
  * </p>
  *
  * <p>
- * This policy is appropriate for products such as one-touch options with at-hit settlement,
- * where the contract terminates immediately upon barrier contact and pays a fixed cash
+ * This policy is appropriate for products such as one-touch options with at-hit
+ * settlement,
+ * where the contract terminates immediately upon barrier contact and pays a
+ * fixed cash
  * amount at that moment.
  * </p>
  *

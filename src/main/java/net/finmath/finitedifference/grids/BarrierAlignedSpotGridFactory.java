@@ -22,7 +22,8 @@ import java.util.Arrays;
  * </p>
  *
  * <p>
- * This class is intended especially for direct barrier pricing under Heston/SABR,
+ * This class is intended especially for direct barrier pricing under
+ * Heston/SABR,
  * where barrier alignment can materially improve knock-in accuracy.
  * </p>
  *
@@ -78,7 +79,8 @@ public final class BarrierAlignedSpotGridFactory {
          * - uniform on the right of the barrier
          * - exact barrier alignment
          *
-         * This is often already sufficient and far better than missing the barrier.
+         * This is often already sufficient and far better than missing the
+         * barrier.
          */
         for (int i = 0; i <= barrierIndex; i++) {
             grid[i] = sMin + i * dxLeft;
@@ -98,7 +100,8 @@ public final class BarrierAlignedSpotGridFactory {
      * Creates a barrier-aligned clustered grid.
      *
      * <p>
-     * The barrier is exactly on a node. Points are concentrated near the barrier
+     * The barrier is exactly on a node. Points are concentrated near the
+     * barrier
      * using a power transform on each side:
      * </p>
      *
@@ -113,7 +116,8 @@ public final class BarrierAlignedSpotGridFactory {
      *
      * <ul>
      *   <li>{@code clusteringExponent = 1.0}: piecewise uniform</li>
-     *   <li>{@code clusteringExponent > 1.0}: points cluster near the barrier</li>
+     * <li>{@code clusteringExponent > 1.0}: points cluster near the
+     * barrier</li>
      * </ul>
      *
      * @param numberOfSteps Number of grid intervals.
@@ -169,7 +173,8 @@ public final class BarrierAlignedSpotGridFactory {
     }
 
     /**
-     * Returns the index of the barrier node in a grid previously built by this factory.
+     * Returns the index of the barrier node in a grid previously built by this
+     * factory.
      *
      * @param grid The grid array.
      * @param barrier The barrier level.
@@ -240,7 +245,8 @@ public final class BarrierAlignedSpotGridFactory {
     }
 
     /**
-     * Guards against duplicate nodes caused by extreme clustering and floating-point rounding.
+     * Guards against duplicate nodes caused by extreme clustering and floating-
+     * point rounding.
       * @param grid The value.
      */
     private static void enforceStrictMonotonicity(final double[] grid) {

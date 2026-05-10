@@ -9,11 +9,13 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Specialized three-dimensional ADI solver for arithmetic Asian options under a lifted SABR
+ * Specialized three-dimensional ADI solver for arithmetic Asian options under a
+ * lifted SABR
  * state <i>(S,\alpha,I)</i>.
  *
  * <p>
- * The lifted formulation augments the SABR state variables spot <i>S</i> and volatility
+ * The lifted formulation augments the SABR state variables spot <i>S</i> and
+ * volatility
  * factor <i>\alpha</i> by the running integral
  * </p>
  *
@@ -22,8 +24,10 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * so that an arithmetic-average payoff can be represented as a terminal payoff in the
- * three-dimensional state vector <i>(S_t,\alpha_t,I_t)</i>. The dynamics are of the form
+ * so that an arithmetic-average payoff can be represented as a terminal payoff
+ * in the
+ * three-dimensional state vector <i>(S_t,\alpha_t,I_t)</i>. The dynamics are of
+ * the form
  * </p>
  *
  * <p>
@@ -39,7 +43,8 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * In time-to-maturity coordinates <i>\tau = T - t</i>, the backward pricing PDE is split as
+ * In time-to-maturity coordinates <i>\tau = T - t</i>, the backward pricing PDE
+ * is split as
  * </p>
  *
  * <p>
@@ -50,21 +55,29 @@ import net.finmath.modelling.Exercise;
  * where
  * </p>
  * <ul>
- *   <li><i>A_0</i> contains discounting and mixed-derivative terms and is treated explicitly,</li>
- *   <li><i>A_1</i> contains the <i>S</i>-direction drift and diffusion and is treated implicitly,</li>
- *   <li><i>A_2</i> contains the <i>\alpha</i>-direction drift and diffusion and is treated implicitly,</li>
- *   <li><i>A_3</i> is the transport term <i>S u_I</i> and is treated by a specialized implicit upwind solve.</li>
+ * <li><i>A_0</i> contains discounting and mixed-derivative terms and is treated
+ * explicitly,</li>
+ * <li><i>A_1</i> contains the <i>S</i>-direction drift and diffusion and is
+ * treated implicitly,</li>
+ * <li><i>A_2</i> contains the <i>\alpha</i>-direction drift and diffusion and
+ * is treated implicitly,</li>
+ * <li><i>A_3</i> is the transport term <i>S u_I</i> and is treated by a
+ * specialized implicit upwind solve.</li>
  * </ul>
  *
  * <p>
- * There is no diffusion in the integral direction and no mixed derivative involving
+ * There is no diffusion in the integral direction and no mixed derivative
+ * involving
  * <i>I</i>. Hence the <i>I</i>-direction is a pure transport direction. In
- * <i>\tau</i>-time, the consistent upwind discretization is forward in <i>I</i>.
+ * <i>\tau</i>-time, the consistent upwind discretization is forward in
+ * <i>I</i>.
  * </p>
  *
  * <p>
- * Relative to the generic {@link AbstractADI3D} implementation, this class specializes
- * the third-direction transport operator and the corresponding implicit line solve while
+ * Relative to the generic {@link AbstractADI3D} implementation, this class
+ * specializes
+ * the third-direction transport operator and the corresponding implicit line
+ * solve while
  * leaving the first and second implicit line solves aligned with the standard
  * three-dimensional SABR discretization.
  * </p>
@@ -79,7 +92,8 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
     private final ADI3DStencilBuilder stencilBuilder;
 
     /**
-     * Creates the lifted three-dimensional ADI solver for arithmetic Asian pricing under SABR.
+     * Creates the lifted three-dimensional ADI solver for arithmetic Asian
+     * pricing under SABR.
      *
      * @param model The finite-difference model.
      * @param product The product to be valued.
@@ -99,11 +113,13 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
      * Applies the explicit transport operator {@code A3 u = S u_I}.
      *
      * <p>
-     * The derivative in the integral direction is approximated by forward upwinding:
+     * The derivative in the integral direction is approximated by forward
+     * upwinding:
      * </p>
      *
      * <p>
-     * <i>u_I(S_i,\alpha_j,I_k) \approx (u_{i,j,k+1} - u_{i,j,k}) / (I_{k+1} - I_k)</i>.
+     * <i>u_I(S_i,\alpha_j,I_k) \approx (u_{i,j,k+1} - u_{i,j,k}) / (I_{k+1} -
+     * I_k)</i>.
      * </p>
      *
      * @param u Current solution vector.
@@ -225,7 +241,8 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
      * Solves the implicit systems in the integral direction.
      *
      * <p>
-     * For fixed <i>(S,\alpha)</i>, the third-direction transport discretization is
+     * For fixed <i>(S,\alpha)</i>, the third-direction transport discretization
+     * is
      * </p>
      *
      * <p>
@@ -275,7 +292,8 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
                 }
 
                 /*
-                 * Last row: default identity, then overwrite only if upper I boundary is Dirichlet.
+                 * Last row: default identity, then overwrite only if upper I
+                 * boundary is Dirichlet.
                  */
                 m.lower[n2 - 1] = 0.0;
                 m.diag[n2 - 1] = 1.0;
@@ -296,7 +314,8 @@ public class FDMAsianSabrADI3D extends AbstractADI3D {
 
                 /*
                  * Lower I boundary: overwrite only if explicitly Dirichlet.
-                 * For Asian options this is typically NONE, so row 0 remains a PDE row.
+                 * For Asian options this is typically NONE, so row 0 remains a
+                 * PDE row.
                  */
                 final BoundaryCondition[] lowerConditions =
                         model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i0], x1Grid[i1], x2Grid[0]);

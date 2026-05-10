@@ -14,7 +14,8 @@ import net.finmath.modelling.products.DigitalPayoffType;
  * {@link FDMSabrModel}.
  *
  * <p>
- * State variables are assumed to be (S, alpha), where S is the asset level and alpha the stochastic volatility factor.
+ * State variables are assumed to be (S, alpha), where S is the asset level and
+ * alpha the stochastic volatility factor.
  * The second-state-variable boundaries are left free.
  * </p>
  *

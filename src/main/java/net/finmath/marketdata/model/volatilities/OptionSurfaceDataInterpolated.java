@@ -17,7 +17,8 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
 /**
  * An interpolated equity option surface based on irregular option quotes.
  * <p>
- * The class extends {@link OptionSurfaceData} by adding finmath-native interpolation
+ * The class extends {@link OptionSurfaceData} by adding finmath-native
+ * interpolation
  * and quoting-convention conversion. The underlying market data may be supplied
  * either as individual {@link OptionData} quotes or as {@link OptionSmileData}
  * objects.
@@ -121,8 +122,10 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from individual option quotes.
      * <p>
-     * The input quotes are required to be sorted by maturity and by strike within
-     * each maturity. Use {@link #ofUnsorted(OptionData[], DiscountCurve, DiscountCurve)}
+     * The input quotes are required to be sorted by maturity and by strike
+     * within
+     * each maturity. Use {@link #ofUnsorted(OptionData[], DiscountCurve,
+     * DiscountCurve)}
      * if the input quotes are not sorted.
      * </p>
      *
@@ -149,18 +152,25 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from individual option quotes.
      * <p>
-     * The input quotes are required to be sorted by maturity and by strike within
-     * each maturity. Use {@link #ofUnsorted(OptionData[], DiscountCurve, DiscountCurve, InterpolationMethod, ExtrapolationMethod, InterpolationMethod, ExtrapolationMethod)}
+     * The input quotes are required to be sorted by maturity and by strike
+     * within
+     * each maturity. Use {@link #ofUnsorted(OptionData[], DiscountCurve,
+     * DiscountCurve, InterpolationMethod, ExtrapolationMethod,
+     * InterpolationMethod, ExtrapolationMethod)}
      * if the input quotes are not sorted.
      * </p>
      *
      * @param optionQuotes The individual option quotes.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
-     * @param strikeInterpolationMethod The interpolation method in strike direction.
-     * @param strikeExtrapolationMethod The extrapolation method in strike direction.
-     * @param maturityInterpolationMethod The interpolation method in maturity direction.
-     * @param maturityExtrapolationMethod The extrapolation method in maturity direction.
+     * @param strikeInterpolationMethod The interpolation method in strike
+     *     direction.
+     * @param strikeExtrapolationMethod The extrapolation method in strike
+     *     direction.
+     * @param maturityInterpolationMethod The interpolation method in maturity
+     *     direction.
+     * @param maturityExtrapolationMethod The extrapolation method in maturity
+     *     direction.
      */
     public OptionSurfaceDataInterpolated(
             final OptionData[] optionQuotes,
@@ -185,9 +195,11 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from option smiles.
      * <p>
-     * The input smiles are required to be sorted by maturity. The strikes inside
+     * The input smiles are required to be sorted by maturity. The strikes
+     * inside
      * each smile are required to be sorted increasingly and to be unique. Use
-     * {@link #ofUnsorted(OptionSmileData[], DiscountCurve, DiscountCurve)} if the
+     * {@link #ofUnsorted(OptionSmileData[], DiscountCurve, DiscountCurve)} if
+     * the
      * input smiles or strikes are not sorted.
      * </p>
      *
@@ -214,19 +226,26 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from option smiles.
      * <p>
-     * The input smiles are required to be sorted by maturity. The strikes inside
+     * The input smiles are required to be sorted by maturity. The strikes
+     * inside
      * each smile are required to be sorted increasingly and to be unique. Use
-     * {@link #ofUnsorted(OptionSmileData[], DiscountCurve, DiscountCurve, InterpolationMethod, ExtrapolationMethod, InterpolationMethod, ExtrapolationMethod)}
+     * {@link #ofUnsorted(OptionSmileData[], DiscountCurve, DiscountCurve,
+     * InterpolationMethod, ExtrapolationMethod, InterpolationMethod,
+     * ExtrapolationMethod)}
      * if the input smiles or strikes are not sorted.
      * </p>
      *
      * @param smiles The option smiles.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
-     * @param strikeInterpolationMethod The interpolation method in strike direction.
-     * @param strikeExtrapolationMethod The extrapolation method in strike direction.
-     * @param maturityInterpolationMethod The interpolation method in maturity direction.
-     * @param maturityExtrapolationMethod The extrapolation method in maturity direction.
+     * @param strikeInterpolationMethod The interpolation method in strike
+     *     direction.
+     * @param strikeExtrapolationMethod The extrapolation method in strike
+     *     direction.
+     * @param maturityInterpolationMethod The interpolation method in maturity
+     *     direction.
+     * @param maturityExtrapolationMethod The extrapolation method in maturity
+     *     direction.
      */
     public OptionSurfaceDataInterpolated(
             final OptionSmileData[] smiles,
@@ -254,10 +273,14 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
      * @param preparedSurface The prepared surface.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
-     * @param strikeInterpolationMethod The interpolation method in strike direction.
-     * @param strikeExtrapolationMethod The extrapolation method in strike direction.
-     * @param maturityInterpolationMethod The interpolation method in maturity direction.
-     * @param maturityExtrapolationMethod The extrapolation method in maturity direction.
+     * @param strikeInterpolationMethod The interpolation method in strike
+     *     direction.
+     * @param strikeExtrapolationMethod The extrapolation method in strike
+     *     direction.
+     * @param maturityInterpolationMethod The interpolation method in maturity
+     *     direction.
+     * @param maturityExtrapolationMethod The extrapolation method in maturity
+     *     direction.
      */
     private OptionSurfaceDataInterpolated(
             final PreparedSurface preparedSurface,
@@ -287,7 +310,8 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from sorted individual option quotes.
      *
-     * @param optionQuotes The individual option quotes, sorted by maturity and strike.
+     * @param optionQuotes The individual option quotes, sorted by maturity and
+     *     strike.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
      * @return The interpolated option surface.
@@ -303,13 +327,18 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from sorted individual option quotes.
      *
-     * @param optionQuotes The individual option quotes, sorted by maturity and strike.
+     * @param optionQuotes The individual option quotes, sorted by maturity and
+     *     strike.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
-     * @param strikeInterpolationMethod The interpolation method in strike direction.
-     * @param strikeExtrapolationMethod The extrapolation method in strike direction.
-     * @param maturityInterpolationMethod The interpolation method in maturity direction.
-     * @param maturityExtrapolationMethod The extrapolation method in maturity direction.
+     * @param strikeInterpolationMethod The interpolation method in strike
+     *     direction.
+     * @param strikeExtrapolationMethod The extrapolation method in strike
+     *     direction.
+     * @param maturityInterpolationMethod The interpolation method in maturity
+     *     direction.
+     * @param maturityExtrapolationMethod The extrapolation method in maturity
+     *     direction.
      * @return The interpolated option surface.
      */
     public static OptionSurfaceDataInterpolated of(
@@ -370,10 +399,14 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
      * @param optionQuotes The individual option quotes.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
-     * @param strikeInterpolationMethod The interpolation method in strike direction.
-     * @param strikeExtrapolationMethod The extrapolation method in strike direction.
-     * @param maturityInterpolationMethod The interpolation method in maturity direction.
-     * @param maturityExtrapolationMethod The extrapolation method in maturity direction.
+     * @param strikeInterpolationMethod The interpolation method in strike
+     *     direction.
+     * @param strikeExtrapolationMethod The extrapolation method in strike
+     *     direction.
+     * @param maturityInterpolationMethod The interpolation method in maturity
+     *     direction.
+     * @param maturityExtrapolationMethod The extrapolation method in maturity
+     *     direction.
      * @return The interpolated option surface.
      */
     public static OptionSurfaceDataInterpolated ofUnsorted(
@@ -399,7 +432,8 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from sorted option smiles.
      *
-     * @param smiles The option smiles, sorted by maturity and with sorted strikes.
+     * @param smiles The option smiles, sorted by maturity and with sorted
+     *     strikes.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
      * @return The interpolated option surface.
@@ -415,13 +449,18 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates an interpolated surface from sorted option smiles.
      *
-     * @param smiles The option smiles, sorted by maturity and with sorted strikes.
+     * @param smiles The option smiles, sorted by maturity and with sorted
+     *     strikes.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
-     * @param strikeInterpolationMethod The interpolation method in strike direction.
-     * @param strikeExtrapolationMethod The extrapolation method in strike direction.
-     * @param maturityInterpolationMethod The interpolation method in maturity direction.
-     * @param maturityExtrapolationMethod The extrapolation method in maturity direction.
+     * @param strikeInterpolationMethod The interpolation method in strike
+     *     direction.
+     * @param strikeExtrapolationMethod The extrapolation method in strike
+     *     direction.
+     * @param maturityInterpolationMethod The interpolation method in maturity
+     *     direction.
+     * @param maturityExtrapolationMethod The extrapolation method in maturity
+     *     direction.
      * @return The interpolated option surface.
      */
     public static OptionSurfaceDataInterpolated of(
@@ -484,10 +523,14 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
      * @param smiles The option smiles.
      * @param discountCurve The discount curve.
      * @param equityForwardCurve The equity forward curve.
-     * @param strikeInterpolationMethod The interpolation method in strike direction.
-     * @param strikeExtrapolationMethod The extrapolation method in strike direction.
-     * @param maturityInterpolationMethod The interpolation method in maturity direction.
-     * @param maturityExtrapolationMethod The extrapolation method in maturity direction.
+     * @param strikeInterpolationMethod The interpolation method in strike
+     *     direction.
+     * @param strikeExtrapolationMethod The extrapolation method in strike
+     *     direction.
+     * @param maturityInterpolationMethod The interpolation method in maturity
+     *     direction.
+     * @param maturityExtrapolationMethod The extrapolation method in maturity
+     *     direction.
      * @return The interpolated option surface.
      */
     public static OptionSurfaceDataInterpolated ofUnsorted(
@@ -542,7 +585,8 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Returns the value in the requested quoting convention.
      * <p>
-     * The model argument is currently not used, since the discount curve and the
+     * The model argument is currently not used, since the discount curve and
+     * the
      * equity forward curve are stored in the surface.
      * </p>
      *
@@ -569,11 +613,13 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     }
 
     /**
-     * Returns the interpolated value in the surface's native quoting convention.
+     * Returns the interpolated value in the surface's native quoting
+     * convention.
      *
      * @param maturity The option maturity.
      * @param strike The option strike.
-     * @return The interpolated value in the surface's native quoting convention.
+     * @return The interpolated value in the surface's native quoting
+     *     convention.
      */
     public double getInterpolatedValue(final double maturity, final double strike) {
 
@@ -601,7 +647,8 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
     /**
      * Creates a clone of this surface with another quoting convention.
      * <p>
-     * The conversion is performed at the original surface nodes. The interpolation
+     * The conversion is performed at the original surface nodes. The
+     * interpolation
      * settings are preserved.
      * </p>
      *

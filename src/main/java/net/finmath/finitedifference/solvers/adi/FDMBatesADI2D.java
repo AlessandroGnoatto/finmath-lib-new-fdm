@@ -23,7 +23,8 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <pre>
- * integral [ u(S exp(y), v) - u(S, v) - S (exp(y) - 1) partial_S u(S, v) ] nu(dy).
+ * integral [ u(S exp(y), v) - u(S, v) - S (exp(y) - 1) partial_S u(S, v) ]
+ * nu(dy).
  * </pre>
  *
  * <p>
@@ -89,7 +90,8 @@ public class FDMBatesADI2D extends AbstractADI2D {
      * @param product The product to be valued.
      * @param spaceTimeDiscretization The space-time discretization.
      * @param exercise The exercise specification.
-     * @param quadraturePointsPerSide Number of midpoint quadrature cells used on
+     * @param quadraturePointsPerSide Number of midpoint quadrature cells used
+     *     on
      *        each side of zero for the jump integral.
      */
     public FDMBatesADI2D(
@@ -150,7 +152,8 @@ public class FDMBatesADI2D extends AbstractADI2D {
      * Computes the explicit jump contribution on the full two-dimensional grid.
      *
      * <p>
-     * The computation is performed slice by slice in the variance direction. For
+     * The computation is performed slice by slice in the variance direction.
+     * For
      * each fixed variance index, the solution is viewed as a one-dimensional
      * function of the asset variable and the jump integral is evaluated on that
      * slice.

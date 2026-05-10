@@ -21,7 +21,7 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  * for jump models in this finite-difference framework:
  * </p>
  * <ul>
- *   <li>{@link #getDrift(double, double...)} returns the local first-order term,
+ * <li>{@link #getDrift(double, double...)} returns the local first-order term,
  *       i.e. {@code (r-q)S},</li>
  *   <li>{@link #getFactorLoading(double, double...)} returns zero, since the
  *       pure Variance Gamma model has no diffusive factor,</li>
@@ -67,7 +67,8 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
     private static final double MINIMUM_TIME = 1.0E-6;
 
     /**
-     * Creates a Variance Gamma model from explicit discount curves and an explicit
+     * Creates a Variance Gamma model from explicit discount curves and an
+     * explicit
      * jump component.
      *
      * @param initialValue Initial spot value.
@@ -104,7 +105,8 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Creates a Variance Gamma model from explicit discount curves and the usual
+     * Creates a Variance Gamma model from explicit discount curves and the
+     * usual
      * {@code (sigma, nu, theta)} parameterization.
      *
      * @param initialValue Initial spot value.
@@ -113,8 +115,10 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
      * @param sigma The volatility parameter.
      * @param nu The variance-of-time-change parameter.
      * @param theta The asymmetry parameter.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization The space-time discretization.
      */
     public FDMVarianceGammaModel(
@@ -174,8 +178,10 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
      * @param sigma The volatility parameter.
      * @param nu The variance-of-time-change parameter.
      * @param theta The asymmetry parameter.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization The space-time discretization.
      */
     public FDMVarianceGammaModel(
@@ -235,8 +241,10 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
      * @param sigma The volatility parameter.
      * @param nu The variance-of-time-change parameter.
      * @param theta The asymmetry parameter.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization The space-time discretization.
      */
     public FDMVarianceGammaModel(
@@ -295,8 +303,10 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
      * @param sigma The volatility parameter.
      * @param nu The variance-of-time-change parameter.
      * @param theta The asymmetry parameter.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param spaceTimeDiscretization The space-time discretization.
      */
     public FDMVarianceGammaModel(
@@ -322,7 +332,8 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Named factory using the {@code (C,G,M)} parameterization and explicit curves.
+     * Named factory using the {@code (C,G,M)} parameterization and explicit
+     * curves.
      *
      * @param initialValue Initial spot value.
      * @param riskFreeCurve Risk-free discount curve.
@@ -361,7 +372,8 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Named factory using the {@code (C,G,M)} parameterization and zero dividend yield.
+     * Named factory using the {@code (C,G,M)} parameterization and zero
+     * dividend yield.
      *
      * @param initialValue Initial spot value.
      * @param riskFreeCurve Risk-free discount curve.
@@ -436,7 +448,8 @@ public class FDMVarianceGammaModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Named factory using the {@code (C,G,M)} parameterization, flat risk-free rate,
+     * Named factory using the {@code (C,G,M)} parameterization, flat risk-free
+     * rate,
      * and zero dividend yield.
      *
      * @param initialValue Initial spot value.

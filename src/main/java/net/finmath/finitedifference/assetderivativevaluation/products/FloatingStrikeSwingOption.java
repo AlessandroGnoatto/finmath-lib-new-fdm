@@ -22,11 +22,14 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * Floating-strike fixed-maturity swing option.
  *
  * <p>
- * This product combines the volume-control features of a swing option with a floating strike
+ * This product combines the volume-control features of a swing option with a
+ * floating strike
  * determined by a weighted fixing average of the underlying. Let
  * <i>t_0, \ldots, t_{n-1}</i> denote the decision dates and
- * <i>u_0, \ldots, u_{m-1}</i> the fixing dates with associated non-negative weights
- * <i>w_0, \ldots, w_{m-1}</i>. At each decision date the holder chooses an exercised quantity
+ * <i>u_0, \ldots, u_{m-1}</i> the fixing dates with associated non-negative
+ * weights
+ * <i>w_0, \ldots, w_{m-1}</i>. At each decision date the holder chooses an
+ * exercised quantity
  * <i>q_i</i> subject to local bounds
  * </p>
  *
@@ -59,7 +62,8 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * </p>
  *
  * <p>
- * where <i>W</i> is the cumulative fixing weight available at that decision date. The immediate
+ * where <i>W</i> is the cumulative fixing weight available at that decision
+ * date. The immediate
  * exercise payoff at a decision time is therefore
  * </p>
  *
@@ -72,24 +76,34 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * </p>
  *
  * <p>
- * The valuation is carried out by dynamic programming on two additional discrete contract states:
- * cumulative consumed quantity and strike accumulator. Between event dates, continuation values are
- * propagated backward with the existing one- or two-dimensional finite-difference solver of the
- * supplied model. On fixing dates, the accumulator state is shifted according to the fixing rule.
- * On decision dates, the Bellman optimization is applied over the admissible exercised quantities.
+ * The valuation is carried out by dynamic programming on two additional
+ * discrete contract states:
+ * cumulative consumed quantity and strike accumulator. Between event dates,
+ * continuation values are
+ * propagated backward with the existing one- or two-dimensional finite-
+ * difference solver of the
+ * supplied model. On fixing dates, the accumulator state is shifted according
+ * to the fixing rule.
+ * On decision dates, the Bellman optimization is applied over the admissible
+ * exercised quantities.
  * </p>
  *
  * <p>
  * If a fixing date and a decision date coincide, the convention
- * {@link SwingStrikeFixingConvention#FIX_THEN_EXERCISE} is applied, that is, the strike is first
- * updated using the fixing at that date and only then used in the exercise payoff.
+ * {@link SwingStrikeFixingConvention#FIX_THEN_EXERCISE} is applied, that is,
+ * the strike is first
+ * updated using the fixing at that date and only then used in the exercise
+ * payoff.
  * </p>
  *
  * <p>
  * As in the fixed-strike swing implementation, a full state-independent surface
- * {@link #getValues(FiniteDifferenceEquityModel)} is not well defined because the contract value
- * depends on the additional cumulative-quantity and accumulator states. Hence this implementation
- * exposes {@link #getValue(double, FiniteDifferenceEquityModel)} at evaluation time 0 only.
+ * {@link #getValues(FiniteDifferenceEquityModel)} is not well defined because
+ * the contract value
+ * depends on the additional cumulative-quantity and accumulator states. Hence
+ * this implementation
+ * exposes {@link #getValue(double, FiniteDifferenceEquityModel)} at evaluation
+ * time 0 only.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -319,7 +333,8 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceEquityProduct 
     }
 
     /**
-     * Creates a floating-strike swing option with time-homogeneous local quantity bounds.
+     * Creates a floating-strike swing option with time-homogeneous local
+     * quantity bounds.
      *
      * @param underlyingName Name of the underlying. May be {@code null}.
      * @param decisionTimes Exercise decision times.
@@ -374,7 +389,8 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceEquityProduct 
     }
 
     /**
-     * Creates a floating-strike swing option with anonymous underlying and time-homogeneous
+     * Creates a floating-strike swing option with anonymous underlying and
+     * time-homogeneous
      * local quantity bounds.
      *
      * @param decisionTimes Exercise decision times.
@@ -431,7 +447,8 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceEquityProduct 
      * Returns the value at the given evaluation time.
      *
      * <p>
-     * In this implementation only evaluation time 0 is supported, since the additional contract
+     * In this implementation only evaluation time 0 is supported, since the
+     * additional contract
      * states must otherwise be supplied explicitly.
      * </p>
      *
@@ -523,7 +540,8 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceEquityProduct 
      * Returns the full value surface.
      *
      * <p>
-     * This operation is intentionally unsupported, since the contract value depends on additional
+     * This operation is intentionally unsupported, since the contract value
+     * depends on additional
      * discrete states.
      * </p>
      *

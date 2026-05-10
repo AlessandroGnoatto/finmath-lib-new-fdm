@@ -80,7 +80,8 @@ public class BarrierOptionSabrModelBoundary implements FiniteDifferenceBoundary 
          * If the lower boundary is the knock-out barrier, use rebate.
          *
          * Targeted relaxation:
-         * For UP_OUT CALL, the lower continuation-side spot boundary is left free.
+         * For UP_OUT CALL, the lower continuation-side spot boundary is left
+         * free.
          */
         if (barrierType == BarrierType.DOWN_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(option.getRebate());
@@ -120,7 +121,8 @@ public class BarrierOptionSabrModelBoundary implements FiniteDifferenceBoundary 
          * If the upper boundary is the knock-out barrier, use rebate.
          *
          * Targeted relaxation:
-         * For DOWN_OUT PUT, the upper continuation-side spot boundary is left free.
+         * For DOWN_OUT PUT, the upper continuation-side spot boundary is left
+         * free.
          */
         if (barrierType == BarrierType.UP_OUT) {
             result[0] = StandardBoundaryCondition.dirichlet(option.getRebate());

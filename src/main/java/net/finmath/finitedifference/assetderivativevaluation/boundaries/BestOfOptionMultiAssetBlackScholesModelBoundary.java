@@ -31,7 +31,8 @@ import net.finmath.modelling.products.CallOrPut;
  * The multidimensional boundary convention of the framework is used:
  * </p>
  * <ul>
- *   <li>index {@code 0} of the returned array corresponds to the first state variable,</li>
+ * <li>index {@code 0} of the returned array corresponds to the first state
+ * variable,</li>
  *   <li>index {@code 1} corresponds to the second state variable.</li>
  * </ul>
  *
@@ -46,9 +47,9 @@ import net.finmath.modelling.products.CallOrPut;
  * </p>
  * <ul>
  *   <li>on {@code S_1 = S_{1,\max}}, the call is approximated by
- *       {@code S_1 e^{-q_1 \tau} - K e^{-r \tau}} and the put by {@code 0},</li>
+ * {@code S_1 e^{-q_1 \tau} - K e^{-r \tau}} and the put by {@code 0},</li>
  *   <li>on {@code S_2 = S_{2,\max}}, the call is approximated by
- *       {@code S_2 e^{-q_2 \tau} - K e^{-r \tau}} and the put by {@code 0}.</li>
+ * {@code S_2 e^{-q_2 \tau} - K e^{-r \tau}} and the put by {@code 0}.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto

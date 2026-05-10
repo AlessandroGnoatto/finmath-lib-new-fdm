@@ -11,12 +11,16 @@ import net.finmath.finitedifference.interestrate.products.OptionOnBond;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Exact boundary conditions for {@link OptionOnBond} under {@link FDMHullWhiteModel}.
+ * Exact boundary conditions for {@link OptionOnBond} under {@link
+ * FDMHullWhiteModel}.
  *
  * <p>
- * For a one-factor Hull-White model, a European option on a deterministic-cashflow
- * bond admits an exact valuation by Jamshidian decomposition. Let {@code T} be the
- * exercise date and let the remaining cashflows of the underlying bond at and after
+ * For a one-factor Hull-White model, a European option on a deterministic-
+ * cashflow
+ * bond admits an exact valuation by Jamshidian decomposition. Let {@code T} be
+ * the
+ * exercise date and let the remaining cashflows of the underlying bond at and
+ * after
  * {@code T} be
  * </p>
  *
@@ -50,7 +54,8 @@ import net.finmath.modelling.products.CallOrPut;
  * </p>
  *
  * <p>
- * Hence both lower and upper finite-difference boundaries can be imposed by exact
+ * Hence both lower and upper finite-difference boundaries can be imposed by
+ * exact
  * Dirichlet conditions.
  * </p>
  *
@@ -344,7 +349,8 @@ public class OptionOnBondHullWhiteModelBoundary implements FiniteDifferenceInter
         );
 
         /*
-         * If bond maturity equals exercise, the underlying zero-coupon bond pays 1
+         * If bond maturity equals exercise, the underlying zero-coupon bond
+         * pays 1
          * at exercise and the payoff is deterministic.
          */
         if (Math.abs(bondMaturity - exerciseDate) <= TIME_TOLERANCE) {

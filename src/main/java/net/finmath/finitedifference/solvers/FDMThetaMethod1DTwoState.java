@@ -22,10 +22,12 @@ import net.finmath.modelling.products.BarrierType;
  * </p>
  *
  * <ul>
- *   <li>The active regime is solved on the full grid using a tridiagonal theta step.</li>
- *   <li>The inactive regime is solved only on the continuation-side subgrid.</li>
- *   <li>On the already-hit region and at the barrier interface, the coupling between inactive
- *       and active regimes is governed by a {@link TwoStateActivationPolicy}.</li>
+ * <li>The active regime is solved on the full grid using a tridiagonal theta
+ * step.</li>
+ * <li>The inactive regime is solved only on the continuation-side subgrid.</li>
+ * <li>On the already-hit region and at the barrier interface, the coupling
+ * between inactive
+ * and active regimes is governed by a {@link TwoStateActivationPolicy}.</li>
  * </ul>
  *
  * <p>
@@ -67,27 +69,37 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     private final TwoStateActivationPolicy activationPolicy;
 
     /**
-     * Creates a direct two-state theta-method solver for one-dimensional knock-in products.
+     * Creates a direct two-state theta-method solver for one-dimensional knock-
+     * in products.
      *
      * <p>
      * The solver evolves two coupled value functions:
      * </p>
      * <ul>
-     *   <li>the <em>inactive</em> regime, representing the contract value before the barrier has been hit,</li>
-     *   <li>the <em>active</em> regime, representing the value after activation, which behaves like the corresponding activated claim.</li>
+     * <li>the <em>inactive</em> regime, representing the contract value before
+     * the barrier has been hit,</li>
+     * <li>the <em>active</em> regime, representing the value after activation,
+     * which behaves like the corresponding activated claim.</li>
      * </ul>
      *
      * <p>
-     * The active regime is solved on the full spatial grid, while the inactive regime is solved only on the
-     * portion of the grid where the barrier has not yet been triggered. The already-hit region and the
-     * continuation-side interface are coupled through the default continuation-style activation policy.
+     * The active regime is solved on the full spatial grid, while the inactive
+     * regime is solved only on the
+     * portion of the grid where the barrier has not yet been triggered. The
+     * already-hit region and the
+     * continuation-side interface are coupled through the default continuation-
+     * style activation policy.
      * </p>
      *
-     * @param model The finite-difference equity model providing local PDE coefficients and discounting.
+     * @param model The finite-difference equity model providing local PDE
+     *     coefficients and discounting.
      * @param product The knock-in product to be valued.
-     * @param spaceTimeDiscretization The spatial and temporal discretization, including the theta parameter.
-     * @param exercise The exercise specification. Bermudan and American exercise are applied only to the active regime.
-     * @param activeBoundaryProvider Provider for the boundary values of the already-activated regime.
+     * @param spaceTimeDiscretization The spatial and temporal discretization,
+     *     including the theta parameter.
+     * @param exercise The exercise specification. Bermudan and American
+     *     exercise are applied only to the active regime.
+     * @param activeBoundaryProvider Provider for the boundary values of the
+     *     already-activated regime.
      */
     public FDMThetaMethod1DTwoState(
             final FiniteDifferenceEquityModel model,
@@ -106,23 +118,31 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     }
 
     /**
-     * Creates a direct two-state theta-method solver with an explicit activation policy.
+     * Creates a direct two-state theta-method solver with an explicit
+     * activation policy.
      *
      * <p>
      * The activation policy controls:
      * </p>
      * <ul>
      *   <li>the inactive value on the already-hit region at maturity,</li>
-     *   <li>the inactive value on the already-hit region during backward stepping,</li>
-     *   <li>the interface value seen by the continuation-side inactive PDE at the barrier.</li>
+     * <li>the inactive value on the already-hit region during backward
+     * stepping,</li>
+     * <li>the interface value seen by the continuation-side inactive PDE at the
+     * barrier.</li>
      * </ul>
      *
-     * @param model The finite-difference equity model providing local PDE coefficients and discounting.
+     * @param model The finite-difference equity model providing local PDE
+     *     coefficients and discounting.
      * @param product The knock-in product to be valued.
-     * @param spaceTimeDiscretization The spatial and temporal discretization, including the theta parameter.
-     * @param exercise The exercise specification. Bermudan and American exercise are applied only to the active regime.
-     * @param activeBoundaryProvider Provider for the boundary values of the already-activated regime.
-     * @param activationPolicy Policy governing activation coupling between inactive and active regimes.
+     * @param spaceTimeDiscretization The spatial and temporal discretization,
+     *     including the theta parameter.
+     * @param exercise The exercise specification. Bermudan and American
+     *     exercise are applied only to the active regime.
+     * @param activeBoundaryProvider Provider for the boundary values of the
+     *     already-activated regime.
+     * @param activationPolicy Policy governing activation coupling between
+     *     inactive and active regimes.
      */
     public FDMThetaMethod1DTwoState(
             final FiniteDifferenceEquityModel model,
@@ -160,27 +180,35 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     }
 
     /**
-     * Solves the two-state backward PDE on the full space-time grid and returns the inactive-regime value surface.
+     * Solves the two-state backward PDE on the full space-time grid and returns
+     * the inactive-regime value surface.
      *
      * <p>
-     * At maturity, the active regime equals the supplied activated payoff, while the inactive regime equals either
-     * the activation-policy value on the already-hit region or the product's inactive terminal value on the
+     * At maturity, the active regime equals the supplied activated payoff,
+     * while the inactive regime equals either
+     * the activation-policy value on the already-hit region or the product's
+     * inactive terminal value on the
      * not-yet-hit region. The method then steps backward in time:
      * </p>
      * <ul>
      *   <li>solving the activated regime on the full grid,</li>
-     *   <li>solving the non-activated regime on the continuation-side subgrid,</li>
-     *   <li>applying the activation policy on the already-hit region and at the barrier interface.</li>
+     * <li>solving the non-activated regime on the continuation-side
+     * subgrid,</li>
+     * <li>applying the activation policy on the already-hit region and at the
+     * barrier interface.</li>
      * </ul>
      *
      * <p>
-     * The returned surface stores the inactive-regime values only, since these represent the contract
+     * The returned surface stores the inactive-regime values only, since these
+     * represent the contract
      * value prior to barrier activation.
      * </p>
      *
      * @param time The maturity time of the product.
-     * @param valueAtMaturity The terminal payoff of the activated regime as a function of the state variable.
-     * @return The inactive-regime solution surface indexed as {@code values[spaceIndex][timeIndex]}.
+     * @param valueAtMaturity The terminal payoff of the activated regime as a
+     *     function of the state variable.
+     * @return The inactive-regime solution surface indexed as {@code
+     *     values[spaceIndex][timeIndex]}.
      */
     @Override
     public double[][] getValues(final double time, final DoubleUnaryOperator valueAtMaturity) {
@@ -337,12 +365,15 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     }
 
     /**
-     * Returns the inactive-regime value vector at the requested evaluation time.
+     * Returns the inactive-regime value vector at the requested evaluation
+     * time.
      *
      * @param evaluationTime The time at which the value vector is requested.
      * @param time The maturity time of the claim.
-     * @param valueAtMaturity The terminal payoff as a function of the state variable.
-     * @return The inactive-regime value vector across the spatial grid at the specified evaluation time.
+     * @param valueAtMaturity The terminal payoff as a function of the state
+     *     variable.
+     * @return The inactive-regime value vector across the spatial grid at the
+     *     specified evaluation time.
      */
     @Override
     public double[] getValue(
@@ -559,15 +590,18 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     }
 
     /**
-     * Returns the discounted value of the inactive terminal amount used at the outer boundary
+     * Returns the discounted value of the inactive terminal amount used at the
+     * outer boundary
      * of the inactive regime.
      *
      * <p>
-     * For classic knock-in barrier options, this is the rebate paid at maturity if never activated.
+     * For classic knock-in barrier options, this is the rebate paid at maturity
+     * if never activated.
      * For digital knock-ins, this is typically zero.
      * </p>
      *
-     * @param currentTime The current model time at which the boundary value is required.
+     * @param currentTime The current model time at which the boundary value is
+     *     required.
      * @return The discounted inactive terminal value.
      */
     private double getDiscountedNoHitValue(final double currentTime) {

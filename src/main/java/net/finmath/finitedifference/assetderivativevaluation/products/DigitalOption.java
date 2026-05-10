@@ -295,7 +295,8 @@ public class DigitalOption implements FiniteDifferenceEquityProduct {
      * Returns the effective space-time discretization.
      *
      * <p>
-     * Bermudan exercise dates are inserted exactly into the time discretization.
+     * Bermudan exercise dates are inserted exactly into the time
+     * discretization.
      * European and American exercise keep the model discretization unchanged.
      * </p>
      *
@@ -343,7 +344,8 @@ public class DigitalOption implements FiniteDifferenceEquityProduct {
     }
 
     /**
-     * Builds the cell-averaged terminal values on the one-dimensional spot grid.
+     * Builds the cell-averaged terminal values on the one-dimensional spot
+     * grid.
      *
      * @param discretization The effective discretization.
      * @return Terminal values on the spot grid.

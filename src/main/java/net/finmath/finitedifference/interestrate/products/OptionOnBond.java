@@ -7,7 +7,8 @@ import net.finmath.modelling.EuropeanExercise;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Finite-difference valuation of a European option on a deterministic-cashflow bond.
+ * Finite-difference valuation of a European option on a deterministic-cashflow
+ * bond.
  *
  * <p>
  * The underlying bond is assumed to be a {@link Bond}, that is, a bond with

@@ -17,15 +17,18 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
  * </p>
  *
  * <p>
- * The framework is formulated in terms of the <i>chosen PDE state variables</i>.
- * It does <b>not</b> assume that the first spatial coordinate is necessarily the
+ * The framework is formulated in terms of the <i>chosen PDE state
+ * variables</i>.
+ * It does <b>not</b> assume that the first spatial coordinate is necessarily
+ * the
  * spot price {@code S}. It may instead be {@code S}, {@code log(S)}, or any
  * other state variable for which the model provides consistent coefficients.
  * </p>
  *
  * <p>
  * Therefore, {@link #getDrift(double, double...)} and
- * {@link #getFactorLoading(double, double...)} must return coefficients that are
+ * {@link #getFactorLoading(double, double...)} must return coefficients that
+ * are
  * expressed in exactly the same coordinates as those used in the space-time
  * discretization.
  * </p>
@@ -62,13 +65,16 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * Returns the dividend-yield discount curve.
      *
      * <p>
-     * This is the legacy single-asset accessor and remains part of the interface to
+     * This is the legacy single-asset accessor and remains part of the
+     * interface to
      * preserve backward compatibility with the current code base.
      * </p>
      *
      * <p>
-     * For true multi-asset models with one dividend curve per underlying, prefer
-     * {@link #getDividendYieldCurves()}. Such models may override this method with a
+     * For true multi-asset models with one dividend curve per underlying,
+     * prefer
+     * {@link #getDividendYieldCurves()}. Such models may override this method
+     * with a
      * convention suitable for backward compatibility.
      * </p>
      *
@@ -80,14 +86,18 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * Returns the dividend-yield discount curves of the model.
      *
      * <p>
-     * The default implementation preserves backward compatibility with the current
-     * single-asset code base by wrapping {@link #getDividendYieldCurve()} into a
+     * The default implementation preserves backward compatibility with the
+     * current
+     * single-asset code base by wrapping {@link #getDividendYieldCurve()} into
+     * a
      * one-element array.
      * </p>
      *
      * <p>
-     * Multi-asset models should override this method and return one dividend-yield
-     * curve per underlying asset, ordered consistently with the model state vector.
+     * Multi-asset models should override this method and return one dividend-
+     * yield
+     * curve per underlying asset, ordered consistently with the model state
+     * vector.
      * </p>
      *
      * @return The dividend-yield discount curves.
@@ -100,12 +110,14 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * Returns the drift vector of the model state variables.
      *
      * <p>
-     * The returned coefficients must be expressed in the same coordinates as the PDE
+     * The returned coefficients must be expressed in the same coordinates as
+     * the PDE
      * state variables used by the finite-difference solver.
      * </p>
      *
      * <p>
-     * If the state vector is {@code X = (X1, ..., Xn)}, then this method returns the
+     * If the state vector is {@code X = (X1, ..., Xn)}, then this method
+     * returns the
      * vector {@code mu(t, X)} in
      * </p>
      *
@@ -123,12 +135,14 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * Returns the factor-loading matrix of the model state variables.
      *
      * <p>
-     * The returned coefficients must be expressed in the same coordinates as the PDE
+     * The returned coefficients must be expressed in the same coordinates as
+     * the PDE
      * state variables used by the finite-difference solver.
      * </p>
      *
      * <p>
-     * If the state vector is {@code X = (X1, ..., Xn)}, then this method returns the
+     * If the state vector is {@code X = (X1, ..., Xn)}, then this method
+     * returns the
      * matrix {@code b(t, X)} in
      * </p>
      *
@@ -146,23 +160,29 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * Returns the optional jump component of the infinitesimal generator.
      *
      * <p>
-     * The default implementation returns {@link Optional#empty()}, corresponding to a
+     * The default implementation returns {@link Optional#empty()},
+     * corresponding to a
      * purely diffusive model.
      * </p>
      *
      * <p>
-     * If present, the returned {@link JumpComponent} provides the data needed to
+     * If present, the returned {@link JumpComponent} provides the data needed
+     * to
      * assemble the non-local jump part of the generator. The local coefficients
      * returned by {@link #getDrift(double, double...)} and
-     * {@link #getFactorLoading(double, double...)} keep their current meaning and
+     * {@link #getFactorLoading(double, double...)} keep their current meaning
+     * and
      * should remain consistent with the PDE state variables used by the
      * finite-difference discretization.
      * </p>
      *
      * <p>
-     * In particular, under the stock-coordinate convention intended for jump models in
-     * this framework, {@link #getDrift(double, double...)} should continue to return
-     * the drift of the local first-order term, while the jump component defines the
+     * In particular, under the stock-coordinate convention intended for jump
+     * models in
+     * this framework, {@link #getDrift(double, double...)} should continue to
+     * return
+     * the drift of the local first-order term, while the jump component defines
+     * the
      * non-local operator in compensated form.
      * </p>
      *
@@ -176,12 +196,14 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * </pre>
      *
      * <p>
-     * The interpretation of the jump data must remain consistent with the chosen PDE
+     * The interpretation of the jump data must remain consistent with the
+     * chosen PDE
      * state variables.
      * </p>
      *
-     * @return An {@link Optional} containing the jump component of the infinitesimal
-     *         generator, or {@link Optional#empty()} if the model has no jump part.
+     * @return An {@link Optional} containing the jump component of the
+     *     infinitesimal
+     * generator, or {@link Optional#empty()} if the model has no jump part.
      */
     default Optional<JumpComponent> getJumpComponent() {
         return Optional.empty();
@@ -191,7 +213,8 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * Returns a clone of this model with a modified space-time discretization.
      *
      * <p>
-     * The returned model should represent the same stochastic dynamics and market
+     * The returned model should represent the same stochastic dynamics and
+     * market
      * data as the original one, but on the provided discretization.
      * </p>
      *
@@ -205,8 +228,10 @@ public interface FiniteDifferenceEquityModel extends FiniteDifferenceModel, Fini
      * Returns the initial state vector of the model.
      *
      * <p>
-     * The returned values must be consistent with the state variables used by the
-     * PDE. For example, if the first spatial coordinate is {@code log(S)}, then the
+     * The returned values must be consistent with the state variables used by
+     * the
+     * PDE. For example, if the first spatial coordinate is {@code log(S)}, then
+     * the
      * first component should be {@code log(S0)} rather than {@code S0}.
      * </p>
      *

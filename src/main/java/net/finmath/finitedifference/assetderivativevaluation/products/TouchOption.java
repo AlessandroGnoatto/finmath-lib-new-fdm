@@ -31,8 +31,10 @@ import net.finmath.time.TimeDiscretization;
  * Finite-difference valuation of a single-barrier cash touch option.
  *
  * <p>
- * The product pays a fixed cash amount <i>N</i> depending on whether a barrier event occurs during
- * the life of the contract. Let <i>T</i> denote the maturity, <i>B</i> the barrier and
+ * The product pays a fixed cash amount <i>N</i> depending on whether a barrier
+ * event occurs during
+ * the life of the contract. Let <i>T</i> denote the maturity, <i>B</i> the
+ * barrier and
  * <i>S</i>(<i>t</i>) the underlying level.
  * </p>
  *
@@ -46,8 +48,10 @@ import net.finmath.time.TimeDiscretization;
  * </pre>
  *
  * <p>
- * For expiry settlement, the post-hit state carries the discounted cash amount maturing at
- * <i>T</i>. In other words, once the barrier has been activated, the continuation value is the
+ * For expiry settlement, the post-hit state carries the discounted cash amount
+ * maturing at
+ * <i>T</i>. In other words, once the barrier has been activated, the
+ * continuation value is the
  * deterministic cash value implied by the model discount curve.
  * </p>
  *
@@ -55,27 +59,35 @@ import net.finmath.time.TimeDiscretization;
  * Barrier-type semantics:
  * </p>
  * <ul>
- *   <li>{@link BarrierType#DOWN_IN} and {@link BarrierType#UP_IN} represent one-touch products,</li>
- *   <li>{@link BarrierType#DOWN_OUT} and {@link BarrierType#UP_OUT} represent no-touch products.</li>
+ * <li>{@link BarrierType#DOWN_IN} and {@link BarrierType#UP_IN} represent one-
+ * touch products,</li>
+ * <li>{@link BarrierType#DOWN_OUT} and {@link BarrierType#UP_OUT} represent no-
+ * touch products.</li>
  * </ul>
  *
  * <p>
  * Settlement semantics:
  * </p>
  * <ul>
- *   <li>{@link TouchSettlementTiming#AT_EXPIRY}: the hit / no-hit event is monitored over the full
+ * <li>{@link TouchSettlementTiming#AT_EXPIRY}: the hit / no-hit event is
+ * monitored over the full
  *       option life and the payoff is settled at maturity,</li>
- *   <li>{@link TouchSettlementTiming#AT_HIT}: the cash amount is paid immediately when the barrier
- *       is hit for the first time; this is currently supported only for one-touch products.</li>
+ * <li>{@link TouchSettlementTiming#AT_HIT}: the cash amount is paid immediately
+ * when the barrier
+ * is hit for the first time; this is currently supported only for one-touch
+ * products.</li>
  * </ul>
  *
  * <p>
  * Monitoring semantics:
  * </p>
  * <ul>
- *   <li>{@link MonitoringType#CONTINUOUS}: the current continuous-monitoring implementation is used,</li>
- *   <li>{@link MonitoringType#DISCRETE}: monitoring is applied only on the prescribed monitoring
- *       dates via vector event conditions. First milestone scope is 1D European cash touch / no-touch.</li>
+ * <li>{@link MonitoringType#CONTINUOUS}: the current continuous-monitoring
+ * implementation is used,</li>
+ * <li>{@link MonitoringType#DISCRETE}: monitoring is applied only on the
+ * prescribed monitoring
+ * dates via vector event conditions. First milestone scope is 1D European cash
+ * touch / no-touch.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto

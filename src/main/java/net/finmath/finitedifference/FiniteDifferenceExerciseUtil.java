@@ -16,7 +16,8 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * Finite-difference solvers in this project use time-to-maturity
  * {@code tau = maturity - t}. Exercise specifications are given in running time
  * {@code t}. This class performs the required conversion and can refine the
- * time discretization so that all Bermudan exercise dates are represented exactly.
+ * time discretization so that all Bermudan exercise dates are represented
+ * exactly.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -51,7 +52,8 @@ public final class FiniteDifferenceExerciseUtil {
     }
 
     /**
-     * Returns a refined time discretization that includes all Bermudan exercise dates
+     * Returns a refined time discretization that includes all Bermudan exercise
+     * dates
      * in time-to-maturity coordinates.
      *
      * <p>
@@ -102,7 +104,8 @@ public final class FiniteDifferenceExerciseUtil {
     }
 
     /**
-     * Returns true if the exercise policy should be treated as continuous on the FD grid.
+     * Returns true if the exercise policy should be treated as continuous on
+     * the FD grid.
      *
      * @param exercise The exercise specification.
      * @return True if the policy is continuous.
@@ -112,7 +115,8 @@ public final class FiniteDifferenceExerciseUtil {
     }
 
     /**
-     * Returns true if the given tau-grid time is an actual Bermudan exercise time.
+     * Returns true if the given tau-grid time is an actual Bermudan exercise
+     * time.
      *
      * @param tau The time-to-maturity.
      * @param exercise The exercise specification.

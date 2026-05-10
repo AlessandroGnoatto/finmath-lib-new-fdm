@@ -11,13 +11,15 @@ import net.finmath.modelling.products.CallOrPut;
  * Finite difference valuation of an American option on a single asset.
  *
  * <p>
- * Given an underlying price {@code S} with strike {@code K} and maturity {@code T}, the payoff is
+ * Given an underlying price {@code S} with strike {@code K} and maturity {@code
+ * T}, the payoff is
  * </p>
  * <p>
  * {@code max(sign * (S(T) - K), 0)},
  * </p>
  * <p>
- * where {@code sign} corresponds to {@link CallOrPut#CALL} or {@link CallOrPut#PUT}.
+ * where {@code sign} corresponds to {@link CallOrPut#CALL} or {@link
+ * CallOrPut#PUT}.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -52,7 +54,8 @@ public class AmericanOption implements FiniteDifferenceEquityProduct {
      * @param underlyingName Name of the underlying.
      * @param maturity Maturity {@code T}.
      * @param strike Strike {@code K}.
-     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call and
+     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
+     *     and
      *        {@code -1.0} corresponds to a put.
      */
     public AmericanOption(
@@ -104,7 +107,8 @@ public class AmericanOption implements FiniteDifferenceEquityProduct {
      *
      * @param maturity Maturity {@code T}.
      * @param strike Strike {@code K}.
-     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call and
+     * @param callOrPutSign Payoff sign, where {@code 1.0} corresponds to a call
+     *     and
      *        {@code -1.0} corresponds to a put.
      */
     public AmericanOption(final double maturity, final double strike, final double callOrPutSign) {

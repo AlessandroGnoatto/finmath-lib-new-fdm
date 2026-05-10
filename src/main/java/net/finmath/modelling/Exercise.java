@@ -4,12 +4,14 @@ package net.finmath.modelling;
  * General exercise specification for an option-like product.
  *
  * <p>
- * Exercise times are expressed in running time, i.e. increasing calendar-time coordinates
+ * Exercise times are expressed in running time, i.e. increasing calendar-time
+ * coordinates
  * measured from the model reference date.
  * </p>
  *
  * <p>
- * The interface is intentionally method-agnostic and may be used by finite-difference,
+ * The interface is intentionally method-agnostic and may be used by finite-
+ * difference,
  * Monte Carlo, lattice / tree, or other numerical methods.
  * </p>
  *
@@ -28,8 +30,10 @@ public interface Exercise {
      * Returns the exercise times in running time.
      *
      * <p>
-     * For European exercise this is typically a singleton containing only the maturity.
-     * For American exercise this may also return only the maturity, since the exercise
+     * For European exercise this is typically a singleton containing only the
+     * maturity.
+     * For American exercise this may also return only the maturity, since the
+     * exercise
      * region is continuous and not represented by a finite list.
      * For Bermudan exercise this returns the scheduled exercise dates.
      * </p>
@@ -49,9 +53,12 @@ public interface Exercise {
      * Returns whether exercise is allowed at the given running time.
      *
      * <p>
-     * This method is interpreted in contractual terms, not in numerical-grid terms.
-     * For Bermudan exercise it checks whether the given time matches one of the scheduled
-     * exercise times (up to a small tolerance). For American exercise it checks whether
+     * This method is interpreted in contractual terms, not in numerical-grid
+     * terms.
+     * For Bermudan exercise it checks whether the given time matches one of the
+     * scheduled
+     * exercise times (up to a small tolerance). For American exercise it checks
+     * whether
      * the time lies inside the exercise interval.
      * </p>
      *

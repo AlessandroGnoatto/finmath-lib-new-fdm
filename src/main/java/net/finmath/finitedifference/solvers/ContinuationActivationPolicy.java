@@ -1,16 +1,22 @@
 package net.finmath.finitedifference.solvers;
 
 /**
- * Activation policy for two-state finite-difference products in which the active regime
- * continues with its own continuation value once the barrier event has occurred.
+ * Activation policy for two-state finite-difference products in which the
+ * active regime
+ * continues with its own continuation value once the barrier event has
+ * occurred.
  *
  * <p>
- * In a two-state barrier formulation, the contract value is decomposed into an inactive
+ * In a two-state barrier formulation, the contract value is decomposed into an
+ * inactive
  * no-hit regime and an active already-hit regime. Let
  * <i>V^{\mathrm{act}}(t,x)</i> denote the value in the active regime, where
- * <i>x</i> is the state variable. Under a continuation activation rule, barrier activation
- * does not trigger an immediate replacement payoff other than the active branch itself.
- * Hence the already-hit value is simply identified with the active continuation value.
+ * <i>x</i> is the state variable. Under a continuation activation rule, barrier
+ * activation
+ * does not trigger an immediate replacement payoff other than the active branch
+ * itself.
+ * Hence the already-hit value is simply identified with the active continuation
+ * value.
  * </p>
  *
  * <p>
@@ -22,7 +28,8 @@ package net.finmath.finitedifference.solvers;
  * </p>
  *
  * <p>
- * independently of the inactive no-hit terminal value. Likewise, at intermediate times
+ * independently of the inactive no-hit terminal value. Likewise, at
+ * intermediate times
  * and at the activation interface,
  * </p>
  *
@@ -31,10 +38,14 @@ package net.finmath.finitedifference.solvers;
  * </p>
  *
  * <p>
- * This policy is appropriate for contracts where hitting the barrier switches the product
- * into an active continuation problem rather than causing an immediate cash settlement.
- * A typical example is an expiry-settled knock-in structure, where the contract remains
- * alive after activation and evolves according to the active branch PDE until maturity.
+ * This policy is appropriate for contracts where hitting the barrier switches
+ * the product
+ * into an active continuation problem rather than causing an immediate cash
+ * settlement.
+ * A typical example is an expiry-settled knock-in structure, where the contract
+ * remains
+ * alive after activation and evolves according to the active branch PDE until
+ * maturity.
  * </p>
  *
  * @author Alessandro Gnoatto

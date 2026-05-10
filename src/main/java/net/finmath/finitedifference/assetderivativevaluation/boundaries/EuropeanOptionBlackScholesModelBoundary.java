@@ -34,9 +34,11 @@ public class EuropeanOptionBlackScholesModelBoundary
     private final FDMBlackScholesModel model;
 
     /**
-     * Creates the boundary condition associated with a given Black-Scholes model.
+     * Creates the boundary condition associated with a given Black-Scholes
+     * model.
      *
-     * @param model The Black-Scholes model providing risk-free and dividend curves.
+     * @param model The Black-Scholes model providing risk-free and dividend
+     *     curves.
      */
     public EuropeanOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {
         this.model = model;

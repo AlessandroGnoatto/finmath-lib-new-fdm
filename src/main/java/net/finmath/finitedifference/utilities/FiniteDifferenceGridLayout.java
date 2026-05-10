@@ -182,7 +182,8 @@ public final class FiniteDifferenceGridLayout {
      *
      * @param flatIndex The flattened vector index.
      * @return The corresponding spatial multi-index.
-     * @throws IllegalArgumentException Thrown if {@code flatIndex} is out of range.
+     * @throws IllegalArgumentException Thrown if {@code flatIndex} is out of
+     *     range.
      */
     public int[] unflatten(final int flatIndex) {
         if (flatIndex < 0 || flatIndex >= numberOfSpatialPoints) {
@@ -221,9 +222,10 @@ public final class FiniteDifferenceGridLayout {
     /**
      * Validates that a value surface matches the spatial layout.
      *
-     * @param values The value surface indexed by flattened space point and time index.
+     * @param values The value surface indexed by flattened space point and time
+     *     index.
      * @throws IllegalArgumentException Thrown if {@code values} is {@code null}
-     *         or if its first dimension does not match the number of spatial points.
+     * or if its first dimension does not match the number of spatial points.
      */
     public void validateSurface(final double[][] values) {
         if (values == null) {

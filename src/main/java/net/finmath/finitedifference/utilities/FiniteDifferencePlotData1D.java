@@ -3,7 +3,8 @@ package net.finmath.finitedifference.utilities;
 import java.util.function.DoubleUnaryOperator;
 
 /**
- * Dependency-free plot descriptor for a one-dimensional finite-difference curve.
+ * Dependency-free plot descriptor for a one-dimensional finite-difference
+ * curve.
  *
  * <p>
  * This class intentionally depends only on standard Java functional interfaces.

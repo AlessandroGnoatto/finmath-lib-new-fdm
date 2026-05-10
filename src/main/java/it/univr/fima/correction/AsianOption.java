@@ -4,15 +4,20 @@ import net.finmath.functions.NormalDistribution;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Utility class collecting analytical or semi-analytical pricing formulas for Asian options.
+ * Utility class collecting analytical or semi-analytical pricing formulas for
+ * Asian options.
  *
  * <p>Included formulas:</p>
  * <ul>
- *   <li>Continuous geometric-average price Asian option (Black-Scholes exact formula)</li>
- *   <li>Discrete geometric-average price Asian option (Black-Scholes exact formula)</li>
- *   <li>Discrete geometric-average strike Asian option (Black-Scholes exact formula)</li>
- *   <li>Continuous arithmetic-average price Asian option, Levy approximation</li>
- *   <li>Discrete arithmetic-average price Asian option, Turnbull-Wakeman approximation</li>
+ * <li>Continuous geometric-average price Asian option (Black-Scholes exact
+ * formula)</li>
+ * <li>Discrete geometric-average price Asian option (Black-Scholes exact
+ * formula)</li>
+ * <li>Discrete geometric-average strike Asian option (Black-Scholes exact
+ * formula)</li>
+ * <li>Continuous arithmetic-average price Asian option, Levy approximation</li>
+ * <li>Discrete arithmetic-average price Asian option, Turnbull-Wakeman
+ * approximation</li>
  * </ul>
  *
  * @author Alessandro Gnoatto
@@ -71,7 +76,8 @@ public final class AsianOption {
     }
 
     /**
-     * Exact Black-Scholes price for a continuous geometric-average Asian option.
+     * Exact Black-Scholes price for a continuous geometric-average Asian
+     * option.
      *
      * @param spot spot S0
      * @param strike strike K
@@ -101,13 +107,17 @@ public final class AsianOption {
     }
 
     /**
-     * Exact Black-Scholes price for a discrete geometric-average price Asian option.
+     * Exact Black-Scholes price for a discrete geometric-average price Asian
+     * option.
      *
-     * <p>This matches the QuantLib analytic discrete geometric average price engine.</p>
+     * <p>This matches the QuantLib analytic discrete geometric average price
+     * engine.</p>
      *
-     * @param futureFixingTimes strictly non-negative, increasing fixing times (in years from valuation time) for remaining fixings
+     * @param futureFixingTimes strictly non-negative, increasing fixing times
+     *     (in years from valuation time) for remaining fixings
      * @param pastFixings number of already observed fixings
-     * @param runningProduct product of already observed fixings; use 1.0 if pastFixings = 0
+     * @param runningProduct product of already observed fixings; use 1.0 if
+     *     pastFixings = 0
      * @param maturity option maturity / exercise time
       * @param optionType The value.
       * @param spot The value.
@@ -168,13 +178,17 @@ public final class AsianOption {
     }
 
     /**
-     * Exact Black-Scholes price for a discrete geometric-average strike Asian option.
+     * Exact Black-Scholes price for a discrete geometric-average strike Asian
+     * option.
      *
-     * <p>This mirrors the QuantLib engine limitation: past fixings are not supported.</p>
+     * <p>This mirrors the QuantLib engine limitation: past fixings are not
+     * supported.</p>
      *
-     * @param fixingTimesFromStart fixing times measured from the first fixing date; normally the first entry is 0.0
+     * @param fixingTimesFromStart fixing times measured from the first fixing
+     *     date; normally the first entry is 0.0
      * @param residualTime time from first fixing date to exercise date
-     * @param runningProduct product of past fixings; only 1.0 with pastFixings = 0 is supported here
+     * @param runningProduct product of past fixings; only 1.0 with pastFixings
+     *     = 0 is supported here
       * @param optionType The value.
       * @param spot The value.
       * @param riskFreeRate The value.
@@ -261,11 +275,14 @@ public final class AsianOption {
     }
 
     /**
-     * Levy approximation for a continuous arithmetic-average price Asian option.
+     * Levy approximation for a continuous arithmetic-average price Asian
+     * option.
      *
-     * @param averagingStartTime start of averaging window, measured from valuation time; must satisfy 0 <= averagingStartTime <= maturity
+     * @param averagingStartTime start of averaging window, measured from
+     *     valuation time; must satisfy 0 <= averagingStartTime <= maturity
      * @param maturity maturity / exercise time T2 from valuation
-     * @param currentAverage already accrued arithmetic average if averaging has started; ignored if averagingStartTime == 0
+     * @param currentAverage already accrued arithmetic average if averaging has
+     *     started; ignored if averagingStartTime == 0
       * @param optionType The value.
       * @param spot The value.
       * @param strike The value.
@@ -366,12 +383,16 @@ public final class AsianOption {
     }
 
     /**
-     * Turnbull-Wakeman approximation for a discrete arithmetic-average price Asian option.
+     * Turnbull-Wakeman approximation for a discrete arithmetic-average price
+     * Asian option.
      *
-     * @param futureFixingTimes remaining fixing times in years from valuation time
+     * @param futureFixingTimes remaining fixing times in years from valuation
+     *     time
      * @param pastFixings number of already observed fixings
-     * @param runningSum sum of already observed fixings; use 0.0 if pastFixings = 0
-     * @param exerciseTime option maturity / exercise time, typically >= max futureFixingTimes
+     * @param runningSum sum of already observed fixings; use 0.0 if pastFixings
+     *     = 0
+     * @param exerciseTime option maturity / exercise time, typically >= max
+     *     futureFixingTimes
       * @param optionType The value.
       * @param spot The value.
       * @param strike The value.

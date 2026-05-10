@@ -47,13 +47,23 @@ import net.finmath.time.TimeDiscretization;
  * Current implementation policy:
  * </p>
  * <ul>
- *   <li>continuously monitored knock-out options are priced directly by the finite-difference solver,</li>
- *   <li>continuously monitored 1D knock-in options are priced directly through a coupled two-state PDE on an auxiliary spatial grid where the barrier is placed on an interior node,</li>
- *   <li>continuously monitored 2D knock-in options use the activated-branch / pre-hit formulation,</li>
- *   <li>for one-dimensional models, terminal payoff initialization is cell-averaged in order to reduce strike-discontinuity grid bias,</li>
- *   <li>discretely monitored 1D and 2D knock-out options are handled through event-time zeroing on breached nodes,</li>
- *   <li>discretely monitored 1D and 2D knock-in options are handled through event-time replacement by the activated vanilla digital continuation surface,</li>
- *   <li>for discretely monitored knock-ins with Bermudan/American exercise, only the activated state carries exercise rights; the pre-hit state is solved as a European continuation problem,</li>
+ * <li>continuously monitored knock-out options are priced directly by the
+ * finite-difference solver,</li>
+ * <li>continuously monitored 1D knock-in options are priced directly through a
+ * coupled two-state PDE on an auxiliary spatial grid where the barrier is
+ * placed on an interior node,</li>
+ * <li>continuously monitored 2D knock-in options use the activated-branch /
+ * pre-hit formulation,</li>
+ * <li>for one-dimensional models, terminal payoff initialization is cell-
+ * averaged in order to reduce strike-discontinuity grid bias,</li>
+ * <li>discretely monitored 1D and 2D knock-out options are handled through
+ * event-time zeroing on breached nodes,</li>
+ * <li>discretely monitored 1D and 2D knock-in options are handled through
+ * event-time replacement by the activated vanilla digital continuation
+ * surface,</li>
+ * <li>for discretely monitored knock-ins with Bermudan/American exercise, only
+ * the activated state carries exercise rights; the pre-hit state is solved as a
+ * European continuation problem,</li>
  *   <li>2D discrete monitoring is supported for Heston / SABR models.</li>
  * </ul>
  *

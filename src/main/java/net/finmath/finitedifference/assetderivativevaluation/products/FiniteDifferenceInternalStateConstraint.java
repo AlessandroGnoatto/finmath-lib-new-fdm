@@ -1,10 +1,12 @@
 package net.finmath.finitedifference.assetderivativevaluation.products;
 
 /**
- * Optional product-side internal state constraint for finite-difference solvers.
+ * Optional product-side internal state constraint for finite-difference
+ * solvers.
  *
  * <p>
- * This interface is intended for products whose value is constrained not only at
+ * This interface is intended for products whose value is constrained not only
+ * at
  * the outer PDE boundaries, but also on an internal subset of the state space.
  * Typical examples are barrier options, where nodes beyond the barrier are
  * knocked out and must be assigned a prescribed value.
@@ -14,8 +16,10 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
  * The solver may query this interface at each grid node and time step:
  * </p>
  * <ul>
- *   <li>{@link #isConstraintActive(double, double...)} tells whether the node is constrained,</li>
- *   <li>{@link #getConstrainedValue(double, double...)} provides the value to impose there.</li>
+ * <li>{@link #isConstraintActive(double, double...)} tells whether the node is
+ * constrained,</li>
+ * <li>{@link #getConstrainedValue(double, double...)} provides the value to
+ * impose there.</li>
  * </ul>
  *
  * <p>
@@ -27,7 +31,8 @@ package net.finmath.finitedifference.assetderivativevaluation.products;
 public interface FiniteDifferenceInternalStateConstraint {
 
     /**
-     * Returns true if the internal constraint is active at the given node and time.
+     * Returns true if the internal constraint is active at the given node and
+     * time.
      *
      * @param time Running time.
      * @param stateVariables State variables at the grid node.
@@ -39,7 +44,8 @@ public interface FiniteDifferenceInternalStateConstraint {
      * Returns the value to impose at a constrained node.
      *
      * <p>
-     * This method is called only if {@link #isConstraintActive(double, double...)}
+     * This method is called only if {@link #isConstraintActive(double,
+     * double...)}
      * returns true.
      * </p>
      *

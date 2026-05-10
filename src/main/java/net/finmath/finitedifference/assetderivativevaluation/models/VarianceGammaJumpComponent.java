@@ -4,7 +4,8 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
  * Jump component for the Variance Gamma model.
  *
  * <p>
- * The jump part acts on one selected state variable through multiplicative jumps
+ * The jump part acts on one selected state variable through multiplicative
+ * jumps
  * of the form
  * </p>
  *
@@ -57,10 +58,13 @@ public class VarianceGammaJumpComponent extends AbstractStateIndependentJumpComp
     private final double m;
 
     /**
-     * Creates a Variance Gamma jump component acting on the first state variable.
+     * Creates a Variance Gamma jump component acting on the first state
+     * variable.
      *
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param c The parameter {@code C} of the Levy density.
      * @param g The parameter {@code G} governing negative jumps.
      * @param m The parameter {@code M} governing positive jumps.
@@ -78,8 +82,10 @@ public class VarianceGammaJumpComponent extends AbstractStateIndependentJumpComp
      * Creates a Variance Gamma jump component.
      *
      * @param stateVariableIndex Index of the affected state variable.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param c The parameter {@code C} of the Levy density.
      * @param g The parameter {@code G} governing negative jumps.
      * @param m The parameter {@code M} governing positive jumps.
@@ -113,10 +119,13 @@ public class VarianceGammaJumpComponent extends AbstractStateIndependentJumpComp
      * {@code (sigma, nu, theta)} parameterization, acting on the first state
      * variable.
      *
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param sigma The volatility parameter of the Variance Gamma model.
-     * @param nu The variance-of-time-change parameter of the Variance Gamma model.
+     * @param nu The variance-of-time-change parameter of the Variance Gamma
+     *     model.
      * @param theta The asymmetry parameter of the Variance Gamma model.
      * @return The corresponding Variance Gamma jump component.
      */
@@ -134,10 +143,13 @@ public class VarianceGammaJumpComponent extends AbstractStateIndependentJumpComp
      * {@code (sigma, nu, theta)} parameterization.
      *
      * @param stateVariableIndex Index of the affected state variable.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param sigma The volatility parameter of the Variance Gamma model.
-     * @param nu The variance-of-time-change parameter of the Variance Gamma model.
+     * @param nu The variance-of-time-change parameter of the Variance Gamma
+     *     model.
      * @param theta The asymmetry parameter of the Variance Gamma model.
      * @return The corresponding Variance Gamma jump component.
      */

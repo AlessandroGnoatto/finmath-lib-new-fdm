@@ -12,8 +12,9 @@ import net.finmath.time.TimeDiscretization;
  * </p>
  *
  * <ul>
- *   <li>{@code double[]} for one time slice, indexed by flattened spatial index,</li>
- *   <li>{@code double[][]} for full value surfaces, indexed by flattened spatial
+ * <li>{@code double[]} for one time slice, indexed by flattened spatial
+ * index,</li>
+ * <li>{@code double[][]} for full value surfaces, indexed by flattened spatial
  *       index and solver time index.</li>
  * </ul>
  *
@@ -34,7 +35,8 @@ public final class FiniteDifferenceValueInterpolator {
      * Interpolates a value vector at a spatial coordinate.
      *
      * @param values The value vector indexed by flattened spatial index.
-     * @param discretization The space-time discretization defining the spatial grids.
+     * @param discretization The space-time discretization defining the spatial
+     *     grids.
      * @param coordinates The spatial coordinates.
      * @return The interpolated value.
      */
@@ -88,7 +90,8 @@ public final class FiniteDifferenceValueInterpolator {
     }
 
     /**
-     * Interpolates a value surface at an evaluation time and spatial coordinate.
+     * Interpolates a value surface at an evaluation time and spatial
+     * coordinate.
      *
      * <p>
      * The method converts the calendar evaluation time to solver backward time
@@ -96,7 +99,8 @@ public final class FiniteDifferenceValueInterpolator {
      * time index is used.
      * </p>
      *
-     * @param values The value surface indexed by flattened spatial index and time index.
+     * @param values The value surface indexed by flattened spatial index and
+     *     time index.
      * @param discretization The space-time discretization.
      * @param evaluationTime The evaluation time.
      * @param maturity The product maturity.
@@ -121,9 +125,11 @@ public final class FiniteDifferenceValueInterpolator {
     }
 
     /**
-     * Interpolates a value surface at a given solver time index and spatial coordinate.
+     * Interpolates a value surface at a given solver time index and spatial
+     * coordinate.
      *
-     * @param values The value surface indexed by flattened spatial index and time index.
+     * @param values The value surface indexed by flattened spatial index and
+     *     time index.
      * @param discretization The space-time discretization.
      * @param timeIndex The solver time index.
      * @param coordinates The spatial coordinates.
@@ -142,7 +148,8 @@ public final class FiniteDifferenceValueInterpolator {
     /**
      * Extracts a value vector at an evaluation time.
      *
-     * @param values The value surface indexed by flattened spatial index and time index.
+     * @param values The value surface indexed by flattened spatial index and
+     *     time index.
      * @param discretization The space-time discretization.
      * @param evaluationTime The evaluation time.
      * @param maturity The product maturity.
@@ -167,7 +174,8 @@ public final class FiniteDifferenceValueInterpolator {
     /**
      * Extracts a value vector at a solver time index.
      *
-     * @param values The value surface indexed by flattened spatial index and time index.
+     * @param values The value surface indexed by flattened spatial index and
+     *     time index.
      * @param discretization The space-time discretization.
      * @param timeIndex The solver time index.
      * @return The value vector at the requested time index.

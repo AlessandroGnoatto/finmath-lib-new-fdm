@@ -42,7 +42,8 @@ public final class ThetaMethod1DAssembly {
      * deterministic-rate equity case.
      *
      * <p>
-     * This compatibility container is still useful for jump and two-state equity
+     * This compatibility container is still useful for jump and two-state
+     * equity
      * solvers, where the discounting term is spatially constant.
      * </p>
      */
@@ -128,10 +129,12 @@ public final class ThetaMethod1DAssembly {
     }
 
     /**
-     * Compatibility method for equity-only solvers with deterministic discounting.
+     * Compatibility method for equity-only solvers with deterministic
+     * discounting.
      *
      * <p>
-     * Evaluates the one-dimensional drift, variance, and scalar short rate on the
+     * Evaluates the one-dimensional drift, variance, and scalar short rate on
+     * the
      * supplied grid at one time.
      * </p>
      *
@@ -169,7 +172,8 @@ public final class ThetaMethod1DAssembly {
     }
 
     /**
-     * Compatibility method for equity-only solvers with deterministic discounting.
+     * Compatibility method for equity-only solvers with deterministic
+     * discounting.
      *
      * <p>
      * Computes the continuously compounded short rate implied by the model
@@ -237,7 +241,8 @@ public final class ThetaMethod1DAssembly {
      * @param xGrid The one-dimensional state grid.
      * @param drift The drift values on the grid.
      * @param variance The variance values on the grid.
-     * @param localDiscountRate The local reaction / discount coefficients on the grid.
+     * @param localDiscountRate The local reaction / discount coefficients on
+     *     the grid.
      * @param deltaTau The time step size.
      * @param theta The theta parameter.
      */
@@ -271,7 +276,8 @@ public final class ThetaMethod1DAssembly {
      * Compatibility overload for deterministic-rate solvers.
      *
      * <p>
-     * Builds the right-hand side operator for the theta step using a scalar short
+     * Builds the right-hand side operator for the theta step using a scalar
+     * short
      * rate.
      * </p>
      *
@@ -319,7 +325,8 @@ public final class ThetaMethod1DAssembly {
      * @param xGrid The one-dimensional state grid.
      * @param drift The drift values on the grid.
      * @param variance The variance values on the grid.
-     * @param localDiscountRate The local reaction / discount coefficients on the grid.
+     * @param localDiscountRate The local reaction / discount coefficients on
+     *     the grid.
      * @param deltaTau The time step size.
      * @param theta The theta parameter.
      */

@@ -44,9 +44,11 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * where {@code A0} contains the mixed derivative term together with discounting,
+ * where {@code A0} contains the mixed derivative term together with
+ * discounting,
  * while {@code A1} and {@code A2} contain the first- and second-asset drift and
- * diffusion terms, respectively. The ADI splitting and line solves are inherited
+ * diffusion terms, respectively. The ADI splitting and line solves are
+ * inherited
  * from {@link AbstractADI2D}.
  * </p>
  *
@@ -61,7 +63,8 @@ import net.finmath.modelling.Exercise;
 public class FDMMultiAssetBlackScholesADI2D extends AbstractADI2D {
 
     /**
-     * Creates the ADI solver for the two-dimensional multi-asset Black-Scholes PDE.
+     * Creates the ADI solver for the two-dimensional multi-asset Black-Scholes
+     * PDE.
      *
      * @param model The multi-asset Black-Scholes finite-difference model.
      * @param product The product to be valued.

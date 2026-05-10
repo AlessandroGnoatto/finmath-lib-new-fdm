@@ -20,7 +20,8 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Generic two-dimensional alternating direction implicit finite-difference solver.
+ * Generic two-dimensional alternating direction implicit finite-difference
+ * solver.
  *
  * <p>
  * The solver acts on a two-dimensional state vector
@@ -42,17 +43,25 @@ import net.finmath.modelling.Exercise;
  * where the operator is split into:
  * </p>
  * <ul>
- *   <li><i>\mathcal{A}_0</i>: mixed derivative term together with discounting, treated explicitly,</li>
- *   <li><i>\mathcal{A}_1</i>: first-direction drift and diffusion terms, treated implicitly,</li>
- *   <li><i>\mathcal{A}_2</i>: second-direction drift and diffusion terms, treated implicitly.</li>
+ * <li><i>\mathcal{A}_0</i>: mixed derivative term together with discounting,
+ * treated explicitly,</li>
+ * <li><i>\mathcal{A}_1</i>: first-direction drift and diffusion terms, treated
+ * implicitly,</li>
+ * <li><i>\mathcal{A}_2</i>: second-direction drift and diffusion terms, treated
+ * implicitly.</li>
  * </ul>
  *
  * <p>
- * The time stepping uses a stabilized Douglas-type ADI splitting. For a time step
- * <i>\Delta t</i>, the algorithm first forms an explicit predictor and then performs
- * successive implicit solves along the two spatial directions. To improve numerical
- * stability, the implementation applies two half Douglas steps. This yields a scheme
- * which is efficient for two-dimensional problems since each implicit stage reduces to
+ * The time stepping uses a stabilized Douglas-type ADI splitting. For a time
+ * step
+ * <i>\Delta t</i>, the algorithm first forms an explicit predictor and then
+ * performs
+ * successive implicit solves along the two spatial directions. To improve
+ * numerical
+ * stability, the implementation applies two half Douglas steps. This yields a
+ * scheme
+ * which is efficient for two-dimensional problems since each implicit stage
+ * reduces to
  * a collection of tridiagonal linear systems along grid lines.
  * </p>
  *
@@ -63,8 +72,10 @@ import net.finmath.modelling.Exercise;
  * k = i0 + i1 * n0
  * </pre>
  * <p>
- * where <i>i0</i> is the index in the first spatial direction and <i>i1</i> is the
- * index in the second spatial direction. Hence the first state direction is stored as
+ * where <i>i0</i> is the index in the first spatial direction and <i>i1</i> is
+ * the
+ * index in the second spatial direction. Hence the first state direction is
+ * stored as
  * the fastest varying index.
  * </p>
  *
@@ -73,7 +84,7 @@ import net.finmath.modelling.Exercise;
  * </p>
  * <ul>
  *   <li>terminal conditions depending on one or two state variables,</li>
- *   <li>discrete exercise obstacles for Bermudan or American-style problems,</li>
+ * <li>discrete exercise obstacles for Bermudan or American-style problems,</li>
  *   <li>continuous obstacles applied after each backward step,</li>
  *   <li>internal state constraints supplied by the product,</li>
  *   <li>vector-level equity event conditions at prescribed event times,</li>
@@ -90,10 +101,12 @@ public abstract class AbstractADI2D implements FDMSolver {
     private static final double EVENT_TIME_TOLERANCE = 1E-12;
 
     /**
-     * Functional interface for payoffs or obstacles depending on time and two state variables.
+     * Functional interface for payoffs or obstacles depending on time and two
+     * state variables.
      *
      * <p>
-     * The three arguments are interpreted as running time and the two spatial coordinates.
+     * The three arguments are interpreted as running time and the two spatial
+     * coordinates.
      * This is useful for early-exercise values depending explicitly on time.
      * </p>
      */
@@ -199,7 +212,8 @@ public abstract class AbstractADI2D implements FDMSolver {
     }
 
     /**
-     * Returns the full value surface for a terminal payoff depending on the first state variable.
+     * Returns the full value surface for a terminal payoff depending on the
+     * first state variable.
      *
      * @param time Maturity time.
      * @param valueAtMaturity Terminal payoff.
@@ -243,7 +257,8 @@ public abstract class AbstractADI2D implements FDMSolver {
     }
 
     /**
-     * Returns the values at a given evaluation time under a continuous obstacle.
+     * Returns the values at a given evaluation time under a continuous
+     * obstacle.
      *
      * @param evaluationTime Evaluation time.
      * @param time Maturity time.
@@ -343,7 +358,8 @@ public abstract class AbstractADI2D implements FDMSolver {
     }
 
     /**
-     * Returns the values at the specified evaluation time for a one-dimensional terminal payoff.
+     * Returns the values at the specified evaluation time for a one-dimensional
+     * terminal payoff.
      *
      * @param evaluationTime Evaluation time.
      * @param time Maturity time.
@@ -363,7 +379,8 @@ public abstract class AbstractADI2D implements FDMSolver {
     }
 
     /**
-     * Returns the values at the specified evaluation time for a two-dimensional terminal payoff.
+     * Returns the values at the specified evaluation time for a two-dimensional
+     * terminal payoff.
      *
      * @param evaluationTime Evaluation time.
      * @param time Maturity time.
@@ -382,7 +399,8 @@ public abstract class AbstractADI2D implements FDMSolver {
     }
 
     /**
-     * Returns the values at the specified evaluation time under a discrete exercise obstacle.
+     * Returns the values at the specified evaluation time under a discrete
+     * exercise obstacle.
      *
      * @param evaluationTime Evaluation time.
      * @param time Maturity time.
@@ -403,7 +421,8 @@ public abstract class AbstractADI2D implements FDMSolver {
     }
 
     /**
-     * Performs one stabilized Douglas time step by splitting it into two half steps.
+     * Performs one stabilized Douglas time step by splitting it into two half
+     * steps.
      *
      * @param u Current solution vector.
      * @param currentTime Current running time.

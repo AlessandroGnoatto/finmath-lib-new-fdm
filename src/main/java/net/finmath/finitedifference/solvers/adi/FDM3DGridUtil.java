@@ -1,7 +1,8 @@
 package net.finmath.finitedifference.solvers.adi;
 
 /**
- * Utility methods for indexing and boundary handling on a three-dimensional grid.
+ * Utility methods for indexing and boundary handling on a three-dimensional
+ * grid.
  *
  * <p>
  * The flattening convention is

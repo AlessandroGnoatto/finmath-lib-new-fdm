@@ -31,7 +31,8 @@ import net.finmath.time.TimeDiscretization;
  *
  * <p>
  * Backward compatibility:
- * The legacy constructors keep their original meaning and create a fixed-strike call.
+ * The legacy constructors keep their original meaning and create a fixed-strike
+ * call.
  * </p>
  */
 public class AsianOption extends AbstractAssetMonteCarloProduct {
@@ -68,7 +69,8 @@ public class AsianOption extends AbstractAssetMonteCarloProduct {
      * @param maturity The maturity T.
      * @param strike The strike K.
      * @param timesForAveraging The times t_i used in the calculation of A(T).
-     * @param underlyingIndex The index of the asset S to be fetched from the model.
+     * @param underlyingIndex The index of the asset S to be fetched from the
+     *     model.
      */
     public AsianOption(
             final double maturity,
@@ -136,10 +138,12 @@ public class AsianOption extends AbstractAssetMonteCarloProduct {
     /**
      * General constructor for Asian options.
      *
-     * For floating-strike options, strike is ignored and may be set to Double.NaN.
+     * For floating-strike options, strike is ignored and may be set to
+     * Double.NaN.
      *
      * @param maturity The maturity T.
-     * @param strike The strike K for fixed-strike options. Ignored for floating-strike options.
+     * @param strike The strike K for fixed-strike options. Ignored for
+     *     floating-strike options.
      * @param timesForAveraging The averaging times.
      * @param underlyingIndex The underlying index.
      * @param callOrPut Call or put.
@@ -178,10 +182,12 @@ public class AsianOption extends AbstractAssetMonteCarloProduct {
     /**
      * General constructor for Asian options.
      *
-     * For floating-strike options, strike is ignored and may be set to Double.NaN.
+     * For floating-strike options, strike is ignored and may be set to
+     * Double.NaN.
      *
      * @param maturity The maturity T.
-     * @param strike The strike K for fixed-strike options. Ignored for floating-strike options.
+     * @param strike The strike K for fixed-strike options. Ignored for
+     *     floating-strike options.
      * @param timesForAveraging The averaging times.
      * @param callOrPut Call or put.
      * @param asianStrike Fixed or floating strike.

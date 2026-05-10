@@ -19,7 +19,7 @@ import net.finmath.finitedifference.interestrate.products.Swaption.ResolvedExerc
  * The guiding asymptotics are:
  * </p>
  * <ul>
- *   <li>on the deep out-of-the-money side, the swaption value tends to zero,</li>
+ * <li>on the deep out-of-the-money side, the swaption value tends to zero,</li>
  *   <li>on the deep in-the-money side, the swaption value approaches the
  *       intrinsic value envelope over the remaining admissible exercise
  *       opportunities.</li>

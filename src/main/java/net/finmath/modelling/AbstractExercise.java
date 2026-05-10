@@ -59,7 +59,8 @@ public abstract class AbstractExercise implements Exercise {
     }
 
     /**
-     * Helper to test whether a time coincides with one of the scheduled exercise times.
+     * Helper to test whether a time coincides with one of the scheduled
+     * exercise times.
      *
      * @param time The running time.
      * @return True if the time matches one of the scheduled exercise times.

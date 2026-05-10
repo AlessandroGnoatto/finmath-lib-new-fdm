@@ -4,7 +4,8 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
  * Jump component for the Merton jump-diffusion model.
  *
  * <p>
- * The jump part acts on one selected state variable through multiplicative jumps
+ * The jump part acts on one selected state variable through multiplicative
+ * jumps
  * of the form
  * </p>
  *
@@ -53,8 +54,10 @@ public class MertonJumpComponent extends AbstractStateIndependentJumpComponent {
     /**
      * Creates a Merton jump component acting on the first state variable.
      *
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param intensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.
@@ -72,8 +75,10 @@ public class MertonJumpComponent extends AbstractStateIndependentJumpComponent {
      * Creates a Merton jump component.
      *
      * @param stateVariableIndex Index of the affected state variable.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
      * @param intensity Jump intensity.
      * @param jumpMean Mean of the log-jump size.
      * @param jumpStdDev Standard deviation of the log-jump size.

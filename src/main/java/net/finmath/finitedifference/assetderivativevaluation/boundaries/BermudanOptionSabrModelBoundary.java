@@ -8,7 +8,8 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link BermudanOption} under the {@link FDMSabrModel}.
+ * Boundary conditions for {@link BermudanOption} under the {@link
+ * FDMSabrModel}.
  *
  * <p>
  * State variables are assumed to be (S, alpha), where S is the asset level and

@@ -24,7 +24,8 @@ import net.finmath.modelling.Exercise;
  * </p>
  *
  * <p>
- * For a one-dimensional state variable {@code x}, the jump term is interpreted as
+ * For a one-dimensional state variable {@code x}, the jump term is interpreted
+ * as
  * </p>
  *
  * <pre>
@@ -50,7 +51,7 @@ import net.finmath.modelling.Exercise;
  *   <li>one-dimensional space grids only,</li>
  *   <li>jumps acting on state variable index {@code 0},</li>
  *   <li>explicit treatment of the jump operator,</li>
- *   <li>linear interpolation with constant extrapolation for shifted values.</li>
+ * <li>linear interpolation with constant extrapolation for shifted values.</li>
  * </ul>
  *
  * @author Alessandro Gnoatto
@@ -84,10 +85,12 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     private final int quadraturePointsPerSide;
 
     /**
-     * Creates a one-dimensional theta-method PIDE solver with explicit jump term.
+     * Creates a one-dimensional theta-method PIDE solver with explicit jump
+     * term.
      *
      * <p>
-     * This constructor uses a default number of quadrature cells on each side of
+     * This constructor uses a default number of quadrature cells on each side
+     * of
      * zero for the evaluation of the jump integral.
      * </p>
      *
@@ -111,10 +114,12 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Creates a one-dimensional theta-method PIDE solver with explicit jump term.
+     * Creates a one-dimensional theta-method PIDE solver with explicit jump
+     * term.
      *
      * <p>
-     * The local operator is handled implicitly through the theta method, while the
+     * The local operator is handled implicitly through the theta method, while
+     * the
      * jump contribution is evaluated explicitly by numerical quadrature.
      * </p>
      *
@@ -122,7 +127,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
      * @param product The product to be valued.
      * @param spaceTimeDiscretization The space-time discretization.
      * @param exercise The exercise specification.
-     * @param quadraturePointsPerSide Number of quadrature cells used on each side
+     * @param quadraturePointsPerSide Number of quadrature cells used on each
+     *     side
      *        of zero for the numerical evaluation of the jump integral.
      */
     public FDMThetaMethod1DJump(
@@ -192,7 +198,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Returns the solution at a given evaluation time for a payoff specified as a
+     * Returns the solution at a given evaluation time for a payoff specified as
+     * a
      * terminal value function.
      *
      * @param evaluationTime The time at which the solution is requested.
@@ -211,7 +218,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Returns the full space-time solution for terminal values already sampled on
+     * Returns the full space-time solution for terminal values already sampled
+     * on
      * the spatial grid.
      *
      * @param time The maturity time.
@@ -224,7 +232,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Returns the solution at a given evaluation time for terminal values already
+     * Returns the solution at a given evaluation time for terminal values
+     * already
      * sampled on the spatial grid.
      *
      * @param evaluationTime The time at which the solution is requested.
@@ -260,7 +269,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Returns the solution at a given evaluation time for a product with discrete
+     * Returns the solution at a given evaluation time for a product with
+     * discrete
      * early exercise opportunities.
      *
      * @param evaluationTime The time at which the solution is requested.
@@ -281,11 +291,13 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Returns the full space-time solution for a problem with a continuous obstacle.
+     * Returns the full space-time solution for a problem with a continuous
+     * obstacle.
      *
      * @param time The maturity time.
      * @param terminalValues The terminal values on the spatial grid.
-     * @param continuousObstacleValue The obstacle as a function of time and state.
+     * @param continuousObstacleValue The obstacle as a function of time and
+     *     state.
      * @return The full space-time solution matrix.
      */
     public double[][] getValues(
@@ -302,7 +314,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
      * @param evaluationTime The time at which the solution is requested.
      * @param time The maturity time.
      * @param terminalValues The terminal values on the spatial grid.
-     * @param continuousObstacleValue The obstacle as a function of time and state.
+     * @param continuousObstacleValue The obstacle as a function of time and
+     *     state.
      * @return The solution vector on the spatial grid at the requested time.
      */
     public double[] getValue(
@@ -344,7 +357,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
      * Core backward solver routine.
      *
      * <p>
-     * Starting from terminal values, this method performs backward time-stepping
+     * Starting from terminal values, this method performs backward time-
+     * stepping
      * with a theta discretization of the local operator and an explicit
      * quadrature-based treatment of the jump term.
      * </p>
@@ -852,7 +866,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
      *
      * @param xGrid The spatial grid.
      * @param boundaryTime The current calendar time.
-     * @param continuousObstacleValue The obstacle as a function of time and state.
+     * @param continuousObstacleValue The obstacle as a function of time and
+     *     state.
      * @param lowerCondition The lower boundary condition.
      * @param upperCondition The upper boundary condition.
      * @return The obstacle vector.
@@ -952,7 +967,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Checks whether an internal state constraint is active at a given time and state.
+     * Checks whether an internal state constraint is active at a given time and
+     * state.
      *
      * @param time The current calendar time.
      * @param x The state value.
@@ -966,7 +982,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
     }
 
     /**
-     * Returns the constrained value associated with an active internal constraint.
+     * Returns the constrained value associated with an active internal
+     * constraint.
      *
      * @param time The current calendar time.
      * @param x The state value.

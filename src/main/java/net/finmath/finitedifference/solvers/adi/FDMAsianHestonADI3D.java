@@ -9,7 +9,8 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
 import net.finmath.modelling.Exercise;
 
 /**
- * Specialized 3D ADI solver for arithmetic Asian options under a lifted Heston state
+ * Specialized 3D ADI solver for arithmetic Asian options under a lifted Heston
+ * state
  * (S, v, I), where
  *
  *   dS_t = mu_S dt + diffusion terms,
@@ -25,7 +26,8 @@ import net.finmath.modelling.Exercise;
  *   A0: discount term and mixed derivative terms (treated explicitly)
  *   A1: S-direction drift and diffusion (treated implicitly)
  *   A2: v-direction drift and diffusion (treated implicitly)
- *   A3: I-direction transport S * u_I (treated with a specialized implicit upwind solve)
+ * A3: I-direction transport S * u_I (treated with a specialized implicit upwind
+ * solve)
  *
  * There is:
  * - no diffusion in the I direction
@@ -219,7 +221,8 @@ public class FDMAsianHestonADI3D extends AbstractADI3D {
                 }
 
                 /*
-                 * Last row: default identity, then overwrite only if upper I boundary is Dirichlet.
+                 * Last row: default identity, then overwrite only if upper I
+                 * boundary is Dirichlet.
                  */
                 m.lower[n2 - 1] = 0.0;
                 m.diag[n2 - 1] = 1.0;
@@ -240,7 +243,8 @@ public class FDMAsianHestonADI3D extends AbstractADI3D {
 
                 /*
                  * Lower I boundary: overwrite only if explicitly Dirichlet.
-                 * For Asian options this is typically NONE, so row 0 remains a PDE row.
+                 * For Asian options this is typically NONE, so row 0 remains a
+                 * PDE row.
                  */
                 final BoundaryCondition[] lowerConditions =
                         model.getBoundaryConditionsAtLowerBoundary(product, time, x0Grid[i0], x1Grid[i1], x2Grid[0]);

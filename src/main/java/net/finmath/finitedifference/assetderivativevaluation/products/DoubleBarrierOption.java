@@ -31,11 +31,13 @@ import net.finmath.modelling.products.MonitoringType;
 import net.finmath.time.TimeDiscretization;
 
 /**
- * Finite-difference valuation of a continuously monitored vanilla double-barrier option.
+ * Finite-difference valuation of a continuously monitored vanilla double-
+ * barrier option.
  *
  * <p>
  * The product is defined by a strike <i>K</i>, lower and upper barriers
- * <i>L &lt; U</i>, maturity <i>T</i>, and a call/put sign. Let <i>S(t)</i> denote the
+ * <i>L &lt; U</i>, maturity <i>T</i>, and a call/put sign. Let <i>S(t)</i>
+ * denote the
  * underlying. The alive region is the open band
  * </p>
  *
@@ -44,8 +46,10 @@ import net.finmath.time.TimeDiscretization;
  * </p>
  *
  * <p>
- * For a knock-out contract, the option survives only as long as the path remains inside
- * the band. For a knock-in contract, the option becomes active once the path hits either
+ * For a knock-out contract, the option survives only as long as the path
+ * remains inside
+ * the band. For a knock-in contract, the option becomes active once the path
+ * hits either
  * barrier. Writing
  * </p>
  *
@@ -74,39 +78,52 @@ import net.finmath.time.TimeDiscretization;
  * </p>
  * <ul>
  *   <li>vanilla call / put payoffs,</li>
- *   <li>{@link DoubleBarrierType#KNOCK_OUT} and {@link DoubleBarrierType#KNOCK_IN},</li>
+ * <li>{@link DoubleBarrierType#KNOCK_OUT} and {@link
+ * DoubleBarrierType#KNOCK_IN},</li>
  *   <li>European, Bermudan, and American exercise,</li>
  *   <li>one-dimensional models,</li>
  *   <li>two-dimensional Heston and SABR models.</li>
  * </ul>
  *
  * <p>
- * The knock-out case is priced directly by imposing an internal-state constraint outside
- * the alive band. The knock-in case is priced directly without parity decomposition:
+ * The knock-out case is priced directly by imposing an internal-state
+ * constraint outside
+ * the alive band. The knock-in case is priced directly without parity
+ * decomposition:
  * </p>
  * <ul>
  *   <li>outside the alive band, the option is already activated and equals the
  *       corresponding vanilla value,</li>
  *   <li>inside the alive band, a pre-hit PDE is solved on the band
- *       <i>(L,U)</i> with time-dependent Dirichlet boundary data taken from the activated
+ * <i>(L,U)</i> with time-dependent Dirichlet boundary data taken from the
+ * activated
  *       vanilla branch at the two barriers,</li>
- *   <li>for Bermudan and American exercise, the obstacle is applied only in the activated
- *       vanilla branch, while the pre-hit branch remains a pure continuation problem up to
+ * <li>for Bermudan and American exercise, the obstacle is applied only in the
+ * activated
+ * vanilla branch, while the pre-hit branch remains a pure continuation problem
+ * up to
  *       barrier activation.</li>
  * </ul>
  *
  * <p>
- * In the one-dimensional case this leads to a PDE on the truncated spatial interval
- * <i>(L,U)</i>. In the two-dimensional case the same idea is applied while preserving the
- * second state-variable grid and imposing barrier traces that depend on time and on the
+ * In the one-dimensional case this leads to a PDE on the truncated spatial
+ * interval
+ * <i>(L,U)</i>. In the two-dimensional case the same idea is applied while
+ * preserving the
+ * second state-variable grid and imposing barrier traces that depend on time
+ * and on the
  * second state variable.
  * </p>
  *
  * <p>
- * For discrete monitoring, barrier activation / knock-out is applied only at the supplied
- * monitoring dates via event conditions. In the discretely monitored knock-in case, the
- * activated branch is the true vanilla branch with the product exercise style, while the
- * pre-hit branch is solved as a European continuation problem between monitoring dates.
+ * For discrete monitoring, barrier activation / knock-out is applied only at
+ * the supplied
+ * monitoring dates via event conditions. In the discretely monitored knock-in
+ * case, the
+ * activated branch is the true vanilla branch with the product exercise style,
+ * while the
+ * pre-hit branch is solved as a European continuation problem between
+ * monitoring dates.
  * </p>
  *
  * @author Alessandro Gnoatto
@@ -435,7 +452,8 @@ public class DoubleBarrierOption implements
      * @param strike Option strike.
      * @param lowerBarrier Lower barrier.
      * @param upperBarrier Upper barrier.
-     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0}
+     *     for put.
      * @param doubleBarrierType Double-barrier type.
      */
     public DoubleBarrierOption(
@@ -464,7 +482,8 @@ public class DoubleBarrierOption implements
      * @param strike Option strike.
      * @param lowerBarrier Lower barrier.
      * @param upperBarrier Upper barrier.
-     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0}
+     *     for put.
      * @param doubleBarrierType Double-barrier type.
      * @param monitoringType Monitoring type.
      * @param monitoringTimes Monitoring times for discrete monitoring.
@@ -500,7 +519,8 @@ public class DoubleBarrierOption implements
      * @param strike Option strike.
      * @param lowerBarrier Lower barrier.
      * @param upperBarrier Upper barrier.
-     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0}
+     *     for put.
      * @param doubleBarrierType Double-barrier type.
      * @param exercise Exercise specification.
      */
@@ -533,7 +553,8 @@ public class DoubleBarrierOption implements
      * @param strike Option strike.
      * @param lowerBarrier Lower barrier.
      * @param upperBarrier Upper barrier.
-     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0} for put.
+     * @param callOrPutSign Numeric sign, {@code 1.0} for call and {@code -1.0}
+     *     for put.
      * @param doubleBarrierType Double-barrier type.
      * @param exercise Exercise specification.
      * @param monitoringType Monitoring type.
@@ -664,7 +685,8 @@ public class DoubleBarrierOption implements
     }
 
     /**
-     * Returns the values at the specified evaluation time on the model space grid.
+     * Returns the values at the specified evaluation time on the model space
+     * grid.
      *
      * @param evaluationTime Evaluation time.
      * @param model The finite-difference model.
@@ -906,7 +928,8 @@ public class DoubleBarrierOption implements
         final double[][] preHitValues = preHitSolver.getValues(maturity, zeroTerminal);
 
         /*
-         * Step 4: interpolate both branches back to the original grid and stitch.
+         * Step 4: interpolate both branches back to the original grid and
+         * stitch.
          */
         return assembleDirectKnockInSurface1D(
                 model,
@@ -956,7 +979,8 @@ public class DoubleBarrierOption implements
         final double[][] activatedValues = activatedProduct.getValues(activatedModel);
 
         /*
-         * Step 2: lower / upper barrier traces depending on second state variable.
+         * Step 2: lower / upper barrier traces depending on second state
+         * variable.
          */
         final DoubleBarrierTrace2D lowerTrace = extractActivatedBoundaryTrace2D(
                 activatedModel,
@@ -989,7 +1013,8 @@ public class DoubleBarrierOption implements
         final double[][] preHitValues = preHitSolver.getValues(maturity, assetValue -> 0.0);
 
         /*
-         * Step 4: interpolate both branches back to the original grid and stitch.
+         * Step 4: interpolate both branches back to the original grid and
+         * stitch.
          */
         return assembleDirectKnockInSurface2D(
                 model,
@@ -2341,7 +2366,8 @@ public class DoubleBarrierOption implements
 
             /*
              * First state variable = spot boundary at lower barrier.
-             * Second state variable boundary stays whatever the original Heston model/product boundary provides.
+             * Second state variable boundary stays whatever the original Heston
+             * model/product boundary provides.
              */
             result[0] = StandardBoundaryCondition.dirichlet(
                     lowerTrace.getBoundaryValue(time, secondState)
@@ -2365,7 +2391,8 @@ public class DoubleBarrierOption implements
 
             /*
              * First state variable = spot boundary at upper barrier.
-             * Second state variable boundary stays whatever the original Heston model/product boundary provides.
+             * Second state variable boundary stays whatever the original Heston
+             * model/product boundary provides.
              */
             result[0] = StandardBoundaryCondition.dirichlet(
                     upperTrace.getBoundaryValue(time, secondState)
@@ -2463,7 +2490,8 @@ public class DoubleBarrierOption implements
 
             /*
              * First state variable = spot boundary at lower barrier.
-             * Second state variable boundary stays whatever the original SABR model/product boundary provides.
+             * Second state variable boundary stays whatever the original SABR
+             * model/product boundary provides.
              */
             result[0] = StandardBoundaryCondition.dirichlet(
                     lowerTrace.getBoundaryValue(time, secondState)
@@ -2487,7 +2515,8 @@ public class DoubleBarrierOption implements
 
             /*
              * First state variable = spot boundary at upper barrier.
-             * Second state variable boundary stays whatever the original SABR model/product boundary provides.
+             * Second state variable boundary stays whatever the original SABR
+             * model/product boundary provides.
              */
             result[0] = StandardBoundaryCondition.dirichlet(
                     upperTrace.getBoundaryValue(time, secondState)

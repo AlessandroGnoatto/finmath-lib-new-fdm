@@ -21,13 +21,15 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * Fixed-strike generalized swing option.
  *
  * <p>
- * A swing option is a multiple-exercise contract with volume constraints. At each
+ * A swing option is a multiple-exercise contract with volume constraints. At
+ * each
  * decision time <i>t<sub>i</sub></i>, the holder chooses an exercised quantity
  * <i>q<sub>i</sub></i> subject to local bounds
  * </p>
  *
  * <p>
- * <i>q<sub>i</sub> &isin; [q<sub>i</sub><sup>min</sup>, q<sub>i</sub><sup>max</sup>]</i>,
+ * <i>q<sub>i</sub> &isin; [q<sub>i</sub><sup>min</sup>,
+ * q<sub>i</sub><sup>max</sup>]</i>,
  * </p>
  *
  * <p>
@@ -35,11 +37,13 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * </p>
  *
  * <p>
- * <i>Q<sup>min</sup> &le; &sum;<sub>i=0</sub><sup>n-1</sup> q<sub>i</sub> &le; Q<sup>max</sup></i>.
+ * <i>Q<sup>min</sup> &le; &sum;<sub>i=0</sub><sup>n-1</sup> q<sub>i</sub> &le;
+ * Q<sup>max</sup></i>.
  * </p>
  *
  * <p>
- * For a fixed strike <i>K</i>, the immediate payoff at decision time <i>t<sub>i</sub></i>
+ * For a fixed strike <i>K</i>, the immediate payoff at decision time
+ * <i>t<sub>i</sub></i>
  * is
  * </p>
  *
@@ -52,11 +56,15 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * </p>
  *
  * <p>
- * The valuation is performed by dynamic programming over an auxiliary state variable
+ * The valuation is performed by dynamic programming over an auxiliary state
+ * variable
  * representing cumulative consumed quantity
- * <i>Q<sub>i</sub> = &sum;<sub>k=0</sub><sup>i-1</sup> q<sub>k</sub></i>. Between
- * decision dates, continuation values are propagated backward by the finite-difference
- * solver of the underlying model. At each decision date the value is obtained from the
+ * <i>Q<sub>i</sub> = &sum;<sub>k=0</sub><sup>i-1</sup> q<sub>k</sub></i>.
+ * Between
+ * decision dates, continuation values are propagated backward by the finite-
+ * difference
+ * solver of the underlying model. At each decision date the value is obtained
+ * from the
  * Bellman step
  * </p>
  *
@@ -66,18 +74,24 @@ import net.finmath.time.TimeDiscretizationFromArray;
  * </p>
  *
  * <p>
- * where <i>A(i,Q)</i> denotes the admissible set induced by local and global quantity
+ * where <i>A(i,Q)</i> denotes the admissible set induced by local and global
+ * quantity
  * constraints.
  * </p>
  *
  * <p>
- * The quantity control may be either bang-bang, where only local extrema are admissible,
+ * The quantity control may be either bang-bang, where only local extrema are
+ * admissible,
  * or based on a discretized quantity grid. The implementation supports one- and
- * two-dimensional finite-difference equity models. Since cumulative consumed quantity is
- * an additional path state not contained in the model space grid, a full value surface
+ * two-dimensional finite-difference equity models. Since cumulative consumed
+ * quantity is
+ * an additional path state not contained in the model space grid, a full value
+ * surface
  * independent of this state is not well defined. Therefore
- * {@link #getValues(FiniteDifferenceEquityModel)} is intentionally unsupported in this
- * implementation, while {@link #getValue(double, FiniteDifferenceEquityModel)} is
+ * {@link #getValues(FiniteDifferenceEquityModel)} is intentionally unsupported
+ * in this
+ * implementation, while {@link #getValue(double, FiniteDifferenceEquityModel)}
+ * is
  * provided at evaluation time 0.
  * </p>
  *
@@ -278,7 +292,8 @@ public class SwingOption implements FiniteDifferenceEquityProduct {
     }
 
     /**
-     * Creates a generalized swing option with anonymous underlying and time-homogeneous
+     * Creates a generalized swing option with anonymous underlying and time-
+     * homogeneous
      * local bounds.
      *
      * @param decisionTimes Exercise decision times.
@@ -320,8 +335,10 @@ public class SwingOption implements FiniteDifferenceEquityProduct {
      * Returns the value at the given evaluation time.
      *
      * <p>
-     * In this implementation only evaluation time 0 is supported, since for later
-     * times the cumulative consumed quantity would have to be supplied explicitly.
+     * In this implementation only evaluation time 0 is supported, since for
+     * later
+     * times the cumulative consumed quantity would have to be supplied
+     * explicitly.
      * </p>
      *
      * @param evaluationTime Evaluation time.
@@ -406,7 +423,8 @@ public class SwingOption implements FiniteDifferenceEquityProduct {
      * Returns the full value surface.
      *
      * <p>
-     * This operation is intentionally unsupported, since the contract value depends on
+     * This operation is intentionally unsupported, since the contract value
+     * depends on
      * the additional cumulative-quantity state.
      * </p>
      *

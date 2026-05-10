@@ -12,25 +12,31 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
 import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
 
 /**
- * Finite difference model for option pricing under the Heston stochastic volatility model.
+ * Finite difference model for option pricing under the Heston stochastic
+ * volatility model.
  *
  * <p>
- * State variables are {@code (S, v)} where {@code S} is the spot and {@code v} is the
+ * State variables are {@code (S, v)} where {@code S} is the spot and {@code v}
+ * is the
  * instantaneous variance.
  * </p>
  *
  * <p>
- * The methods {@link #getDrift(double, double...)} and {@link #getFactorLoading(double, double...)}
+ * The methods {@link #getDrift(double, double...)} and {@link
+ * #getFactorLoading(double, double...)}
  * follow the conventions used in {@link FiniteDifferenceEquityModel}:
  * </p>
  * <ul>
- *   <li>{@code getDrift} returns the vector of drifts for the state variables.</li>
- *   <li>{@code getFactorLoading} returns the matrix of factor loadings (here 2 factors), producing
+ * <li>{@code getDrift} returns the vector of drifts for the state
+ * variables.</li>
+ * <li>{@code getFactorLoading} returns the matrix of factor loadings (here 2
+ * factors), producing
  *       the correct covariance with correlation {@code rho}.</li>
  * </ul>
  *
  * <p>
- * Boundary conditions are provided through the {@link FiniteDifferenceBoundary} interface methods,
+ * Boundary conditions are provided through the {@link FiniteDifferenceBoundary}
+ * interface methods,
  * via {@link FDBoundaryFactory}.
  * </p>
  *
@@ -90,8 +96,9 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
      * @param kappa                  Mean reversion speed of variance.
      * @param thetaV                 Long-term mean of variance.
      * @param sigma                  Vol-of-vol parameter.
-     * @param rho                    Correlation between spot and variance Brownian motions.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param rho Correlation between spot and variance Brownian motions.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMHestonModel(
             final double initialSpot,
@@ -118,7 +125,8 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Constructs a Heston finite difference model for option pricing without dividend yield curve
+     * Constructs a Heston finite difference model for option pricing without
+     * dividend yield curve
      * (i.e. dividend yield is assumed to be zero).
      *
      * @param initialSpot            Initial spot price.
@@ -127,8 +135,9 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
      * @param kappa                  Mean reversion speed of variance.
      * @param thetaV                 Long-term mean of variance.
      * @param sigma                  Vol-of-vol parameter.
-     * @param rho                    Correlation between spot and variance Brownian motions.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param rho Correlation between spot and variance Brownian motions.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMHestonModel(
             final double initialSpot,
@@ -169,7 +178,8 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Constructs a Heston finite difference model for option pricing from constant rates.
+     * Constructs a Heston finite difference model for option pricing from
+     * constant rates.
      *
      * @param initialSpot            Initial spot price.
      * @param initialVariance        Initial variance.
@@ -178,8 +188,9 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
      * @param kappa                  Mean reversion speed of variance.
      * @param thetaV                 Long-term mean of variance.
      * @param sigma                  Vol-of-vol parameter.
-     * @param rho                    Correlation between spot and variance Brownian motions.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param rho Correlation between spot and variance Brownian motions.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMHestonModel(
             final double initialSpot,
@@ -231,7 +242,8 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Constructs a Heston finite difference model for option pricing from a constant risk-free
+     * Constructs a Heston finite difference model for option pricing from a
+     * constant risk-free
      * rate and zero dividend yield.
      *
      * @param initialSpot            Initial spot price.
@@ -240,8 +252,9 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
      * @param kappa                  Mean reversion speed of variance.
      * @param thetaV                 Long-term mean of variance.
      * @param sigma                  Vol-of-vol parameter.
-     * @param rho                    Correlation between spot and variance Brownian motions.
-     * @param spaceTimeDiscretization Grid object defining the spatial discretization.
+     * @param rho Correlation between spot and variance Brownian motions.
+     * @param spaceTimeDiscretization Grid object defining the spatial
+     *     discretization.
      */
     public FDMHestonModel(
             final double initialSpot,
@@ -384,7 +397,8 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
 
     @Override
     public double[][] getFactorLoading(final double time, final double... stateVariables) {
-        // Factors are independent. Correlation rho is embedded in the second row.
+        // Factors are independent. Correlation rho is embedded in the second
+        // row.
         final double stock = stateVariables.length > 0 ? stateVariables[0] : initialSpot;
         final double variance = Math.max(0.0, stateVariables.length > 1 ? stateVariables[1] : initialVariance);
         final double sqrtV = Math.sqrt(variance);
@@ -406,7 +420,8 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
     }
 
     /**
-     * Convenience method returning the covariance matrix {@code a = B B^T}, derived from
+     * Convenience method returning the covariance matrix {@code a = B B^T},
+     * derived from
      * {@link #getFactorLoading(double, double...)}.
      *
      * @param time           Evaluation time.

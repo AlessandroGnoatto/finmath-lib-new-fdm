@@ -418,8 +418,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
             /*
              * Keep the current lifted scale policy for now.
-             * Note: for Bachelier, if negative S values are allowed on the base grid,
-             * a more robust iMax policy might be max |S| * T instead of T * sMax.
+             * Note: for Bachelier, if negative S values are allowed on the base
+             * grid,
+             * a more robust iMax policy might be max |S| * T instead of T *
+             * sMax.
              */
             final double iMax = maturity * sMax;
             final int nI = sNodes.length * 4;
@@ -537,7 +539,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
     }
 
     /**
-     * Decorator that lifts a 1D Black-Scholes model to a 2D model with state (S, I),
+     * Decorator that lifts a 1D Black-Scholes model to a 2D model with state
+     * (S, I),
      * where I(t) = integral_0^t S(u) du.
      */
     private static final class LiftedFDMBlackScholesModelDecorator
@@ -907,7 +910,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
     }
 
     /**
-     * Decorator that lifts a 1D Bachelier model to a 2D model with state (S, I),
+     * Decorator that lifts a 1D Bachelier model to a 2D model with state (S,
+     * I),
      * where I(t) = integral_0^t S(u) du.
      */
     private static final class LiftedFDMBachelierModelDecorator
@@ -1270,7 +1274,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
                 /*
                  * Upper I is the inflow boundary for the transport solve.
-                 * For large I the fixed-strike call is deep ITM and the put is asymptotically 0.
+                 * For large I the fixed-strike call is deep ITM and the put is
+                 * asymptotically 0.
                  */
                 result[2] = StandardBoundaryCondition.dirichlet(
                         (callOrPut == CallOrPut.CALL) ? callAsymptoticValue : 0.0);
@@ -1286,7 +1291,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
                 /*
                  * Upper I is the inflow boundary.
-                 * For large I the floating-strike put is deep ITM and the call is asymptotically 0.
+                 * For large I the floating-strike put is deep ITM and the call
+                 * is asymptotically 0.
                  */
                 result[2] = StandardBoundaryCondition.dirichlet(
                         (callOrPut == CallOrPut.CALL) ? 0.0 : putAsymptoticValue);
@@ -1432,7 +1438,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
             /*
              * alpha -> lower boundary:
-             * keep PDE row intact, consistent with current SABR boundary policy.
+             * keep PDE row intact, consistent with current SABR boundary
+             * policy.
              */
             result[1] = StandardBoundaryCondition.none();
 
@@ -1503,8 +1510,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
                 result[1] = StandardBoundaryCondition.none();
 
                 /*
-                 * Upper I boundary is the inflow boundary for the transport solve.
-                 * For large I the fixed-strike call is deep ITM and the put is asymptotically 0.
+                 * Upper I boundary is the inflow boundary for the transport
+                 * solve.
+                 * For large I the fixed-strike call is deep ITM and the put is
+                 * asymptotically 0.
                  */
                 result[2] = StandardBoundaryCondition.dirichlet(
                         (callOrPut == CallOrPut.CALL) ? callAsymptoticValue : 0.0);
@@ -1526,7 +1535,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
                 /*
                  * Upper I boundary is the inflow boundary.
-                 * For large I the floating-strike put is deep ITM and the call is asymptotically 0.
+                 * For large I the floating-strike put is deep ITM and the call
+                 * is asymptotically 0.
                  */
                 result[2] = StandardBoundaryCondition.dirichlet(
                         (callOrPut == CallOrPut.CALL) ? 0.0 : putAsymptoticValue);

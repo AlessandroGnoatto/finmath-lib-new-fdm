@@ -14,7 +14,8 @@ import net.finmath.modelling.products.DigitalPayoffType;
  * {@link FDMHestonModel}.
  *
  * <p>
- * State variables are assumed to be (S, v), where S is the asset level and v the variance.
+ * State variables are assumed to be (S, v), where S is the asset level and v
+ * the variance.
  * The second-state-variable boundaries are left free.
  * </p>
  *

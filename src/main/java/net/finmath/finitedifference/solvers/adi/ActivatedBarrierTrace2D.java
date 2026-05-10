@@ -47,7 +47,8 @@ public final class ActivatedBarrierTrace2D {
      *
      * @param barrierValue The barrier level in the first state variable.
      * @param secondStateGrid The grid of the second state variable.
-     * @param timeGrid The time discretization corresponding to the trace values.
+     * @param timeGrid The time discretization corresponding to the trace
+     *     values.
      * @param values Trace values with layout values[secondIndex][timeIndex].
      */
     public ActivatedBarrierTrace2D(
@@ -135,7 +136,8 @@ public final class ActivatedBarrierTrace2D {
      *
      * <p>
      * If tau lies exactly on a time node, that node value is returned.
-     * Otherwise linear interpolation in time is used between the enclosing nodes.
+     * Otherwise linear interpolation in time is used between the enclosing
+     * nodes.
      * Values outside the grid are clamped to the nearest endpoint.
      * </p>
      *

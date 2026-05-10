@@ -36,7 +36,8 @@ public final class ProductEventStateStack<T> {
      *
      * <p>
      * The returned {@link Scope} closes over the pushed state. Calling
-     * {@link Scope#close()} pops the state again. This allows callers to use the
+     * {@link Scope#close()} pops the state again. This allows callers to use
+     * the
      * following pattern:
      * </p>
      *
@@ -75,7 +76,8 @@ public final class ProductEventStateStack<T> {
      * Pops the current state from the calling thread's stack.
      *
      * <p>
-     * If the stack becomes empty after the pop operation, the thread-local value
+     * If the stack becomes empty after the pop operation, the thread-local
+     * value
      * is removed.
      * </p>
      *
@@ -114,7 +116,8 @@ public final class ProductEventStateStack<T> {
      *
      * <p>
      * Instances are returned by {@link #push(Object)} and are intended for use
-     * with try-with-resources. Closing a scope pops the corresponding state from
+     * with try-with-resources. Closing a scope pops the corresponding state
+     * from
      * the current thread's stack.
      * </p>
      */

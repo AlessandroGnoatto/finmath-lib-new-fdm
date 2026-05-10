@@ -9,7 +9,8 @@ import net.finmath.modelling.products.BarrierType;
 import net.finmath.modelling.products.CallOrPut;
 
 /**
- * Boundary conditions for {@link BarrierOption} under the {@link FDMBlackScholesModel}.
+ * Boundary conditions for {@link BarrierOption} under the {@link
+ * FDMBlackScholesModel}.
  *
  * <p>
  * This class supports the explicit boundary-condition API returning
@@ -24,13 +25,14 @@ import net.finmath.modelling.products.CallOrPut;
  *       boundary is pinned to the rebate.</li>
  *   <li>For knock-in options, the outer boundaries use the corresponding
  *       vanilla Black-Scholes asymptotics.</li>
- *   <li>The barrier is assumed to coincide with one spatial boundary of the grid
+ * <li>The barrier is assumed to coincide with one spatial boundary of the grid
  *       for direct knock-out pricing:
- *       down barriers at the lower boundary, up barriers at the upper boundary.</li>
+ * down barriers at the lower boundary, up barriers at the upper boundary.</li>
  * </ul>
  *
  * <p>
- * In the direct two-state knock-in solver, the activated regime should use these
+ * In the direct two-state knock-in solver, the activated regime should use
+ * these
  * vanilla asymptotic boundaries, while the inactive regime is coupled to the
  * activated regime on the hit set.
  * </p>
@@ -69,7 +71,8 @@ public class BarrierOptionBlackScholesModelBoundary implements FiniteDifferenceB
         final CallOrPut sign = option.getCallOrPut();
 
         /*
-         * For a down-and-out option, the lower boundary is the barrier-side boundary,
+         * For a down-and-out option, the lower boundary is the barrier-side
+         * boundary,
          * so the value is pinned to the rebate (paid at hit).
          *
          * For all other cases, including down-in, use vanilla asymptotics.
@@ -122,7 +125,8 @@ public class BarrierOptionBlackScholesModelBoundary implements FiniteDifferenceB
         final CallOrPut sign = option.getCallOrPut();
 
         /*
-         * For an up-and-out option, the upper boundary is the barrier-side boundary,
+         * For an up-and-out option, the upper boundary is the barrier-side
+         * boundary,
          * so the value is pinned to the rebate (paid at hit).
          *
          * For all other cases, including up-in, use vanilla asymptotics.

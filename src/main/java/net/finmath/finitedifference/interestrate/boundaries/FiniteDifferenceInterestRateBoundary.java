@@ -4,7 +4,8 @@ import net.finmath.finitedifference.boundaries.BoundaryCondition;
 import net.finmath.finitedifference.interestrate.products.FiniteDifferenceInterestRateProduct;
 
 /**
- * Interface for boundary conditions provided to finite-difference interest-rate solvers.
+ * Interface for boundary conditions provided to finite-difference interest-rate
+ * solvers.
  *
  * <p>
  * The returned array is indexed by state-variable dimension.
@@ -19,7 +20,8 @@ public interface FiniteDifferenceInterestRateBoundary {
      *
      * @param product The product being valued.
      * @param time The running time.
-     * @param stateVariables The state variables specifying the boundary location.
+     * @param stateVariables The state variables specifying the boundary
+     *     location.
      * @return The lower-boundary conditions by dimension.
      */
     BoundaryCondition[] getBoundaryConditionsAtLowerBoundary(
@@ -32,7 +34,8 @@ public interface FiniteDifferenceInterestRateBoundary {
      *
      * @param product The product being valued.
      * @param time The running time.
-     * @param stateVariables The state variables specifying the boundary location.
+     * @param stateVariables The state variables specifying the boundary
+     *     location.
      * @return The upper-boundary conditions by dimension.
      */
     BoundaryCondition[] getBoundaryConditionsAtUpperBoundary(

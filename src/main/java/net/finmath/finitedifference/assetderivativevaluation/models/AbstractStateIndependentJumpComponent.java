@@ -4,8 +4,10 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
  * Minimal abstract base class for a state-independent jump component.
  *
  * <p>
- * This class provides boilerplate for jump components whose Levy density does not
- * depend on the current PDE state variables. It is intended as a convenient base
+ * This class provides boilerplate for jump components whose Levy density does
+ * not
+ * depend on the current PDE state variables. It is intended as a convenient
+ * base
  * for models such as Bates and Variance Gamma, where the jump law is typically
  * specified directly in terms of the log-jump size.
  * </p>
@@ -20,14 +22,16 @@ package net.finmath.finitedifference.assetderivativevaluation.models;
  * </pre>
  *
  * <p>
- * where {@code y} denotes the log-relative jump size and {@code x} is the affected
+ * where {@code y} denotes the log-relative jump size and {@code x} is the
+ * affected
  * state variable.
  * </p>
  *
  * <p>
  * The integration bounds returned by this class are interpreted as numerical
  * truncation bounds for the jump variable. For finite-support models they may
- * coincide with the true support; for infinite-support models they are numerical
+ * coincide with the true support; for infinite-support models they are
+ * numerical
  * cutoffs chosen by the implementation.
  * </p>
  *
@@ -59,12 +63,17 @@ public abstract class AbstractStateIndependentJumpComponent implements JumpCompo
     private final boolean finiteVariation;
 
     /**
-     * Creates a state-independent jump component acting on the first state variable.
+     * Creates a state-independent jump component acting on the first state
+     * variable.
      *
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-     * @param finiteActivity {@code true} if the jump measure has finite activity.
-     * @param finiteVariation {@code true} if the jump part has finite variation.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
+     * @param finiteActivity {@code true} if the jump measure has finite
+     *     activity.
+     * @param finiteVariation {@code true} if the jump part has finite
+     *     variation.
      */
     protected AbstractStateIndependentJumpComponent(
             final double lowerIntegrationBound,
@@ -78,10 +87,14 @@ public abstract class AbstractStateIndependentJumpComponent implements JumpCompo
      * Creates a state-independent jump component.
      *
      * @param stateVariableIndex Index of the affected state variable.
-     * @param lowerIntegrationBound Lower integration bound for the log-jump variable.
-     * @param upperIntegrationBound Upper integration bound for the log-jump variable.
-     * @param finiteActivity {@code true} if the jump measure has finite activity.
-     * @param finiteVariation {@code true} if the jump part has finite variation.
+     * @param lowerIntegrationBound Lower integration bound for the log-jump
+     *     variable.
+     * @param upperIntegrationBound Upper integration bound for the log-jump
+     *     variable.
+     * @param finiteActivity {@code true} if the jump measure has finite
+     *     activity.
+     * @param finiteVariation {@code true} if the jump part has finite
+     *     variation.
      */
     protected AbstractStateIndependentJumpComponent(
             final int stateVariableIndex,
@@ -148,7 +161,8 @@ public abstract class AbstractStateIndependentJumpComponent implements JumpCompo
      *
      * <p>
      * Implementations only need to provide the state-independent density
-     * {@code nu(y)}. Dependence on the PDE state variables is intentionally excluded
+     * {@code nu(y)}. Dependence on the PDE state variables is intentionally
+     * excluded
      * from this base class.
      * </p>
      *

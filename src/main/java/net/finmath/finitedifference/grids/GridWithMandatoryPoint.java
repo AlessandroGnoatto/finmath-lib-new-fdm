@@ -81,7 +81,8 @@ public class GridWithMandatoryPoint extends AbstractGrid {
      * Generates the grid.
      *
      * <p>
-     * The mandatory point is assigned an interior node index chosen according to
+     * The mandatory point is assigned an interior node index chosen according
+     * to
      * its relative position inside the interval. The left and right parts are
      * then filled uniformly.
      * </p>

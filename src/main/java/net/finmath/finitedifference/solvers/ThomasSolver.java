@@ -14,10 +14,11 @@ package net.finmath.finitedifference.solvers;
  * </pre>
  * where:
  * <ul>
- *   <li>{@code lower[i]} contains the sub-diagonal entry for row {@code i},</li>
- *   <li>{@code diag[i]} contains the main diagonal entry for row {@code i},</li>
- *   <li>{@code upper[i]} contains the super-diagonal entry for row {@code i},</li>
- *   <li>{@code rhs[i]} contains the right-hand side entry for row {@code i}.</li>
+ * <li>{@code lower[i]} contains the sub-diagonal entry for row {@code i},</li>
+ * <li>{@code diag[i]} contains the main diagonal entry for row {@code i},</li>
+ * <li>{@code upper[i]} contains the super-diagonal entry for row {@code
+ * i},</li>
+ * <li>{@code rhs[i]} contains the right-hand side entry for row {@code i}.</li>
  * </ul>
  * <p>
  * By convention, {@code lower[0]} is unused and may be set to any value, and
@@ -49,13 +50,15 @@ public final class ThomasSolver {
      * Note: The caller must provide arrays of consistent length and a
      * non-singular tridiagonal system.
      *
-     * @param lower The lower diagonal of the system matrix. Entry {@code lower[i]}
-     *         represents the coefficient below the main diagonal in row {@code i}.
+     * @param lower The lower diagonal of the system matrix. Entry {@code
+     *     lower[i]}
+     * represents the coefficient below the main diagonal in row {@code i}.
      * 		The value {@code lower[0]} is not used.
      * @param diag The main diagonal of the system matrix. Entry {@code diag[i]}
      * 		represents the diagonal coefficient in row {@code i}.
-     * @param upper The upper diagonal of the system matrix. Entry {@code upper[i]}
-     * 		represents the coefficient above the main diagonal in row {@code i}.
+     * @param upper The upper diagonal of the system matrix. Entry {@code
+     *     upper[i]}
+     * represents the coefficient above the main diagonal in row {@code i}.
      * 		The value {@code upper[n-1]} is not used in the final row.
      * @param rhs The right-hand side vector of the linear system.
      * @return The solution vector {@code x} satisfying the tridiagonal system.

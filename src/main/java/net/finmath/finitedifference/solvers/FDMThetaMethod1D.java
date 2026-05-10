@@ -25,24 +25,32 @@ import net.finmath.modelling.Exercise;
  * <ul>
  *   <li>pointwise terminal payoff initialization,</li>
  *   <li>direct terminal-vector initialization,</li>
- *   <li>direct terminal-vector initialization with separate pointwise exercise payoff,</li>
- *   <li>direct terminal-vector initialization with a continuous time-dependent obstacle,</li>
- *   <li>vector-level event conditions applied on the value vector at prescribed event times.</li>
+ * <li>direct terminal-vector initialization with separate pointwise exercise
+ * payoff,</li>
+ * <li>direct terminal-vector initialization with a continuous time-dependent
+ * obstacle,</li>
+ * <li>vector-level event conditions applied on the value vector at prescribed
+ * event times.</li>
  * </ul>
  *
  * <p>
- * The third case is useful for Bermudan and American digitals, where the maturity
- * layer should be cell-averaged, while early-exercise projection should remain pointwise.
+ * The third case is useful for Bermudan and American digitals, where the
+ * maturity
+ * layer should be cell-averaged, while early-exercise projection should remain
+ * pointwise.
  * </p>
  *
  * <p>
- * The fourth case is useful for shout-style problems, where the solution is constrained
- * by a time- and state-dependent continuation floor {@code V >= V*(t,x)} at every time step.
+ * The fourth case is useful for shout-style problems, where the solution is
+ * constrained
+ * by a time- and state-dependent continuation floor {@code V >= V*(t,x)} at
+ * every time step.
  * </p>
  *
  * <p>
  * If the product is a {@link FiniteDifferenceInterestRateProduct} or a
- * {@link FiniteDifferenceEquityEventProduct}, then at every event time {@code t}
+ * {@link FiniteDifferenceEquityEventProduct}, then at every event time {@code
+ * t}
  * the solver applies the vector-level jump condition
  * </p>
  *
@@ -131,9 +139,11 @@ public class FDMThetaMethod1D implements FDMSolver {
     }
 
     /**
-     * Creates a theta-method finite-difference solver for a one-dimensional backward PDE.
+     * Creates a theta-method finite-difference solver for a one-dimensional
+     * backward PDE.
      *
-     * @param model The finite-difference equity model providing PDE coefficients and boundary conditions.
+     * @param model The finite-difference equity model providing PDE
+     *     coefficients and boundary conditions.
      * @param product The equity product to be valued.
      * @param spaceTimeDiscretization The joint space-time discretization.
      * @param exercise The exercise specification.
@@ -147,9 +157,11 @@ public class FDMThetaMethod1D implements FDMSolver {
     }
 
     /**
-     * Creates a theta-method finite-difference solver for a one-dimensional backward PDE.
+     * Creates a theta-method finite-difference solver for a one-dimensional
+     * backward PDE.
      *
-     * @param model The finite-difference interest-rate model providing PDE coefficients and boundary conditions.
+     * @param model The finite-difference interest-rate model providing PDE
+     *     coefficients and boundary conditions.
      * @param product The interest-rate product to be valued.
      * @param spaceTimeDiscretization The joint space-time discretization.
      * @param exercise The exercise specification.
@@ -163,9 +175,11 @@ public class FDMThetaMethod1D implements FDMSolver {
     }
 
     /**
-     * Creates a theta-method finite-difference solver for a one-dimensional backward PDE.
+     * Creates a theta-method finite-difference solver for a one-dimensional
+     * backward PDE.
      *
-     * @param model The finite-difference model providing PDE coefficients and boundary conditions.
+     * @param model The finite-difference model providing PDE coefficients and
+     *     boundary conditions.
      * @param product The product to be valued.
      * @param spaceTimeDiscretization The joint space-time discretization.
      * @param exercise The exercise specification.
