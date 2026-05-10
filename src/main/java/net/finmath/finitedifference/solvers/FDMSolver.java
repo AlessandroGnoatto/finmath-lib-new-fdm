@@ -106,6 +106,9 @@ public interface FDMSolver {
     /**
      * Default binary-payoff version.
      * For solvers that are effectively 1D, the second state variable is ignored.
+      * @param evaluationTime The value.
+      * @param time The value.
+      * @param valueAtMaturity The value.
      */
     default double[] getValue(
             final double evaluationTime,
@@ -117,6 +120,8 @@ public interface FDMSolver {
     /**
      * Default binary-payoff version.
      * For solvers that are effectively 1D, the second state variable is ignored.
+      * @param time The value.
+      * @param valueAtMaturity The value.
      */
     default double[][] getValues(
             final double time,
@@ -127,6 +132,10 @@ public interface FDMSolver {
     /**
      * Default binary-payoff version with early exercise
      * For solvers that are effectively 1D, the second state variable is ignored.
+      * @param evaluationTime The value.
+      * @param time The value.
+      * @param terminalValues The value.
+      * @param exerciseValue The value.
      */
     default double[] getValue(
             final double evaluationTime,
@@ -140,6 +149,9 @@ public interface FDMSolver {
     /**
      * Default binary-payoff version with early exercise
      * For solvers that are effectively 1D, the second state variable is ignored.
+      * @param time The value.
+      * @param terminalValues The value.
+      * @param exerciseValue The value.
      */
     default double[][] getValues(
             final double time,

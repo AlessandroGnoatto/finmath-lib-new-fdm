@@ -198,6 +198,10 @@ public final class BarrierAlignedSpotGridFactory {
     /**
      * Chooses the barrier node index so that the node count allocation roughly
      * matches the geometric position of the barrier inside the interval.
+      * @param numberOfSteps The value.
+      * @param sMin The value.
+      * @param sMax The value.
+      * @param barrier The value.
      */
     private static int chooseBarrierIndex(
             final int numberOfSteps,
@@ -236,6 +240,7 @@ public final class BarrierAlignedSpotGridFactory {
 
     /**
      * Guards against duplicate nodes caused by extreme clustering and floating-point rounding.
+      * @param grid The value.
      */
     private static void enforceStrictMonotonicity(final double[] grid) {
         final double epsilon = 1E-12;

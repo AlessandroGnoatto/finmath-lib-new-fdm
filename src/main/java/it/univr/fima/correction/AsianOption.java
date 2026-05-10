@@ -24,6 +24,11 @@ public final class AsianOption {
 
     /**
      * Black-style price using forward, strike, std-dev and discount factor.
+      * @param optionType The value.
+      * @param forward The value.
+      * @param strike The value.
+      * @param stdDev The value.
+      * @param discountFactor The value.
      */
     public static double blackPrice(
             final CallOrPut optionType,
@@ -73,6 +78,7 @@ public final class AsianOption {
      * @param dividendYield continuously compounded dividend yield q
      * @param volatility Black-Scholes volatility sigma
      * @param maturity maturity T
+      * @param optionType The value.
      */
     public static double priceContinuousGeometricAveragePrice(
             final CallOrPut optionType,
@@ -101,6 +107,12 @@ public final class AsianOption {
      * @param pastFixings number of already observed fixings
      * @param runningProduct product of already observed fixings; use 1.0 if pastFixings = 0
      * @param maturity option maturity / exercise time
+      * @param optionType The value.
+      * @param spot The value.
+      * @param strike The value.
+      * @param riskFreeRate The value.
+      * @param dividendYield The value.
+      * @param volatility The value.
      */
     public static double priceDiscreteGeometricAveragePrice(
             final CallOrPut optionType,
@@ -160,6 +172,12 @@ public final class AsianOption {
      * @param fixingTimesFromStart fixing times measured from the first fixing date; normally the first entry is 0.0
      * @param residualTime time from first fixing date to exercise date
      * @param runningProduct product of past fixings; only 1.0 with pastFixings = 0 is supported here
+      * @param optionType The value.
+      * @param spot The value.
+      * @param riskFreeRate The value.
+      * @param dividendYield The value.
+      * @param volatility The value.
+      * @param pastFixings The value.
      */
     public static double priceDiscreteGeometricAverageStrike(
             final CallOrPut optionType,
@@ -244,6 +262,12 @@ public final class AsianOption {
      * @param averagingStartTime start of averaging window, measured from valuation time; must satisfy 0 <= averagingStartTime <= maturity
      * @param maturity maturity / exercise time T2 from valuation
      * @param currentAverage already accrued arithmetic average if averaging has started; ignored if averagingStartTime == 0
+      * @param optionType The value.
+      * @param spot The value.
+      * @param strike The value.
+      * @param riskFreeRate The value.
+      * @param dividendYield The value.
+      * @param volatility The value.
      */
     public static double priceContinuousArithmeticAveragePriceLevy(
             final CallOrPut optionType,
@@ -343,6 +367,12 @@ public final class AsianOption {
      * @param pastFixings number of already observed fixings
      * @param runningSum sum of already observed fixings; use 0.0 if pastFixings = 0
      * @param exerciseTime option maturity / exercise time, typically >= max futureFixingTimes
+      * @param optionType The value.
+      * @param spot The value.
+      * @param strike The value.
+      * @param riskFreeRate The value.
+      * @param dividendYield The value.
+      * @param volatility The value.
      */
     public static double priceDiscreteArithmeticAveragePriceTurnbullWakeman(
             final CallOrPut optionType,

@@ -379,6 +379,8 @@ public abstract class AbstractADI3D implements FDMSolver {
 
     /**
      * Explicit application of A0 containing all mixed derivative terms and the discount term.
+      * @param u The value.
+      * @param time The value.
      */
     protected double[] applyA0Explicit(final double[] u, final double time) {
 

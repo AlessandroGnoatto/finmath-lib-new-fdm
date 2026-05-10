@@ -1050,6 +1050,15 @@ public class BarrierOptions {
      *
      * <p>For cash-or-nothing this is a standard one-touch paying {@code cashPayoff} at hit.
      * For asset-or-nothing this is an asset-touch paying the barrier level at hit.</p>
+      * @param initialStockValue The value.
+      * @param riskFreeRate The value.
+      * @param dividendYield The value.
+      * @param volatility The value.
+      * @param optionMaturity The value.
+      * @param barrierValue The value.
+      * @param barrierType The value.
+      * @param binaryPayoffType The value.
+      * @param cashPayoff The value.
      */
     public static double blackScholesOneTouchValue(
             final double initialStockValue,
@@ -1079,6 +1088,16 @@ public class BarrierOptions {
      *
      * <p>Use DOWN_OUT or UP_OUT with eventType NO_HIT for no-touch,
      * and DOWN_IN or UP_IN with eventType HIT for hit-by-expiry.</p>
+      * @param initialStockValue The value.
+      * @param riskFreeRate The value.
+      * @param dividendYield The value.
+      * @param volatility The value.
+      * @param optionMaturity The value.
+      * @param barrierValue The value.
+      * @param barrierType The value.
+      * @param eventType The value.
+      * @param binaryPayoffType The value.
+      * @param cashPayoff The value.
      */
     public static double blackScholesBarrierStatusBinaryValue(
             final double initialStockValue,
