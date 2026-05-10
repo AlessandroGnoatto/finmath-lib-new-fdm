@@ -358,9 +358,9 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
     @Override
     public double[][] getFactorLoading(final double time, final double... stateVariables) {
         // Factors are independent. Correlation rho is embedded in the second row.
-        final double S = stateVariables.length > 0 ? stateVariables[0] : initialSpot;
-        final double v = Math.max(0.0, stateVariables.length > 1 ? stateVariables[1] : initialVariance);
-        final double sqrtV = Math.sqrt(v);
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : initialSpot;
+        final double variance = Math.max(0.0, stateVariables.length > 1 ? stateVariables[1] : initialVariance);
+        final double sqrtV = Math.sqrt(variance);
 
         final double sqrtOneMinusRho2 = Math.sqrt(Math.max(0.0, 1.0 - rho * rho));
 
@@ -368,7 +368,7 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
         final double[][] b = new double[2][2];
 
         // dS = ... + S * sqrt(v) dW1
-        b[0][0] = sqrtV * S;	// percentage loading for S: will be multiplied by S in PDE operator
+        b[0][0] = sqrtV * stock;	// percentage loading for S: will be multiplied by S in PDE operator
         b[0][1] = 0.0;
 
         // dv = ... + sigma * sqrt(v) ( rho dW1 + sqrt(1-rho^2) dW2 )
@@ -387,11 +387,11 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
      * @return The covariance matrix.
      */
     public double[][] getCovariance(final double time, final double... stateVariables) {
-        final double[][] B = getFactorLoading(time, stateVariables);
+        final double[][] factorLoading = getFactorLoading(time, stateVariables);
 
-        final double a00 = B[0][0] * B[0][0] + B[0][1] * B[0][1];
-        final double a01 = B[0][0] * B[1][0] + B[0][1] * B[1][1];
-        final double a11 = B[1][0] * B[1][0] + B[1][1] * B[1][1];
+        final double a00 = factorLoading[0][0] * factorLoading[0][0] + factorLoading[0][1] * factorLoading[0][1];
+        final double a01 = factorLoading[0][0] * factorLoading[1][0] + factorLoading[0][1] * factorLoading[1][1];
+        final double a11 = factorLoading[1][0] * factorLoading[1][0] + factorLoading[1][1] * factorLoading[1][1];
 
         return new double[][] {
                 {a00, a01},

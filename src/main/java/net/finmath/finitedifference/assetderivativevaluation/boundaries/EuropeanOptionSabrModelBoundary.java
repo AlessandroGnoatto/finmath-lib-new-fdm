@@ -45,12 +45,12 @@ public class EuropeanOptionSabrModelBoundary implements FiniteDifferenceBoundary
         final EuropeanOption option = (EuropeanOption) product;
         time = Math.max(time, EPSILON);
 
-        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
         result[0] = StandardBoundaryCondition.dirichlet(
-                getDiscountedIntrinsicValue(option, time, S)
+                getDiscountedIntrinsicValue(option, time, stock)
         );
 
         // alpha -> lower boundary: leave PDE row intact
@@ -68,12 +68,12 @@ public class EuropeanOptionSabrModelBoundary implements FiniteDifferenceBoundary
         final EuropeanOption option = (EuropeanOption) product;
         time = Math.max(time, EPSILON);
 
-        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
         result[0] = StandardBoundaryCondition.dirichlet(
-                getDiscountedIntrinsicValue(option, time, S)
+                getDiscountedIntrinsicValue(option, time, stock)
         );
 
         // alpha -> upper boundary: leave PDE row intact

@@ -441,19 +441,19 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         public double[] getDrift(final double time, final double... stateVariables) {
             final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double muS = delegate.getDrift(effectiveTime, S)[0];
-            final double muI = S;
+            final double muS = delegate.getDrift(effectiveTime, stock)[0];
+            final double muI = stock;
 
             return new double[] {muS, muI };
         }
 
         @Override
         public double[][] getFactorLoading(final double time, final double... stateVariables) {
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double sigma = delegate.getFactorLoading(time, S)[0][0];
+            final double sigma = delegate.getFactorLoading(time, stock)[0][0];
 
             return new double[][] {{sigma, 0.0 }, {0.0, 0.0 } };
         }
@@ -486,8 +486,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
 
-            final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
-            final double averageSoFar = I / maturity;
+            final double integral = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+            final double averageSoFar = integral / maturity;
 
             final double lowerSValue;
 
@@ -532,27 +532,27 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
-            final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+            final double integral = stateVariables.length > 1 ? stateVariables[1] : 0.0;
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
 
-            final double averageSoFar = I / maturity;
+            final double averageSoFar = integral / maturity;
 
             final double discountedExpectedRemainingAverageContribution;
             if (Math.abs(r - q) > 1E-12) {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+                        (stock / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
             } else {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * delta * Math.exp(-r * delta);
+                        (stock / maturity) * delta * Math.exp(-r * delta);
             }
 
             final double discountedExpectedAverage =
                     discount * averageSoFar + discountedExpectedRemainingAverageContribution;
 
             final double discountedExpectedSpot =
-                    S * Math.exp(-q * delta);
+                    stock * Math.exp(-q * delta);
 
             if (asianStrike == AsianStrike.FIXED_STRIKE) {
                 final double upperSCallValue =
@@ -619,19 +619,19 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         public double[] getDrift(final double time, final double... stateVariables) {
             final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double muS = delegate.getDrift(effectiveTime, S)[0];
-            final double muI = S;
+            final double muS = delegate.getDrift(effectiveTime, stock)[0];
+            final double muI = stock;
 
             return new double[] {muS, muI };
         }
 
         @Override
         public double[][] getFactorLoading(final double time, final double... stateVariables) {
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double sigma = delegate.getFactorLoading(time, S)[0][0];
+            final double sigma = delegate.getFactorLoading(time, stock)[0][0];
 
             return new double[][] {{sigma, 0.0 }, {0.0, 0.0 } };
         }
@@ -664,8 +664,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
 
-            final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
-            final double averageSoFar = I / maturity;
+            final double integral = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+            final double averageSoFar = integral / maturity;
 
             final double lowerSValue;
 
@@ -710,27 +710,27 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
-            final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+            final double integral = stateVariables.length > 1 ? stateVariables[1] : 0.0;
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
 
-            final double averageSoFar = I / maturity;
+            final double averageSoFar = integral / maturity;
 
             final double discountedExpectedRemainingAverageContribution;
             if (Math.abs(r - q) > 1E-12) {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+                        (stock / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
             } else {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * delta * Math.exp(-r * delta);
+                        (stock / maturity) * delta * Math.exp(-r * delta);
             }
 
             final double discountedExpectedAverage =
                     discount * averageSoFar + discountedExpectedRemainingAverageContribution;
 
             final double discountedExpectedSpot =
-                    S * Math.exp(-q * delta);
+                    stock * Math.exp(-q * delta);
 
             if (asianStrike == AsianStrike.FIXED_STRIKE) {
                 final double upperSCallValue =
@@ -799,19 +799,19 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         public double[] getDrift(final double time, final double... stateVariables) {
             final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double muS = delegate.getDrift(effectiveTime, S)[0];
-            final double muI = S;
+            final double muS = delegate.getDrift(effectiveTime, stock)[0];
+            final double muI = stock;
 
             return new double[] {muS, muI };
         }
 
         @Override
         public double[][] getFactorLoading(final double time, final double... stateVariables) {
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
 
-            final double sigma = delegate.getFactorLoading(time, S)[0][0];
+            final double sigma = delegate.getFactorLoading(time, stock)[0][0];
 
             return new double[][] {{sigma, 0.0 }, {0.0, 0.0 } };
         }
@@ -844,8 +844,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
 
-            final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
-            final double averageSoFar = I / maturity;
+            final double integral = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+            final double averageSoFar = integral / maturity;
 
             final double lowerSValue;
 
@@ -890,27 +890,27 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
-            final double I = stateVariables.length > 1 ? stateVariables[1] : 0.0;
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+            final double integral = stateVariables.length > 1 ? stateVariables[1] : 0.0;
 
             final BoundaryCondition[] result = new BoundaryCondition[2];
 
-            final double averageSoFar = I / maturity;
+            final double averageSoFar = integral / maturity;
 
             final double discountedExpectedRemainingAverageContribution;
             if (Math.abs(r - q) > 1E-12) {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+                        (stock / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
             } else {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * delta * Math.exp(-r * delta);
+                        (stock / maturity) * delta * Math.exp(-r * delta);
             }
 
             final double discountedExpectedAverage =
                     discount * averageSoFar + discountedExpectedRemainingAverageContribution;
 
             final double discountedExpectedSpot =
-                    S * Math.exp(-q * delta);
+                    stock * Math.exp(-q * delta);
 
             if (asianStrike == AsianStrike.FIXED_STRIKE) {
                 final double upperSCallValue =
@@ -981,24 +981,24 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
         public double[] getDrift(final double time, final double... stateVariables) {
             final double effectiveTime = time == 0.0 ? MINIMUM_TIME : time;
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
-            final double v = stateVariables.length > 1 ? stateVariables[1] : delegate.getInitialValue()[1];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double variance = stateVariables.length > 1 ? stateVariables[1] : delegate.getInitialValue()[1];
 
-            final double[] baseDrift = delegate.getDrift(effectiveTime, S, v);
+            final double[] baseDrift = delegate.getDrift(effectiveTime, stock, variance);
 
             final double muS = baseDrift[0];
             final double muV = baseDrift[1];
-            final double muI = S;
+            final double muI = stock;
 
             return new double[] {muS, muV, muI };
         }
 
         @Override
         public double[][] getFactorLoading(final double time, final double... stateVariables) {
-            final double S = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
-            final double v = stateVariables.length > 1 ? stateVariables[1] : delegate.getInitialValue()[1];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double variance = stateVariables.length > 1 ? stateVariables[1] : delegate.getInitialValue()[1];
 
-            final double[][] baseLoading = delegate.getFactorLoading(time, S, v);
+            final double[][] baseLoading = delegate.getFactorLoading(time, stock, variance);
 
             return new double[][] {
                 {baseLoading[0][0], baseLoading[0][1], 0.0 },
@@ -1084,27 +1084,27 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final double delta = maturity - time;
             final double discount = Math.exp(-r * delta);
 
-            final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
-            final double I = stateVariables.length > 2 ? stateVariables[2] : 0.0;
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+            final double integral = stateVariables.length > 2 ? stateVariables[2] : 0.0;
 
             final BoundaryCondition[] result = new BoundaryCondition[3];
 
-            final double averageSoFar = I / maturity;
+            final double averageSoFar = integral / maturity;
 
             final double discountedExpectedRemainingAverageContribution;
             if (Math.abs(r - q) > 1E-12) {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+                        (stock / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
             } else {
                 discountedExpectedRemainingAverageContribution =
-                        (S / maturity) * delta * Math.exp(-r * delta);
+                        (stock / maturity) * delta * Math.exp(-r * delta);
             }
 
             final double discountedExpectedAverage =
                     discount * averageSoFar + discountedExpectedRemainingAverageContribution;
 
             final double discountedExpectedSpot =
-                    S * Math.exp(-q * delta);
+                    stock * Math.exp(-q * delta);
 
             if (asianStrike == AsianStrike.FIXED_STRIKE) {
                 final double callAsymptoticValue =
@@ -1202,10 +1202,10 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
         @Override
         public double[][] getFactorLoading(final double time, final double... stateVariables) {
-            final double s = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : delegate.getInitialValue()[0];
             final double alpha = stateVariables.length > 1 ? stateVariables[1] : delegate.getInitialValue()[1];
 
-            final double[][] baseLoading = delegate.getFactorLoading(time, s, alpha);
+            final double[][] baseLoading = delegate.getFactorLoading(time, stock, alpha);
 
             return new double[][] {
                 {baseLoading[0][0], baseLoading[0][1], 0.0 },
@@ -1242,8 +1242,8 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
 
             final BoundaryCondition[] result = new BoundaryCondition[3];
 
-            final double I = stateVariables.length > 2 ? stateVariables[2] : 0.0;
-            final double averageSoFar = I / maturity;
+            final double integral = stateVariables.length > 2 ? stateVariables[2] : 0.0;
+            final double averageSoFar = integral / maturity;
 
             final double lowerSValue;
 
@@ -1303,27 +1303,27 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
             final double delta = maturity - effectiveTime;
             final double discount = Math.exp(-r * delta);
 
-            final double s = stateVariables.length > 0 ? stateVariables[0] : 0.0;
-            final double I = stateVariables.length > 2 ? stateVariables[2] : 0.0;
+            final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+            final double integral = stateVariables.length > 2 ? stateVariables[2] : 0.0;
 
             final BoundaryCondition[] result = new BoundaryCondition[3];
 
-            final double averageSoFar = I / maturity;
+            final double averageSoFar = integral / maturity;
 
             final double discountedExpectedRemainingAverageContribution;
             if (Math.abs(r - q) > 1E-12) {
                 discountedExpectedRemainingAverageContribution =
-                        (s / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
+                        (stock / maturity) * (Math.exp(-q * delta) - Math.exp(-r * delta)) / (r - q);
             } else {
                 discountedExpectedRemainingAverageContribution =
-                        (s / maturity) * delta * Math.exp(-r * delta);
+                        (stock / maturity) * delta * Math.exp(-r * delta);
             }
 
             final double discountedExpectedAverage =
                     discount * averageSoFar + discountedExpectedRemainingAverageContribution;
 
             final double discountedExpectedSpot =
-                    s * Math.exp(-q * delta);
+                    stock * Math.exp(-q * delta);
 
             if (asianStrike == AsianStrike.FIXED_STRIKE) {
                 final double callAsymptoticValue =

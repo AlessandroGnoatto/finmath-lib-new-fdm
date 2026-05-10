@@ -311,11 +311,11 @@ public class FDMThetaMethod1D implements FDMSolver {
 
             final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-            final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
-            final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
+            final double tm = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
+            final double tmp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-            final ModelCoefficients coefficientsAtCurrentTime = buildModelCoefficients(xGrid, t_m);
-            final ModelCoefficients coefficientsAtNextTime = buildModelCoefficients(xGrid, t_mp1);
+            final ModelCoefficients coefficientsAtCurrentTime = buildModelCoefficients(xGrid, tm);
+            final ModelCoefficients coefficientsAtNextTime = buildModelCoefficients(xGrid, tmp1);
 
             final TridiagonalMatrix lhs = new TridiagonalMatrix(numberOfGridPoints);
             final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(numberOfGridPoints);
@@ -342,8 +342,8 @@ public class FDMThetaMethod1D implements FDMSolver {
 
             final double[] rhs = ThetaMethod1DAssembly.apply(rhsOperator, u);
 
-            final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
-            final double boundaryTime = horizon - tau_mp1;
+            final double tauMp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+            final double boundaryTime = horizon - tauMp1;
 
             final BoundaryCondition lowerCondition = getLowerBoundaryCondition(boundaryTime, xGrid[0]);
             final BoundaryCondition upperCondition = getUpperBoundaryCondition(boundaryTime, xGrid[numberOfGridPoints - 1]);
@@ -369,7 +369,7 @@ public class FDMThetaMethod1D implements FDMSolver {
             }
 
             final boolean isExerciseDate =
-                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
+                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tauMp1, exercise);
 
             final double[] nextU;
 

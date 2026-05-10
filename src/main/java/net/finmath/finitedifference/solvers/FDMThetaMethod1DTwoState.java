@@ -209,25 +209,25 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
 
             final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-            final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
-            final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
+            final double tm = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
+            final double tmp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-            final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
-            final double currentTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
+            final double tauMp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+            final double currentTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tauMp1;
 
             final double lowerActiveBoundary = activeBoundaryProvider.getLowerBoundaryValue(currentTime, xGrid[0]);
             final double upperActiveBoundary = activeBoundaryProvider.getUpperBoundaryValue(currentTime, xGrid[nX - 1]);
 
             final boolean isExerciseDate =
-                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
+                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tauMp1, exercise);
 
             final double[] nextActive;
             if (exercise.isAmerican() && isExerciseDate) {
                 nextActive = solveVanillaStepAmerican(
                         xGrid,
                         active,
-                        t_m,
-                        t_mp1,
+                        tm,
+                        tmp1,
                         deltaTau,
                         lowerActiveBoundary,
                         upperActiveBoundary,
@@ -237,8 +237,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                 final double[] nextActiveContinuation = solveVanillaStep(
                         xGrid,
                         active,
-                        t_m,
-                        t_mp1,
+                        tm,
+                        tmp1,
                         deltaTau,
                         lowerActiveBoundary,
                         upperActiveBoundary
@@ -268,8 +268,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                         active,
                         nextActive,
                         nextInactive,
-                        t_m,
-                        t_mp1,
+                        tm,
+                        tmp1,
                         deltaTau,
                         currentTime);
                 break;
@@ -282,8 +282,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
                         active,
                         nextActive,
                         nextInactive,
-                        t_m,
-                        t_mp1,
+                        tm,
+                        tmp1,
                         deltaTau,
                         currentTime);
                 break;
@@ -347,8 +347,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final double[] activePrevious,
             final double[] activeNext,
             final double[] inactiveNext,
-            final double t_m,
-            final double t_mp1,
+            final double tm,
+            final double tmp1,
             final double deltaTau,
             final double currentTime) {
 
@@ -372,7 +372,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         }
 
         previousSub[0] = activationPolicy.getAlreadyHitValue(
-                t_m,
+                tm,
                 xGrid[barrierIndex],
                 activePrevious[barrierIndex]
         );
@@ -388,8 +388,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         final double[] nextSub = solveVanillaStep(
                 subGrid,
                 previousSub,
-                t_m,
-                t_mp1,
+                tm,
+                tmp1,
                 deltaTau,
                 interfaceValue,
                 discountedNoHitValue);
@@ -414,8 +414,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
             final double[] activePrevious,
             final double[] activeNext,
             final double[] inactiveNext,
-            final double t_m,
-            final double t_mp1,
+            final double tm,
+            final double tmp1,
             final double deltaTau,
             final double currentTime) {
 
@@ -439,7 +439,7 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         }
 
         previousSub[subGrid.length - 1] = activationPolicy.getAlreadyHitValue(
-                t_m,
+                tm,
                 xGrid[barrierIndex],
                 activePrevious[barrierIndex]
         );
@@ -455,8 +455,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         final double[] nextSub = solveVanillaStep(
                 subGrid,
                 previousSub,
-                t_m,
-                t_mp1,
+                tm,
+                tmp1,
                 deltaTau,
                 discountedNoHitValue,
                 interfaceValue);
@@ -477,8 +477,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     private double[] solveVanillaStep(
             final double[] xGrid,
             final double[] previousValues,
-            final double t_m,
-            final double t_mp1,
+            final double tm,
+            final double tmp1,
             final double deltaTau,
             final double lowerBoundaryValue,
             final double upperBoundaryValue) {
@@ -500,9 +500,9 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         final double theta = spaceTimeDiscretization.getTheta();
 
         final ThetaMethod1DAssembly.ModelCoefficients coefficients_m =
-                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_m);
+                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, tm);
         final ThetaMethod1DAssembly.ModelCoefficients coefficients_mp1 =
-                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_mp1);
+                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, tmp1);
 
         final TridiagonalMatrix lhs = new TridiagonalMatrix(n);
         final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(n);
@@ -605,8 +605,8 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
     private double[] solveVanillaStepAmerican(
             final double[] xGrid,
             final double[] previousValues,
-            final double t_m,
-            final double t_mp1,
+            final double tm,
+            final double tmp1,
             final double deltaTau,
             final double lowerBoundaryValue,
             final double upperBoundaryValue,
@@ -629,9 +629,9 @@ public class FDMThetaMethod1DTwoState implements FDMSolver {
         final double theta = spaceTimeDiscretization.getTheta();
 
         final ThetaMethod1DAssembly.ModelCoefficients coefficients_m =
-                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_m);
+                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, tm);
         final ThetaMethod1DAssembly.ModelCoefficients coefficients_mp1 =
-                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_mp1);
+                ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, tmp1);
 
         final TridiagonalMatrix lhs = new TridiagonalMatrix(n);
         final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(n);

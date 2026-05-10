@@ -37,13 +37,13 @@ public class SORDecomposition {
     /**
      * Constructs the decomposition of the given matrix {@code A} into {@code D}, {@code L}, and {@code U}.
      *
-     * @param A The input square matrix to decompose.
+     * @param matrixA The input square matrix to decompose.
      */
-    public SORDecomposition(final RealMatrix A) {
-        this.a = A.getData();
-        this.D = MatrixUtils.createRealDiagonalMatrix(getDiagonal(A));
-        this.L = lowerMatrix(A);
-        this.U = upperMatrix(A);
+    public SORDecomposition(final RealMatrix matrixA) {
+        this.a = matrixA.getData();
+        this.D = MatrixUtils.createRealDiagonalMatrix(getDiagonal(matrixA));
+        this.L = lowerMatrix(matrixA);
+        this.U = upperMatrix(matrixA);
         this.omega = 1.0;
     }
 
@@ -74,31 +74,31 @@ public class SORDecomposition {
         return U;
     }
 
-    private double[] getDiagonal(final RealMatrix M) {
-        final double[] diag = new double[M.getColumnDimension()];
+    private double[] getDiagonal(final RealMatrix matrixM) {
+        final double[] diag = new double[matrixM.getColumnDimension()];
         for (int i = 0; i < diag.length; i++) {
-            diag[i] = M.getEntry(i, i);
+            diag[i] = matrixM.getEntry(i, i);
         }
         return diag;
     }
 
-    private RealMatrix upperMatrix(final RealMatrix M) {
-        final int n = M.getColumnDimension();
+    private RealMatrix upperMatrix(final RealMatrix matrixM) {
+        final int n = matrixM.getColumnDimension();
         final double[][] U = new double[n][n];
         for (int i = 0; i < n; i++) {
             for (int j = i + 1; j < n; j++) {
-                U[i][j] = M.getEntry(i, j);
+                U[i][j] = matrixM.getEntry(i, j);
             }
         }
         return MatrixUtils.createRealMatrix(U);
     }
 
-    private RealMatrix lowerMatrix(final RealMatrix M) {
-        final int n = M.getColumnDimension();
+    private RealMatrix lowerMatrix(final RealMatrix matrixM) {
+        final int n = matrixM.getColumnDimension();
         final double[][] L = new double[n][n];
         for (int i = 1; i < n; i++) {
             for (int j = 0; j < i; j++) {
-                L[i][j] = M.getEntry(i, j);
+                L[i][j] = matrixM.getEntry(i, j);
             }
         }
         return MatrixUtils.createRealMatrix(L);
@@ -112,15 +112,15 @@ public class SORDecomposition {
      * {@link #getSol(RealMatrix, RealMatrix, double, int, double)} with {@code tol = 0.0}.
      * </p>
      *
-     * @param x_0   The initial guess for {@code x} (n x 1).
+     * @param x0   The initial guess for {@code x} (n x 1).
      * @param b     The right-hand side vector {@code b} (n x 1).
      * @param w     The relaxation factor {@code omega} (typically {@code 0 < w < 2}).
      * @param steps The number of iterations to perform.
      * @return The approximate solution after the specified number of iterations.
      */
-    public RealMatrix getSol(final RealMatrix x_0, final RealMatrix b, final double w, final int steps) {
+    public RealMatrix getSol(final RealMatrix x0, final RealMatrix b, final double w, final int steps) {
         // Backwards compatible entry point: perform a fixed number of iterations.
-        return getSol(x_0, b, w, steps, 0.0);
+        return getSol(x0, b, w, steps, 0.0);
     }
 
     /**

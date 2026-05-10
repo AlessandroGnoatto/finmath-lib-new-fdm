@@ -43,7 +43,7 @@ public class DigitalBarrierOptionSabrModelBoundary implements FiniteDifferenceBo
 
         time = Math.max(time, EPSILON);
 
-        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
         if (barrierType == BarrierType.DOWN_OUT) {
@@ -53,7 +53,7 @@ public class DigitalBarrierOptionSabrModelBoundary implements FiniteDifferenceBo
         } else if (payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
             result[0] = StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time));
         } else if (payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
-            result[0] = StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(S, option, time));
+            result[0] = StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(stock, option, time));
         } else {
             throw new IllegalArgumentException("Unsupported digital payoff type.");
         }
@@ -75,7 +75,7 @@ public class DigitalBarrierOptionSabrModelBoundary implements FiniteDifferenceBo
 
         time = Math.max(time, EPSILON);
 
-        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
         if (barrierType == BarrierType.UP_OUT) {
@@ -85,7 +85,7 @@ public class DigitalBarrierOptionSabrModelBoundary implements FiniteDifferenceBo
         } else if (payoffType == DigitalPayoffType.CASH_OR_NOTHING) {
             result[0] = StandardBoundaryCondition.dirichlet(getDiscountedCashValue(option, time));
         } else if (payoffType == DigitalPayoffType.ASSET_OR_NOTHING) {
-            result[0] = StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(S, option, time));
+            result[0] = StandardBoundaryCondition.dirichlet(getDiscountedAssetValue(stock, option, time));
         } else {
             throw new IllegalArgumentException("Unsupported digital payoff type.");
         }

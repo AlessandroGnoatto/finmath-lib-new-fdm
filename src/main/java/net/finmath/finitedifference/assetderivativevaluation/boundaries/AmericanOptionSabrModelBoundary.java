@@ -85,14 +85,14 @@ public class AmericanOptionSabrModelBoundary
         final double strike = option.getStrike();
         final double maturity = option.getMaturity();
 
-        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
         // S -> infinity
         if (sign == CallOrPut.CALL) {
             final double dividendAdjustedStockPrice =
-                    S * Math.exp(-dividendYieldRate * (maturity - time));
+                    stock * Math.exp(-dividendYieldRate * (maturity - time));
             result[0] = StandardBoundaryCondition.dirichlet(
                     dividendAdjustedStockPrice
                     - strike * Math.exp(-riskFreeRate * (maturity - time))

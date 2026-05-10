@@ -55,7 +55,7 @@ public class BarrierOptionHestonModelBoundary implements FiniteDifferenceBoundar
 
         time = Math.max(time, EPSILON);
 
-        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
@@ -74,7 +74,7 @@ public class BarrierOptionHestonModelBoundary implements FiniteDifferenceBoundar
             result[0] = StandardBoundaryCondition.none();
         } else {
             result[0] = StandardBoundaryCondition.dirichlet(
-                    getDiscountedIntrinsicValue(option, time, S)
+                    getDiscountedIntrinsicValue(option, time, stock)
             );
         }
 
@@ -96,7 +96,7 @@ public class BarrierOptionHestonModelBoundary implements FiniteDifferenceBoundar
 
         time = Math.max(time, EPSILON);
 
-        final double S = stateVariables.length > 0 ? stateVariables[0] : 0.0;
+        final double stock = stateVariables.length > 0 ? stateVariables[0] : 0.0;
 
         final BoundaryCondition[] result = new BoundaryCondition[2];
 
@@ -115,7 +115,7 @@ public class BarrierOptionHestonModelBoundary implements FiniteDifferenceBoundar
             result[0] = StandardBoundaryCondition.none();
         } else {
             result[0] = StandardBoundaryCondition.dirichlet(
-                    getDiscountedIntrinsicValue(option, time, S)
+                    getDiscountedIntrinsicValue(option, time, stock)
             );
         }
 

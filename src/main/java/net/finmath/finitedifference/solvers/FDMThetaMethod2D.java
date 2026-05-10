@@ -172,24 +172,24 @@ public class FDMThetaMethod2D implements FDMSolver {
 
             final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-            final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
-            final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
+            final double tm = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
+            final double tmp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-            final ModelCoefficients2D coefficients_m = buildModelCoefficients(x0Grid, x1Grid, t_m);
-            final ModelCoefficients2D coefficients_mp1 = buildModelCoefficients(x0Grid, x1Grid, t_mp1);
+            final ModelCoefficients2D coefficientsM = buildModelCoefficients(x0Grid, x1Grid, tm);
+            final ModelCoefficients2D coefficientsMp1 = buildModelCoefficients(x0Grid, x1Grid, tmp1);
 
-            final RealMatrix lhs = buildThetaLeftHandSide(operators, coefficients_mp1, deltaTau, theta);
-            final RealMatrix rhsOperator = buildThetaRightHandSide(operators, coefficients_m, deltaTau, theta);
+            final RealMatrix lhs = buildThetaLeftHandSide(operators, coefficientsMp1, deltaTau, theta);
+            final RealMatrix rhsOperator = buildThetaRightHandSide(operators, coefficientsM, deltaTau, theta);
             final RealMatrix rhs = rhsOperator.multiply(u);
 
-            final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
-            final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
+            final double tauMp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+            final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tauMp1;
 
             applyOuterBoundaryConditions(lhs, rhs, x0Grid, x1Grid, isBoundary, boundaryTime);
             applyInternalConstraints(lhs, rhs, x0Grid, x1Grid, boundaryTime);
 
             final boolean isExerciseDate =
-                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
+                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tauMp1, exercise);
 
             final RealMatrix nextU;
             if (exercise.isAmerican() && isExerciseDate) {
@@ -312,18 +312,18 @@ public class FDMThetaMethod2D implements FDMSolver {
     private DifferentialOperators2D buildDifferentialOperators(final double[] x0Grid, final double[] x1Grid) {
 
         final FiniteDifferenceMatrixBuilder builder0 = new FiniteDifferenceMatrixBuilder(x0Grid);
-        final RealMatrix t1_0 = builder0.getFirstDerivativeMatrix();
-        final RealMatrix t2_0 = builder0.getSecondDerivativeMatrix();
+        final RealMatrix t10 = builder0.getFirstDerivativeMatrix();
+        final RealMatrix t20 = builder0.getSecondDerivativeMatrix();
 
         final FiniteDifferenceMatrixBuilder builder1 = new FiniteDifferenceMatrixBuilder(x1Grid);
-        final RealMatrix t1_1 = builder1.getFirstDerivativeMatrix();
-        final RealMatrix t2_1 = builder1.getSecondDerivativeMatrix();
+        final RealMatrix t11 = builder1.getFirstDerivativeMatrix();
+        final RealMatrix t21 = builder1.getSecondDerivativeMatrix();
 
-        final RealMatrix d0 = buildBlockDiagonal(t1_0, x1Grid.length);
-        final RealMatrix d00 = buildBlockDiagonal(t2_0, x1Grid.length);
-        final RealMatrix d1 = buildKronWithIdentityLeft(t1_1, x0Grid.length);
-        final RealMatrix d11 = buildKronWithIdentityLeft(t2_1, x0Grid.length);
-        final RealMatrix d01 = buildKron(t1_1, t1_0);
+        final RealMatrix d0 = buildBlockDiagonal(t10, x1Grid.length);
+        final RealMatrix d00 = buildBlockDiagonal(t20, x1Grid.length);
+        final RealMatrix d1 = buildKronWithIdentityLeft(t11, x0Grid.length);
+        final RealMatrix d11 = buildKronWithIdentityLeft(t21, x0Grid.length);
+        final RealMatrix d01 = buildKron(t11, t10);
 
         return new DifferentialOperators2D(d0, d1, d00, d11, d01);
     }
@@ -892,16 +892,16 @@ public class FDMThetaMethod2D implements FDMSolver {
      * @return The block-diagonal sparse matrix.
      */
     private static RealMatrix buildBlockDiagonal(final RealMatrix block, final int numBlocks) {
-        final int n = block.getRowDimension();
-        final int N = n * numBlocks;
-        final OpenMapRealMatrix out = new OpenMapRealMatrix(N, N);
+        final int rowDimension = block.getRowDimension();
+        final int blockDimension = rowDimension * numBlocks;
+        final OpenMapRealMatrix out = new OpenMapRealMatrix(blockDimension, blockDimension);
 
         for (int b = 0; b < numBlocks; b++) {
-            final int row0 = b * n;
-            final int col0 = b * n;
+            final int row0 = b * rowDimension;
+            final int col0 = b * rowDimension;
 
-            for (int i = 0; i < n; i++) {
-                for (int j = Math.max(0, i - 2); j <= Math.min(n - 1, i + 2); j++) {
+            for (int i = 0; i < rowDimension; i++) {
+                for (int j = Math.max(0, i - 2); j <= Math.min(rowDimension - 1, i + 2); j++) {
                     final double value = block.getEntry(i, j);
                     if (value != 0.0) {
                         out.setEntry(row0 + i, col0 + j, value);

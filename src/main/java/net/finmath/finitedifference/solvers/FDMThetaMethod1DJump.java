@@ -382,13 +382,13 @@ public class FDMThetaMethod1DJump implements FDMSolver {
 
             final double deltaTau = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-            final double t_m = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
-            final double t_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
+            final double tm = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - m);
+            final double tmp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(numberOfTimeSteps - (m + 1));
 
-            final ThetaMethod1DAssembly.ModelCoefficients coefficients_m =
-                    ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_m);
-            final ThetaMethod1DAssembly.ModelCoefficients coefficients_mp1 =
-                    ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, t_mp1);
+            final ThetaMethod1DAssembly.ModelCoefficients coefficientsM =
+                    ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, tm);
+            final ThetaMethod1DAssembly.ModelCoefficients coefficientsMp1 =
+                    ThetaMethod1DAssembly.buildModelCoefficients(model, xGrid, tmp1);
 
             final TridiagonalMatrix lhs = new TridiagonalMatrix(nX);
             final TridiagonalMatrix rhsOperator = new TridiagonalMatrix(nX);
@@ -396,9 +396,9 @@ public class FDMThetaMethod1DJump implements FDMSolver {
             ThetaMethod1DAssembly.buildThetaLeftHandSide(
                     lhs,
                     xGrid,
-                    coefficients_mp1.getDrift(),
-                    coefficients_mp1.getVariance(),
-                    coefficients_mp1.getShortRate(),
+                    coefficientsMp1.getDrift(),
+                    coefficientsMp1.getVariance(),
+                    coefficientsMp1.getShortRate(),
                     deltaTau,
                     theta
             );
@@ -406,9 +406,9 @@ public class FDMThetaMethod1DJump implements FDMSolver {
             ThetaMethod1DAssembly.buildThetaRightHandSide(
                     rhsOperator,
                     xGrid,
-                    coefficients_m.getDrift(),
-                    coefficients_m.getVariance(),
-                    coefficients_m.getShortRate(),
+                    coefficientsM.getDrift(),
+                    coefficientsM.getVariance(),
+                    coefficientsM.getShortRate(),
                     deltaTau,
                     theta
             );
@@ -420,7 +420,7 @@ public class FDMThetaMethod1DJump implements FDMSolver {
                         optionalJumpComponent.get(),
                         xGrid,
                         u,
-                        t_m
+                        tm
                 );
 
                 for (int i = 0; i < nX; i++) {
@@ -428,8 +428,8 @@ public class FDMThetaMethod1DJump implements FDMSolver {
                 }
             }
 
-            final double tau_mp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
-            final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tau_mp1;
+            final double tauMp1 = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
+            final double boundaryTime = spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tauMp1;
 
             final BoundaryCondition lowerCondition =
                     model.getBoundaryConditionsAtLowerBoundary(product, boundaryTime, xGrid[0])[0];
@@ -458,7 +458,7 @@ public class FDMThetaMethod1DJump implements FDMSolver {
             }
 
             final boolean isExerciseDate =
-                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tau_mp1, exercise);
+                    FiniteDifferenceExerciseUtil.isExerciseAllowedAtTimeToMaturity(tauMp1, exercise);
 
             final double[] nextU;
 
