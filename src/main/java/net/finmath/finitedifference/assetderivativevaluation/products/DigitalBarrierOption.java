@@ -155,9 +155,9 @@ public class DigitalBarrierOption implements
 
     private static final class DiscreteKnockInEventState {
 
-    	/**
-    	 * The activated vectors at event times.
-    	 */
+        /**
+         * The activated vectors at event times.
+         */
         private final Map<Double, double[]> activatedVectorsAtEventTimes;
 
         private DiscreteKnockInEventState(final Map<Double, double[]> activatedVectorsAtEventTimes) {
