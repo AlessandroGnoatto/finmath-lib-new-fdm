@@ -1059,6 +1059,7 @@ public class BarrierOptions {
       * @param barrierType The value.
       * @param binaryPayoffType The value.
       * @param cashPayoff The value.
+      * @return The value.
      */
     public static double blackScholesOneTouchValue(
             final double initialStockValue,
@@ -1098,6 +1099,7 @@ public class BarrierOptions {
       * @param eventType The value.
       * @param binaryPayoffType The value.
       * @param cashPayoff The value.
+      * @return The value.
      */
     public static double blackScholesBarrierStatusBinaryValue(
             final double initialStockValue,

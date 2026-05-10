@@ -29,6 +29,7 @@ public final class AsianOption {
       * @param strike The value.
       * @param stdDev The value.
       * @param discountFactor The value.
+      * @return The value.
      */
     public static double blackPrice(
             final CallOrPut optionType,
@@ -79,6 +80,7 @@ public final class AsianOption {
      * @param volatility Black-Scholes volatility sigma
      * @param maturity maturity T
       * @param optionType The value.
+      * @return The value.
      */
     public static double priceContinuousGeometricAveragePrice(
             final CallOrPut optionType,
@@ -113,6 +115,7 @@ public final class AsianOption {
       * @param riskFreeRate The value.
       * @param dividendYield The value.
       * @param volatility The value.
+      * @return The value.
      */
     public static double priceDiscreteGeometricAveragePrice(
             final CallOrPut optionType,
@@ -178,6 +181,7 @@ public final class AsianOption {
       * @param dividendYield The value.
       * @param volatility The value.
       * @param pastFixings The value.
+      * @return The value.
      */
     public static double priceDiscreteGeometricAverageStrike(
             final CallOrPut optionType,
@@ -268,6 +272,7 @@ public final class AsianOption {
       * @param riskFreeRate The value.
       * @param dividendYield The value.
       * @param volatility The value.
+      * @return The value.
      */
     public static double priceContinuousArithmeticAveragePriceLevy(
             final CallOrPut optionType,
@@ -373,6 +378,7 @@ public final class AsianOption {
       * @param riskFreeRate The value.
       * @param dividendYield The value.
       * @param volatility The value.
+      * @return The value.
      */
     public static double priceDiscreteArithmeticAveragePriceTurnbullWakeman(
             final CallOrPut optionType,

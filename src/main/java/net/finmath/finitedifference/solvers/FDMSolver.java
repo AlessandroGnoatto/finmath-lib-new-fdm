@@ -109,6 +109,7 @@ public interface FDMSolver {
       * @param evaluationTime The value.
       * @param time The value.
       * @param valueAtMaturity The value.
+      * @return The value.
      */
     default double[] getValue(
             final double evaluationTime,
@@ -122,6 +123,7 @@ public interface FDMSolver {
      * For solvers that are effectively 1D, the second state variable is ignored.
       * @param time The value.
       * @param valueAtMaturity The value.
+      * @return The value.
      */
     default double[][] getValues(
             final double time,
@@ -136,6 +138,7 @@ public interface FDMSolver {
       * @param time The value.
       * @param terminalValues The value.
       * @param exerciseValue The value.
+      * @return The value.
      */
     default double[] getValue(
             final double evaluationTime,
@@ -152,6 +155,7 @@ public interface FDMSolver {
       * @param time The value.
       * @param terminalValues The value.
       * @param exerciseValue The value.
+      * @return The value.
      */
     default double[][] getValues(
             final double time,

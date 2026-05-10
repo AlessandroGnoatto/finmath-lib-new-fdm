@@ -105,7 +105,6 @@ public class ADI2DStencilBuilder {
          * @param lower The value.
          * @param diag The value.
          * @param upper The value.
-         * @return The value.
          */
         public DirectionalCoefficients(
                 final double lower,

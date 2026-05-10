@@ -202,6 +202,7 @@ public final class BarrierAlignedSpotGridFactory {
       * @param sMin The value.
       * @param sMax The value.
       * @param barrier The value.
+      * @return The value.
      */
     private static int chooseBarrierIndex(
             final int numberOfSteps,
