@@ -33,7 +33,7 @@ import net.finmath.functions.NormalDistribution;
  * @version 1.0
  * @date 23.03.2026
  */
-public class BarrierOptions {
+public final class BarrierOptions {
 
     public enum BarrierType {
         /**

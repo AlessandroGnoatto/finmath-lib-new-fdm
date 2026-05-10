@@ -81,7 +81,7 @@ import org.apache.commons.math3.distribution.NormalDistribution;
  *
  * @author Alessandro Gnoatto
  */
-public class AnalyticFormulas2 {
+public final class AnalyticFormulas2 {
 
     /**
      * The normal distribution.

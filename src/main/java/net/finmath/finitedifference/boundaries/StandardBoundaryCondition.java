@@ -5,7 +5,7 @@ package net.finmath.finitedifference.boundaries;
  *
  * @author Alessandro Gnoatto
  */
-public class StandardBoundaryCondition implements BoundaryCondition {
+public final class StandardBoundaryCondition implements BoundaryCondition {
 
     /**
      * The none.
