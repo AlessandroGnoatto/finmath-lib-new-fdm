@@ -28,6 +28,9 @@ import net.finmath.time.Schedule;
  */
 public final class SwapAnnuity {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
 
     private SwapAnnuity() {

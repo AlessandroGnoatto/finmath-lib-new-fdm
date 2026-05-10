@@ -36,7 +36,13 @@ import net.finmath.time.TimeDiscretization;
  */
 public class PiecewiseConstantVolatility implements LocalVolatility {
 
+    /**
+     * The time discretization.
+     */
     private final TimeDiscretization timeDiscretization;
+    /**
+     * The volatilities.
+     */
     private final double[] volatilities;
 
     /**

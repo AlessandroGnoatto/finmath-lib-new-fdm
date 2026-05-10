@@ -7,9 +7,18 @@ package net.finmath.modelling.products;
  * @author Alessandro Gnoatto
  */
 public enum CallOrPut {
+    /**
+     * The call.
+     */
     CALL(1),
+    /**
+     * The put.
+     */
     PUT(-1);
 
+    /**
+     * The value.
+     */
     private final int value;
 
     CallOrPut(final int value) {

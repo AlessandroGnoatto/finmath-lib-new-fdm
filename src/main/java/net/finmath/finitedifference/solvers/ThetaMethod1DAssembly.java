@@ -29,6 +29,9 @@ import net.finmath.finitedifference.assetderivativevaluation.models.FiniteDiffer
  */
 public final class ThetaMethod1DAssembly {
 
+    /**
+     * The safe time epsilon.
+     */
     private static final double SAFE_TIME_EPSILON = 1E-6;
 
     private ThetaMethod1DAssembly() {
@@ -45,8 +48,17 @@ public final class ThetaMethod1DAssembly {
      */
     public static final class ModelCoefficients {
 
+        /**
+         * The drift.
+         */
         private final double[] drift;
+        /**
+         * The variance.
+         */
         private final double[] variance;
+        /**
+         * The short rate.
+         */
         private final double shortRate;
 
         public ModelCoefficients(
@@ -73,8 +85,17 @@ public final class ThetaMethod1DAssembly {
 
     private static final class RowCoefficients {
 
+        /**
+         * The lower.
+         */
         private final double lower;
+        /**
+         * The diag.
+         */
         private final double diag;
+        /**
+         * The upper.
+         */
         private final double upper;
 
         private RowCoefficients(final double lower, final double diag, final double upper) {

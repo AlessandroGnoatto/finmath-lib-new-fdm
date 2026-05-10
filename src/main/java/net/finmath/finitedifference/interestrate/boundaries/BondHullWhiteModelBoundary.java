@@ -35,8 +35,14 @@ import net.finmath.finitedifference.interestrate.products.FiniteDifferenceIntere
  */
 public class BondHullWhiteModelBoundary implements FiniteDifferenceInterestRateBoundary {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
 
+    /**
+     * The model.
+     */
     private final FDMHullWhiteModel model;
 
     /**

@@ -17,8 +17,14 @@ import net.finmath.modelling.products.BarrierType;
  */
 public class TouchOptionBlackScholesModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMBlackScholesModel model;
 
     public TouchOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {

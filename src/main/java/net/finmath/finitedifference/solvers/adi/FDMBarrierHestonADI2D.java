@@ -36,10 +36,22 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMBarrierHestonADI2D extends AbstractADI2D {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
 
+    /**
+     * The heston model.
+     */
     private final FDMHestonModel hestonModel;
+    /**
+     * The barrier mode.
+     */
     private final BarrierPDEMode barrierMode;
+    /**
+     * The pre hit specification.
+     */
     private final BarrierPreHitSpecification preHitSpecification;
 
     /**

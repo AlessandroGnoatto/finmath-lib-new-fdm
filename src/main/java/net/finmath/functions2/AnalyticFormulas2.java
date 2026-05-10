@@ -83,6 +83,9 @@ import org.apache.commons.math3.distribution.NormalDistribution;
  */
 public class AnalyticFormulas2 {
 
+    /**
+     * The normal distribution.
+     */
     private static final NormalDistribution NORMAL_DISTRIBUTION = new NormalDistribution();
 
     private AnalyticFormulas2() {

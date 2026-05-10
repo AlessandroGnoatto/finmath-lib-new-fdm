@@ -25,8 +25,14 @@ import net.finmath.modelling.products.DigitalPayoffType;
  */
 public class DigitalOptionBachelierModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMBachelierModel model;
 
     /**

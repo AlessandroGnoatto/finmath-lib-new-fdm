@@ -27,7 +27,13 @@ import net.finmath.time.Schedule;
  */
 public class Swap implements FiniteDifferenceInterestRateProduct {
 
+    /**
+     * The leg receiver.
+     */
     private final SwapLeg legReceiver;
+    /**
+     * The leg payer.
+     */
     private final SwapLeg legPayer;
 
     /**

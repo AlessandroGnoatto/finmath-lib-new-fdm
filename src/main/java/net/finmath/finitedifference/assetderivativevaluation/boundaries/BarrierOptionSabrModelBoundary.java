@@ -39,8 +39,14 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class BarrierOptionSabrModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMSabrModel model;
 
     public BarrierOptionSabrModelBoundary(final FDMSabrModel model) {

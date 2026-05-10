@@ -21,8 +21,14 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class DoubleBarrierOptionBlackScholesModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMBlackScholesModel model;
 
     public DoubleBarrierOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {

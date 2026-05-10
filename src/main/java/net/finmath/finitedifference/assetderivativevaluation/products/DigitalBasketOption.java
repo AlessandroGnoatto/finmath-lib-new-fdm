@@ -73,18 +73,51 @@ public class DigitalBasketOption implements FiniteDifferenceEquityProduct {
      * Type of two-asset digital payoff.
      */
     public enum BasketDigitalType {
+        /**
+         * The linear combination.
+         */
         LINEAR_COMBINATION,
+        /**
+         * The best of.
+         */
         BEST_OF,
+        /**
+         * The worst of.
+         */
         WORST_OF
     }
 
+    /**
+     * The underlying names.
+     */
     private final String[] underlyingNames;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The basket digital type.
+     */
     private final BasketDigitalType basketDigitalType;
+    /**
+     * The quantities.
+     */
     private final double[] quantities;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The cash payoff.
+     */
     private final double cashPayoff;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     /**

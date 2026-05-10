@@ -20,11 +20,26 @@ import net.finmath.time.TimeDiscretization;
  */
 public final class ActivatedBarrierTrace2D {
 
+    /**
+     * The tolerance.
+     */
     private static final double TOLERANCE = 1E-12;
 
+    /**
+     * The barrier value.
+     */
     private final double barrierValue;
+    /**
+     * The second state grid.
+     */
     private final double[] secondStateGrid;
+    /**
+     * The time grid.
+     */
     private final TimeDiscretization timeGrid;
+    /**
+     * The values.
+     */
     private final double[][] values;
 
     /**

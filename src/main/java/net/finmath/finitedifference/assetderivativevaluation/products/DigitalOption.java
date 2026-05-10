@@ -46,12 +46,33 @@ import net.finmath.time.TimeDiscretization;
  */
 public class DigitalOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The call or put sign.
+     */
     private final CallOrPut callOrPutSign;
+    /**
+     * The digital payoff type.
+     */
     private final DigitalPayoffType digitalPayoffType;
+    /**
+     * The cash payoff.
+     */
     private final double cashPayoff;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     /**

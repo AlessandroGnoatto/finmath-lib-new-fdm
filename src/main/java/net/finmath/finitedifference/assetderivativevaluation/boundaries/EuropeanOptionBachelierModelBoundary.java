@@ -22,8 +22,14 @@ import net.finmath.modelling.products.CallOrPut;
 public class EuropeanOptionBachelierModelBoundary
         implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMBachelierModel model;
 
     public EuropeanOptionBachelierModelBoundary(final FDMBachelierModel model) {

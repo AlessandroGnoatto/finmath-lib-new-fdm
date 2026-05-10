@@ -26,7 +26,13 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class EuropeanOptionMertonModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The model.
+     */
     private final FDMMertonModel model;
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
     /**

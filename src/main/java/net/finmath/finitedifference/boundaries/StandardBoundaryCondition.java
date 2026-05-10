@@ -7,10 +7,19 @@ package net.finmath.finitedifference.boundaries;
  */
 public class StandardBoundaryCondition implements BoundaryCondition {
 
+    /**
+     * The none.
+     */
     private static final StandardBoundaryCondition NONE =
             new StandardBoundaryCondition(BoundaryConditionType.NONE, Double.NaN);
 
+    /**
+     * The type.
+     */
     private final BoundaryConditionType type;
+    /**
+     * The value.
+     */
     private final double value;
 
     private StandardBoundaryCondition(final BoundaryConditionType type, final double value) {

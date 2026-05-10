@@ -92,20 +92,53 @@ public class DupireLocalVolatility implements LocalVolatility {
         THROW_EXCEPTION
     }
 
+    /**
+     * The default time epsilon.
+     */
     private static final double DEFAULT_TIME_EPSILON = 1E-5;
+    /**
+     * The default strike epsilon factor.
+     */
     private static final double DEFAULT_STRIKE_EPSILON_FACTOR = 1E-5;
+    /**
+     * The default variance floor.
+     */
     private static final double DEFAULT_VARIANCE_FLOOR = 0.0;
 
+    /**
+     * The quote surface.
+     */
     private final OptionSurfaceDataInterpolated quoteSurface;
+    /**
+     * The formula surface.
+     */
     private final OptionSurfaceDataInterpolated formulaSurface;
 
+    /**
+     * The requested formula.
+     */
     private final LocalVolatilityFormula requestedFormula;
+    /**
+     * The effective formula.
+     */
     private final LocalVolatilityFormula effectiveFormula;
 
+    /**
+     * The time epsilon.
+     */
     private final double timeEpsilon;
+    /**
+     * The strike epsilon factor.
+     */
     private final double strikeEpsilonFactor;
+    /**
+     * The variance floor.
+     */
     private final double varianceFloor;
 
+    /**
+     * The negative local variance handling.
+     */
     private final NegativeLocalVarianceHandling negativeLocalVarianceHandling;
 
     /**

@@ -68,13 +68,34 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMThetaMethod2D implements FDMSolver {
 
+    /**
+     * The psor omega.
+     */
     private static final double PSOR_OMEGA = 1.2;
+    /**
+     * The psor max iterations.
+     */
     private static final int PSOR_MAX_ITERATIONS = 500;
+    /**
+     * The psor tolerance.
+     */
     private static final double PSOR_TOLERANCE = 1E-10;
 
+    /**
+     * The model.
+     */
     private final FiniteDifferenceEquityModel model;
+    /**
+     * The product.
+     */
     private final FiniteDifferenceEquityProduct product;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     /**
@@ -989,10 +1010,25 @@ public class FDMThetaMethod2D implements FDMSolver {
      */
     private static final class DifferentialOperators2D {
 
+        /**
+         * The d0.
+         */
         private final RealMatrix d0;
+        /**
+         * The d1.
+         */
         private final RealMatrix d1;
+        /**
+         * The d00.
+         */
         private final RealMatrix d00;
+        /**
+         * The d11.
+         */
         private final RealMatrix d11;
+        /**
+         * The d01.
+         */
         private final RealMatrix d01;
 
         /**
@@ -1068,11 +1104,29 @@ public class FDMThetaMethod2D implements FDMSolver {
      */
     private static final class ModelCoefficients2D {
 
+        /**
+         * The mu0.
+         */
         private final RealMatrix mu0;
+        /**
+         * The mu1.
+         */
         private final RealMatrix mu1;
+        /**
+         * The a00.
+         */
         private final RealMatrix a00;
+        /**
+         * The a11.
+         */
         private final RealMatrix a11;
+        /**
+         * The a01.
+         */
         private final RealMatrix a01;
+        /**
+         * The short rate.
+         */
         private final double shortRate;
 
         /**

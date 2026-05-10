@@ -34,8 +34,14 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
  */
 public class DoubleBarrierOptionHestonModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMHestonModel model;
 
     public DoubleBarrierOptionHestonModelBoundary(final FDMHestonModel model) {

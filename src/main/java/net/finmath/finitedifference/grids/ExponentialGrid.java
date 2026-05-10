@@ -21,12 +21,30 @@ package net.finmath.finitedifference.grids;
  */
 public class ExponentialGrid extends AbstractGrid {
 
+    /**
+     * The number of steps.
+     */
     private int numberOfSteps;
+    /**
+     * The minimum value.
+     */
     private double minimumValue;
+    /**
+     * The maximum value.
+     */
     private double maximumValue;
+    /**
+     * The alpha.
+     */
     private double alpha;
 
+    /**
+     * The grid.
+     */
     private double[] grid;
+    /**
+     * The delta.
+     */
     private double[] delta;
 
     /**

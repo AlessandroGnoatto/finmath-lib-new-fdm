@@ -76,12 +76,30 @@ import net.finmath.time.Schedule;
  */
 public class Bond implements FiniteDifferenceInterestRateProduct {
 
+    /**
+     * The event time tolerance.
+     */
     private static final double EVENT_TIME_TOLERANCE = 1E-12;
 
+    /**
+     * The schedule.
+     */
     private final Schedule schedule;
+    /**
+     * The fixed coupon.
+     */
     private final double fixedCoupon;
+    /**
+     * The notional.
+     */
     private final double notional;
+    /**
+     * The redemption.
+     */
     private final double redemption;
+    /**
+     * The maturity.
+     */
     private final double maturity;
 
     /**
@@ -372,6 +390,9 @@ public class Bond implements FiniteDifferenceInterestRateProduct {
      */
     private static final class SinglePaymentSchedule implements Schedule {
 
+        /**
+         * The maturity.
+         */
         private final double maturity;
 
         private SinglePaymentSchedule(final double maturity) {

@@ -60,6 +60,9 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class AsianOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The time epsilon for exercise.
+     */
     private static final double TIME_EPSILON_FOR_EXERCISE = 1E-12;
 
     /**
@@ -67,11 +70,29 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
      */
     private static final double MINIMUM_TIME = 1.0E-6;
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The call or put sign.
+     */
     private final CallOrPut callOrPutSign;
+    /**
+     * The asian strike.
+     */
     private final AsianStrike asianStrike;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     public AsianOption(
@@ -412,7 +433,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
     private static final class LiftedFDMBlackScholesModelDecorator
             implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
+        /**
+         * The delegate.
+         */
         private final FDMBlackScholesModel delegate;
+        /**
+         * The lifted discretization.
+         */
         private final SpaceTimeDiscretization liftedDiscretization;
 
         private LiftedFDMBlackScholesModelDecorator(
@@ -590,7 +617,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
     private static final class LiftedFDMCevModelDecorator
             implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
+        /**
+         * The delegate.
+         */
         private final FDMCevModel delegate;
+        /**
+         * The lifted discretization.
+         */
         private final SpaceTimeDiscretization liftedDiscretization;
 
         private LiftedFDMCevModelDecorator(
@@ -770,7 +803,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
     private static final class LiftedFDMBachelierModelDecorator
             implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
+        /**
+         * The delegate.
+         */
         private final FDMBachelierModel delegate;
+        /**
+         * The lifted discretization.
+         */
         private final SpaceTimeDiscretization liftedDiscretization;
 
         private LiftedFDMBachelierModelDecorator(
@@ -952,7 +991,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
     private static final class LiftedFDMHestonModelDecorator
             implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
+        /**
+         * The delegate.
+         */
         private final FDMHestonModel delegate;
+        /**
+         * The lifted discretization.
+         */
         private final SpaceTimeDiscretization liftedDiscretization;
 
         private LiftedFDMHestonModelDecorator(
@@ -1159,7 +1204,13 @@ public class AsianOption implements FiniteDifferenceEquityProduct {
     private static final class LiftedFDMSabrModelDecorator
             implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
+        /**
+         * The delegate.
+         */
         private final FDMSabrModel delegate;
+        /**
+         * The lifted discretization.
+         */
         private final SpaceTimeDiscretization liftedDiscretization;
 
         private LiftedFDMSabrModelDecorator(

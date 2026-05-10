@@ -29,12 +29,30 @@ import java.util.Arrays;
  */
 public class GridWithMandatoryPoint extends AbstractGrid {
 
+    /**
+     * The number of steps.
+     */
     private final int numberOfSteps;
+    /**
+     * The minimum value.
+     */
     private final double minimumValue;
+    /**
+     * The maximum value.
+     */
     private final double maximumValue;
+    /**
+     * The mandatory point.
+     */
     private final double mandatoryPoint;
 
+    /**
+     * The grid.
+     */
     private double[] grid;
+    /**
+     * The delta.
+     */
     private double[] delta;
 
     /**

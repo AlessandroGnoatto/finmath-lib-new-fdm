@@ -7,6 +7,9 @@ package net.finmath.marketdata.model.volatilities;
  */
 public class ConstantLocalVolatility implements LocalVolatility {
 
+    /**
+     * The volatility.
+     */
     private final double volatility;
 
     /**

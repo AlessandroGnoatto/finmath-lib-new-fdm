@@ -43,8 +43,17 @@ public class VarianceGammaJumpComponent extends AbstractStateIndependentJumpComp
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * The c.
+     */
     private final double c;
+    /**
+     * The g.
+     */
     private final double g;
+    /**
+     * The m.
+     */
     private final double m;
 
     /**

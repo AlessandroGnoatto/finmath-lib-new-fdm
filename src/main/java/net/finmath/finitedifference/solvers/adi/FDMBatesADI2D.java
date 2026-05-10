@@ -41,10 +41,22 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMBatesADI2D extends AbstractADI2D {
 
+    /**
+     * The default quadrature points per side.
+     */
     private static final int DEFAULT_QUADRATURE_POINTS_PER_SIDE = 200;
 
+    /**
+     * The model.
+     */
     private final FDMBatesModel model;
+    /**
+     * The jump component.
+     */
     private final JumpComponent jumpComponent;
+    /**
+     * The quadrature points per side.
+     */
     private final int quadraturePointsPerSide;
 
     /**

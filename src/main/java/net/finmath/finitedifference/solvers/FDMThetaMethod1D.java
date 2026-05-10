@@ -63,19 +63,49 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMThetaMethod1D implements FDMSolver {
 
+    /**
+     * The safe time epsilon.
+     */
     private static final double SAFE_TIME_EPSILON = 1E-6;
+    /**
+     * The event time tolerance.
+     */
     private static final double EVENT_TIME_TOLERANCE = 1E-12;
+    /**
+     * The local discount bond epsilon.
+     */
     private static final double LOCAL_DISCOUNT_BOND_EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FiniteDifferenceModel model;
+    /**
+     * The product.
+     */
     private final FiniteDifferenceProduct<? extends FiniteDifferenceModel> product;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     private static final class ModelCoefficients {
 
+        /**
+         * The drift.
+         */
         private final double[] drift;
+        /**
+         * The variance.
+         */
         private final double[] variance;
+        /**
+         * The local discount rate.
+         */
         private final double[] localDiscountRate;
 
         private ModelCoefficients(

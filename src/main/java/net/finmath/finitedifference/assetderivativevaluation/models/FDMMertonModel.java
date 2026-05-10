@@ -43,11 +43,29 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  */
 public class FDMMertonModel implements FiniteDifferenceEquityModel {
 
+    /**
+     * The initial value.
+     */
     private final double initialValue;
+    /**
+     * The risk free curve.
+     */
     private final DiscountCurve riskFreeCurve;
+    /**
+     * The dividend yield curve.
+     */
     private final DiscountCurve dividendYieldCurve;
+    /**
+     * The volatility.
+     */
     private final double volatility;
+    /**
+     * The jump component.
+     */
     private final MertonJumpComponent jumpComponent;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**

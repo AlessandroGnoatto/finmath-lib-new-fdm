@@ -9,6 +9,12 @@ package net.finmath.modelling.products;
  * </p>
  */
 public enum SwingQuantityMode {
+    /**
+     * The bang bang.
+     */
     BANG_BANG,
+    /**
+     * The discrete quantity grid.
+     */
     DISCRETE_QUANTITY_GRID
 }

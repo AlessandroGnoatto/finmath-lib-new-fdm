@@ -16,12 +16,33 @@ import net.finmath.modelling.products.BarrierType;
  */
 public final class BarrierPreHitSpecification {
 
+    /**
+     * The barrier type.
+     */
     private final BarrierType barrierType;
+    /**
+     * The barrier value.
+     */
     private final double barrierValue;
+    /**
+     * The barrier spot index.
+     */
     private final int barrierSpotIndex;
+    /**
+     * The spot min.
+     */
     private final double spotMin;
+    /**
+     * The spot max.
+     */
     private final double spotMax;
+    /**
+     * The number of spot steps.
+     */
     private final int numberOfSpotSteps;
+    /**
+     * The activated trace.
+     */
     private final ActivatedBarrierTrace2D activatedTrace;
 
     /**

@@ -56,9 +56,21 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
  */
 public class ADI3DStencilBuilder {
 
+    /**
+     * The model.
+     */
     private final FiniteDifferenceEquityModel model;
+    /**
+     * The x0 grid.
+     */
     private final double[] x0Grid;
+    /**
+     * The x1 grid.
+     */
     private final double[] x1Grid;
+    /**
+     * The x2 grid.
+     */
     private final double[] x2Grid;
 
     /**

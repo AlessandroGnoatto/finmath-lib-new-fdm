@@ -50,17 +50,41 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  */
 public class FDMSabrModel implements FiniteDifferenceEquityModel {
 
+    /**
+     * The initial spot.
+     */
     private final double initialSpot;
+    /**
+     * The initial alpha.
+     */
     private final double initialAlpha;
 
+    /**
+     * The risk free curve.
+     */
     private final DiscountCurve riskFreeCurve;
+    /**
+     * The dividend yield curve.
+     */
     private final DiscountCurve dividendYieldCurve;
 
     // SABR parameters (risk-neutral)
+    /**
+     * The beta.
+     */
     private final double beta;
+    /**
+     * The nu.
+     */
     private final double nu;
+    /**
+     * The rho.
+     */
     private final double rho;
 
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**

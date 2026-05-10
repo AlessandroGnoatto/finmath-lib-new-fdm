@@ -34,12 +34,33 @@ import net.finmath.stochastic.Scalar;
  */
 public class BarrierOption extends AbstractAssetMonteCarloProduct {
 
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The barrier.
+     */
     private final double barrier;
+    /**
+     * The rebate.
+     */
     private final double rebate;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The barrier type.
+     */
     private final BarrierType barrierType;
+    /**
+     * The underlying index.
+     */
     private final int underlyingIndex;
 
     public BarrierOption(

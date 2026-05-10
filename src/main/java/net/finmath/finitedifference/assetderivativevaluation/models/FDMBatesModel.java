@@ -40,6 +40,9 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
  */
 public class FDMBatesModel extends FDMHestonModel {
 
+    /**
+     * The jump component.
+     */
     private final BatesJumpComponent jumpComponent;
 
     /**

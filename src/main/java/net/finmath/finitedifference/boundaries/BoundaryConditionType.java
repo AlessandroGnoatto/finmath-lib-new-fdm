@@ -18,6 +18,12 @@ package net.finmath.finitedifference.boundaries;
  * @author Alessandro Gnoatto
  */
 public enum BoundaryConditionType {
+    /**
+     * The dirichlet.
+     */
     DIRICHLET,
+    /**
+     * The none.
+     */
     NONE
 }

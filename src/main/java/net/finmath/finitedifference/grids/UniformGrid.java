@@ -12,11 +12,26 @@ package net.finmath.finitedifference.grids;
  */
 public class UniformGrid extends AbstractGrid {
 
+    /**
+     * The number of steps.
+     */
     private int numberOfSteps;
+    /**
+     * The minimum value.
+     */
     private double minimumValue;
+    /**
+     * The maximum value.
+     */
     private double maximumValue;
 
+    /**
+     * The grid.
+     */
     private double[] grid;
+    /**
+     * The delta.
+     */
     private double[] delta;
 
     /**

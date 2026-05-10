@@ -27,10 +27,25 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class EuropeanOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The call or put sign.
+     */
     private final CallOrPut callOrPutSign;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     /**

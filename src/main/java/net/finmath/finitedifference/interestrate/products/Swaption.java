@@ -75,17 +75,44 @@ import net.finmath.time.TimeDiscretization;
  */
 public class Swaption implements FiniteDifferenceInterestRateProduct {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
 
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The explicit exercise dates.
+     */
     private final double[] explicitExerciseDates;
 
+    /**
+     * The swaption type.
+     */
     private final SwaptionType swaptionType;
+    /**
+     * The forward curve name.
+     */
     private final String forwardCurveName;
 
+    /**
+     * The swap rates.
+     */
     private final double[] swapRates;
+    /**
+     * The notionals.
+     */
     private final double[] notionals;
+    /**
+     * The fix schedules.
+     */
     private final Schedule[] fixSchedules;
+    /**
+     * The float schedules.
+     */
     private final Schedule[] floatSchedules;
 
     /**
@@ -639,7 +666,13 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
      */
     public static final class ResolvedExerciseData {
 
+        /**
+         * The exercise times.
+         */
         private final double[] exerciseTimes;
+        /**
+         * The schedule indices.
+         */
         private final int[] scheduleIndices;
 
         private ResolvedExerciseData(
@@ -729,6 +762,9 @@ public class Swaption implements FiniteDifferenceInterestRateProduct {
      */
     public final class ResolvedSwaption implements FiniteDifferenceInterestRateProduct {
 
+        /**
+         * The resolved exercise data.
+         */
         private final ResolvedExerciseData resolvedExerciseData;
 
         private ResolvedSwaption(final ResolvedExerciseData resolvedExerciseData) {

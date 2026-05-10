@@ -25,10 +25,25 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
  */
 public final class FiniteDifferenceGridLayout {
 
+    /**
+     * The discretization.
+     */
     private final SpaceTimeDiscretization discretization;
+    /**
+     * The dimension.
+     */
     private final int dimension;
+    /**
+     * The shape.
+     */
     private final int[] shape;
+    /**
+     * The strides.
+     */
     private final int[] strides;
+    /**
+     * The number of spatial points.
+     */
     private final int numberOfSpatialPoints;
 
     /**

@@ -37,10 +37,25 @@ public abstract class AbstractStateIndependentJumpComponent implements JumpCompo
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * The state variable index.
+     */
     private final int stateVariableIndex;
+    /**
+     * The lower integration bound.
+     */
     private final double lowerIntegrationBound;
+    /**
+     * The upper integration bound.
+     */
     private final double upperIntegrationBound;
+    /**
+     * The finite activity.
+     */
     private final boolean finiteActivity;
+    /**
+     * The finite variation.
+     */
     private final boolean finiteVariation;
 
     /**

@@ -62,31 +62,94 @@ public class BarrierOption implements
         FiniteDifferenceOneDimensionalKnockInProduct {
 
     private enum PricingMode {
+        /**
+         * The direct out.
+         */
         DIRECT_OUT,
+        /**
+         * The direct in 1d two state.
+         */
         DIRECT_IN_1D_TWO_STATE,
+        /**
+         * The direct in 1d discrete event.
+         */
         DIRECT_IN_1D_DISCRETE_EVENT,
+        /**
+         * The direct in 2d discrete event.
+         */
         DIRECT_IN_2D_DISCRETE_EVENT,
+        /**
+         * The direct in 2d pre hit.
+         */
         DIRECT_IN_2D_PRE_HIT,
+        /**
+         * The parity in fallback.
+         */
         PARITY_IN_FALLBACK
     }
 
+    /**
+     * The default interior barrier extra steps 1 d.
+     */
     private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
+    /**
+     * The down in put extra steps 1 d.
+     */
     private static final int DOWN_IN_PUT_EXTRA_STEPS_1D = 160;
+    /**
+     * The up in call extra steps 1 d.
+     */
     private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
 
+    /**
+     * The grid tolerance.
+     */
     private static final double GRID_TOLERANCE = 1E-8;
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The barrier value.
+     */
     private final double barrierValue;
+    /**
+     * The rebate.
+     */
     private final double rebate;
+    /**
+     * The call or put sign.
+     */
     private final CallOrPut callOrPutSign;
+    /**
+     * The barrier type.
+     */
     private final BarrierType barrierType;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The monitoring type.
+     */
     private final MonitoringType monitoringType;
+    /**
+     * The monitoring times.
+     */
     private final double[] monitoringTimes;
 
+    /**
+     * The activated vector event state stack.
+     */
     private transient ProductEventStateStack<ActivatedVectorEventState> activatedVectorEventStateStack;
 
     public BarrierOption(

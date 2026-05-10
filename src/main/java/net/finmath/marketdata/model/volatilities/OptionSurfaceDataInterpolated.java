@@ -45,29 +45,77 @@ import net.finmath.marketdata.model.curves.DiscountCurve;
  */
 public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements VolatilitySurface {
 
+    /**
+     * The default strike interpolation method.
+     */
     private static final InterpolationMethod DEFAULT_STRIKE_INTERPOLATION_METHOD = InterpolationMethod.CUBIC_SPLINE;
+    /**
+     * The default strike extrapolation method.
+     */
     private static final ExtrapolationMethod DEFAULT_STRIKE_EXTRAPOLATION_METHOD = ExtrapolationMethod.CONSTANT;
+    /**
+     * The default maturity interpolation method.
+     */
     private static final InterpolationMethod DEFAULT_MATURITY_INTERPOLATION_METHOD = InterpolationMethod.LINEAR;
+    /**
+     * The default maturity extrapolation method.
+     */
     private static final ExtrapolationMethod DEFAULT_MATURITY_EXTRAPOLATION_METHOD = ExtrapolationMethod.LINEAR;
 
+    /**
+     * The option quote comparator.
+     */
     private static final Comparator<OptionData> OPTION_QUOTE_COMPARATOR =
             Comparator.comparingDouble(OptionData::getMaturity)
                     .thenComparingDouble(OptionData::getStrike);
 
+    /**
+     * The option smile comparator.
+     */
     private static final Comparator<OptionSmileData> OPTION_SMILE_COMPARATOR =
             Comparator.comparingDouble(OptionSmileData::getMaturity);
 
+    /**
+     * The smiles.
+     */
     private final OptionSmileData[] smiles;
+    /**
+     * The node maturities.
+     */
     private final double[] nodeMaturities;
+    /**
+     * The node strikes.
+     */
     private final double[] nodeStrikes;
+    /**
+     * The node values.
+     */
     private final double[] nodeValues;
+    /**
+     * The unique maturities.
+     */
     private final double[] uniqueMaturities;
 
+    /**
+     * The strike interpolation method.
+     */
     private final InterpolationMethod strikeInterpolationMethod;
+    /**
+     * The strike extrapolation method.
+     */
     private final ExtrapolationMethod strikeExtrapolationMethod;
+    /**
+     * The maturity interpolation method.
+     */
     private final InterpolationMethod maturityInterpolationMethod;
+    /**
+     * The maturity extrapolation method.
+     */
     private final ExtrapolationMethod maturityExtrapolationMethod;
 
+    /**
+     * The smile interpolators.
+     */
     private final SmileInterpolator[] smileInterpolators;
 
     /**
@@ -1218,10 +1266,25 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
 
     private static final class PreparedSurface {
 
+        /**
+         * The smiles.
+         */
         private final OptionSmileData[] smiles;
+        /**
+         * The node maturities.
+         */
         private final double[] nodeMaturities;
+        /**
+         * The node strikes.
+         */
         private final double[] nodeStrikes;
+        /**
+         * The node values.
+         */
         private final double[] nodeValues;
+        /**
+         * The unique maturities.
+         */
         private final double[] uniqueMaturities;
 
         private PreparedSurface(
@@ -1241,8 +1304,17 @@ public class OptionSurfaceDataInterpolated extends OptionSurfaceData implements 
 
     private static final class SmileInterpolator {
 
+        /**
+         * The strikes.
+         */
         private final double[] strikes;
+        /**
+         * The values.
+         */
         private final double[] values;
+        /**
+         * The interpolation.
+         */
         private final RationalFunctionInterpolation interpolation;
 
         private SmileInterpolator(

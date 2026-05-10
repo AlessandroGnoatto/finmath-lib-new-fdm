@@ -14,8 +14,14 @@ import net.finmath.modelling.products.CallOrPut;
 public class BermudanOptionBlackScholesModelBoundary
         implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMBlackScholesModel model;
 
     public BermudanOptionBlackScholesModelBoundary(final FDMBlackScholesModel model) {

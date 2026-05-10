@@ -62,10 +62,22 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class BasketOptionMultiAssetBlackScholesModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The time floor.
+     */
     private static final double TIME_FLOOR = 1E-10;
+    /**
+     * The quantity tolerance.
+     */
     private static final double QUANTITY_TOLERANCE = 1E-14;
+    /**
+     * The grid tolerance.
+     */
     private static final double GRID_TOLERANCE = 1E-12;
 
+    /**
+     * The model.
+     */
     private final FDMMultiAssetBlackScholesModel model;
 
     public BasketOptionMultiAssetBlackScholesModelBoundary(final FDMMultiAssetBlackScholesModel model) {

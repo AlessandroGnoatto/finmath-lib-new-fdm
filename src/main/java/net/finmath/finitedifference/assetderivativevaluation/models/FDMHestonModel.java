@@ -39,18 +39,45 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  */
 public class FDMHestonModel implements FiniteDifferenceEquityModel {
 
+    /**
+     * The initial spot.
+     */
     private final double initialSpot;
+    /**
+     * The initial variance.
+     */
     private final double initialVariance;
 
+    /**
+     * The risk free curve.
+     */
     private final DiscountCurve riskFreeCurve;
+    /**
+     * The dividend yield curve.
+     */
     private final DiscountCurve dividendYieldCurve;
 
     // Heston parameters (risk-neutral)
+    /**
+     * The kappa.
+     */
     private final double kappa;
+    /**
+     * The theta v.
+     */
     private final double thetaV;
+    /**
+     * The sigma.
+     */
     private final double sigma;    // vol-of-vol (often eta)
+    /**
+     * The rho.
+     */
     private final double rho;
 
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**

@@ -48,11 +48,29 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class BasketOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The underlying names.
+     */
     private final String[] underlyingNames;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The quantities.
+     */
     private final double[] quantities;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     /**

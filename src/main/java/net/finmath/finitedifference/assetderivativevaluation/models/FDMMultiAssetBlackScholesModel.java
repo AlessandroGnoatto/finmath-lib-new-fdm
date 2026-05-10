@@ -91,15 +91,42 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  */
 public class FDMMultiAssetBlackScholesModel implements FiniteDifferenceEquityModel {
 
+    /**
+     * The time floor.
+     */
     private static final double TIME_FLOOR = 1E-6;
+    /**
+     * The correlation tolerance.
+     */
     private static final double CORRELATION_TOLERANCE = 1E-10;
 
+    /**
+     * The initial values.
+     */
     private final double[] initialValues;
+    /**
+     * The risk free curve.
+     */
     private final DiscountCurve riskFreeCurve;
+    /**
+     * The dividend yield curves.
+     */
     private final DiscountCurve[] dividendYieldCurves;
+    /**
+     * The volatilities.
+     */
     private final double[] volatilities;
+    /**
+     * The correlation matrix.
+     */
     private final double[][] correlationMatrix;
+    /**
+     * The cholesky factor.
+     */
     private final double[][] choleskyFactor;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**

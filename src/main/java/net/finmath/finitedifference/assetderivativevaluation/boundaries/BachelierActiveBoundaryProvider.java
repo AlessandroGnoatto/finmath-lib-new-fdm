@@ -33,11 +33,26 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class BachelierActiveBoundaryProvider implements TwoStateActiveBoundaryProvider {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-10;
 
+    /**
+     * The model.
+     */
     private final FiniteDifferenceEquityModel model;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
 
     public BachelierActiveBoundaryProvider(

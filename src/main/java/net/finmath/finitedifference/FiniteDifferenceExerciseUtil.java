@@ -23,6 +23,9 @@ import net.finmath.time.TimeDiscretizationFromArray;
  */
 public final class FiniteDifferenceExerciseUtil {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
 
     private FiniteDifferenceExerciseUtil() {

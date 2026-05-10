@@ -16,12 +16,33 @@ import java.util.function.DoubleUnaryOperator;
  */
 public final class FiniteDifferencePlotData1D {
 
+    /**
+     * The x min.
+     */
     private final double xMin;
+    /**
+     * The x max.
+     */
     private final double xMax;
+    /**
+     * The number of points.
+     */
     private final int numberOfPoints;
+    /**
+     * The function.
+     */
     private final DoubleUnaryOperator function;
+    /**
+     * The title.
+     */
     private final String title;
+    /**
+     * The x axis label.
+     */
     private final String xAxisLabel;
+    /**
+     * The y axis label.
+     */
     private final String yAxisLabel;
 
     /**

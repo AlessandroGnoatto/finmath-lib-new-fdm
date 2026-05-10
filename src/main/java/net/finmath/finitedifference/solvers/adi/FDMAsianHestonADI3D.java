@@ -38,6 +38,9 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMAsianHestonADI3D extends AbstractADI3D {
 
+    /**
+     * The stencil builder.
+     */
     private final ADI3DStencilBuilder stencilBuilder;
 
     public FDMAsianHestonADI3D(

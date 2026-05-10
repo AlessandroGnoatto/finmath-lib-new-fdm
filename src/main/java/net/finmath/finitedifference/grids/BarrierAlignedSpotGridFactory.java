@@ -252,7 +252,13 @@ public final class BarrierAlignedSpotGridFactory {
      */
     private static final class ArrayGrid extends AbstractGrid {
 
+        /**
+         * The grid.
+         */
         private final double[] grid;
+        /**
+         * The delta.
+         */
         private double[] delta;
 
         private ArrayGrid(final double[] grid) {

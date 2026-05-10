@@ -65,33 +65,99 @@ public class DigitalBarrierOption implements
         FiniteDifferenceOneDimensionalKnockInProduct {
 
     private enum PricingMode {
+        /**
+         * The direct out.
+         */
         DIRECT_OUT,
+        /**
+         * The direct in 1d two state.
+         */
         DIRECT_IN_1D_TWO_STATE,
+        /**
+         * The direct in 1d discrete event.
+         */
         DIRECT_IN_1D_DISCRETE_EVENT,
+        /**
+         * The direct in 2d discrete event.
+         */
         DIRECT_IN_2D_DISCRETE_EVENT,
+        /**
+         * The direct in 2d pre hit.
+         */
         DIRECT_IN_2D_PRE_HIT,
+        /**
+         * The parity in fallback.
+         */
         PARITY_IN_FALLBACK
     }
 
+    /**
+     * The default interior barrier extra steps 1 d.
+     */
     private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
+    /**
+     * The down in put extra steps 1 d.
+     */
     private static final int DOWN_IN_PUT_EXTRA_STEPS_1D = 160;
+    /**
+     * The up in call extra steps 1 d.
+     */
     private static final int UP_IN_CALL_EXTRA_STEPS_1D = 160;
+    /**
+     * The grid tolerance.
+     */
     private static final double GRID_TOLERANCE = 1E-8;
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The barrier value.
+     */
     private final double barrierValue;
+    /**
+     * The call or put sign.
+     */
     private final CallOrPut callOrPutSign;
+    /**
+     * The barrier type.
+     */
     private final BarrierType barrierType;
+    /**
+     * The digital payoff type.
+     */
     private final DigitalPayoffType digitalPayoffType;
+    /**
+     * The cash payoff.
+     */
     private final double cashPayoff;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The monitoring type.
+     */
     private final MonitoringType monitoringType;
+    /**
+     * The monitoring times.
+     */
     private final double[] monitoringTimes;
 
     private static final class DiscreteKnockInEventState {
 
+    	/**
+    	 * The activated vectors at event times.
+    	 */
         private final Map<Double, double[]> activatedVectorsAtEventTimes;
 
         private DiscreteKnockInEventState(final Map<Double, double[]> activatedVectorsAtEventTimes) {
@@ -99,6 +165,9 @@ public class DigitalBarrierOption implements
         }
     }
 
+    /**
+     * The discrete knock in event state stack.
+     */
     private transient ThreadLocal<ArrayDeque<DiscreteKnockInEventState>> discreteKnockInEventStateStack;
 
     public DigitalBarrierOption(

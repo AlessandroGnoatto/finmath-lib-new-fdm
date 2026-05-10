@@ -58,13 +58,31 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class OptionOnBondHullWhiteModelBoundary implements FiniteDifferenceInterestRateBoundary {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
+    /**
+     * The root tolerance.
+     */
     private static final double ROOT_TOLERANCE = 1E-12;
+    /**
+     * The max bracketing steps.
+     */
     private static final int MAX_BRACKETING_STEPS = 100;
+    /**
+     * The max bisection steps.
+     */
     private static final int MAX_BISECTION_STEPS = 200;
 
+    /**
+     * The normal distribution.
+     */
     private static final NormalDistribution NORMAL_DISTRIBUTION = new NormalDistribution();
 
+    /**
+     * The model.
+     */
     private final FDMHullWhiteModel model;
 
     /**

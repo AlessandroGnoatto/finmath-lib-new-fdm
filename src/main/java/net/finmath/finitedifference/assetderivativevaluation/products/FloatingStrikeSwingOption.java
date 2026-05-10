@@ -96,28 +96,79 @@ import net.finmath.time.TimeDiscretizationFromArray;
  */
 public class FloatingStrikeSwingOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The eps.
+     */
     private static final double EPS = 1.0E-12;
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
 
+    /**
+     * The decision times.
+     */
     private final double[] decisionTimes;
+    /**
+     * The fixing times.
+     */
     private final double[] fixingTimes;
+    /**
+     * The fixing weights.
+     */
     private final double[] fixingWeights;
 
+    /**
+     * The maturity.
+     */
     private final double maturity;
 
+    /**
+     * The strike shift.
+     */
     private final double strikeShift;
+    /**
+     * The strike scale.
+     */
     private final double strikeScale;
+    /**
+     * The accumulator grid.
+     */
     private final double[] accumulatorGrid;
 
+    /**
+     * The local min quantity.
+     */
     private final double[] localMinQuantity;
+    /**
+     * The local max quantity.
+     */
     private final double[] localMaxQuantity;
+    /**
+     * The global min quantity.
+     */
     private final double globalMinQuantity;
+    /**
+     * The global max quantity.
+     */
     private final double globalMaxQuantity;
 
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The quantity mode.
+     */
     private final SwingQuantityMode quantityMode;
+    /**
+     * The quantity grid step.
+     */
     private final double quantityGridStep;
+    /**
+     * The fixing convention.
+     */
     private final SwingStrikeFixingConvention fixingConvention;
 
     /**
@@ -1324,9 +1375,21 @@ public class FloatingStrikeSwingOption implements FiniteDifferenceEquityProduct 
 
     private static final class Event {
 
+        /**
+         * The time.
+         */
         private final double time;
+        /**
+         * The fixing weight at date.
+         */
         private final double fixingWeightAtDate;
+        /**
+         * The decision index.
+         */
         private final int decisionIndex;
+        /**
+         * The cumulative weight after fixing.
+         */
         private final double cumulativeWeightAfterFixing;
 
         private Event(

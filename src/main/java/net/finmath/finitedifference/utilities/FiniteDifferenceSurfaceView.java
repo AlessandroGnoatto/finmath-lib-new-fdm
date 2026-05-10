@@ -18,10 +18,22 @@ import net.finmath.finitedifference.grids.SpaceTimeDiscretization;
  */
 public final class FiniteDifferenceSurfaceView {
 
+    /**
+     * The default number of plot points.
+     */
     private static final int DEFAULT_NUMBER_OF_PLOT_POINTS = 100;
 
+    /**
+     * The discretization.
+     */
     private final SpaceTimeDiscretization discretization;
+    /**
+     * The values.
+     */
     private final double[][] values;
+    /**
+     * The layout.
+     */
     private final FiniteDifferenceGridLayout layout;
 
     /**

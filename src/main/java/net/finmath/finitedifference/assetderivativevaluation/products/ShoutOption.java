@@ -82,12 +82,33 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class ShoutOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The initial strike.
+     */
     private final double initialStrike;
+    /**
+     * The strike grid.
+     */
     private final double[] strikeGrid;
+    /**
+     * The maximum number of shouts.
+     */
     private final int maximumNumberOfShouts;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The shout cash adjustment.
+     */
     private final double shoutCashAdjustment;
 
     /**

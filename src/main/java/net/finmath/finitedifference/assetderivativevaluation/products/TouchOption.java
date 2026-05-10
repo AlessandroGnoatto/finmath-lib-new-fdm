@@ -86,22 +86,64 @@ public class TouchOption implements
     FiniteDifferenceOneDimensionalKnockInProduct {
 
     private enum PricingMode {
+        /**
+         * The direct out.
+         */
         DIRECT_OUT,
+        /**
+         * The direct in 1d two state.
+         */
         DIRECT_IN_1D_TWO_STATE,
+        /**
+         * The direct in 2d pre hit.
+         */
         DIRECT_IN_2D_PRE_HIT
     }
 
+    /**
+     * The default interior barrier extra steps 1 d.
+     */
     private static final int DEFAULT_INTERIOR_BARRIER_EXTRA_STEPS_1D = 40;
+    /**
+     * The grid tolerance.
+     */
     private static final double GRID_TOLERANCE = 1E-8;
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The barrier value.
+     */
     private final double barrierValue;
+    /**
+     * The barrier type.
+     */
     private final BarrierType barrierType;
+    /**
+     * The payoff amount.
+     */
     private final double payoffAmount;
+    /**
+     * The settlement timing.
+     */
     private final TouchSettlementTiming settlementTiming;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The monitoring type.
+     */
     private final MonitoringType monitoringType;
+    /**
+     * The monitoring times.
+     */
     private final double[] monitoringTimes;
 
     public TouchOption(
@@ -1356,10 +1398,22 @@ public class TouchOption implements
     private static final class DiscountedCashAtExpiryActiveBoundaryProvider
             implements TwoStateActiveBoundaryProvider {
 
+        /**
+         * The epsilon.
+         */
         private static final double EPSILON = 1E-10;
 
+        /**
+         * The model.
+         */
         private final FiniteDifferenceEquityModel model;
+        /**
+         * The maturity.
+         */
         private final double maturity;
+        /**
+         * The payoff amount.
+         */
         private final double payoffAmount;
 
         private DiscountedCashAtExpiryActiveBoundaryProvider(
@@ -1404,6 +1458,9 @@ public class TouchOption implements
     private static final class ImmediateCashActiveBoundaryProvider
             implements TwoStateActiveBoundaryProvider {
 
+        /**
+         * The payoff amount.
+         */
         private final double payoffAmount;
 
         private ImmediateCashActiveBoundaryProvider(final double payoffAmount) {

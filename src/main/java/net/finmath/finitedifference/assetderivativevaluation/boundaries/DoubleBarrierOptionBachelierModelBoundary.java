@@ -21,8 +21,14 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class DoubleBarrierOptionBachelierModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMBachelierModel model;
 
     public DoubleBarrierOptionBachelierModelBoundary(final FDMBachelierModel model) {

@@ -85,18 +85,54 @@ import net.finmath.time.TimeDiscretizationFromArray;
  */
 public class SwingOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The eps.
+     */
     private static final double EPS = 1.0E-12;
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The decision times.
+     */
     private final double[] decisionTimes;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The local min quantity.
+     */
     private final double[] localMinQuantity;
+    /**
+     * The local max quantity.
+     */
     private final double[] localMaxQuantity;
+    /**
+     * The global min quantity.
+     */
     private final double globalMinQuantity;
+    /**
+     * The global max quantity.
+     */
     private final double globalMaxQuantity;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The quantity mode.
+     */
     private final SwingQuantityMode quantityMode;
+    /**
+     * The quantity grid step.
+     */
     private final double quantityGridStep;
 
     /**

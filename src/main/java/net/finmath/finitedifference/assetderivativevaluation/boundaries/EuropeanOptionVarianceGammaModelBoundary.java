@@ -27,7 +27,13 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class EuropeanOptionVarianceGammaModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The model.
+     */
     private final FDMVarianceGammaModel model;
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
     /**

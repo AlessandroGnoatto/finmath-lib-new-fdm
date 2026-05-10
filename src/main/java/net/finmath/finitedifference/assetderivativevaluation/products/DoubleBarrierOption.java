@@ -116,26 +116,77 @@ public class DoubleBarrierOption implements
         FiniteDifferenceInternalStateConstraint {
 
     private enum PricingMode {
+        /**
+         * The direct out.
+         */
         DIRECT_OUT,
+        /**
+         * The direct in 1d pre hit.
+         */
         DIRECT_IN_1D_PRE_HIT,
+        /**
+         * The direct in 1d discrete event.
+         */
         DIRECT_IN_1D_DISCRETE_EVENT,
+        /**
+         * The direct in 2d pre hit.
+         */
         DIRECT_IN_2D_PRE_HIT,
+        /**
+         * The direct in 2d discrete event.
+         */
         DIRECT_IN_2D_DISCRETE_EVENT
     }
 
+    /**
+     * The grid tolerance.
+     */
     private static final double GRID_TOLERANCE = 1E-8;
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The lower barrier.
+     */
     private final double lowerBarrier;
+    /**
+     * The upper barrier.
+     */
     private final double upperBarrier;
+    /**
+     * The call or put sign.
+     */
     private final CallOrPut callOrPutSign;
+    /**
+     * The double barrier type.
+     */
     private final DoubleBarrierType doubleBarrierType;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The monitoring type.
+     */
     private final MonitoringType monitoringType;
+    /**
+     * The monitoring times.
+     */
     private final double[] monitoringTimes;
 
+    /**
+     * The activated vector event state stack.
+     */
     private transient ProductEventStateStack<ActivatedVectorEventState> activatedVectorEventStateStack;
 
     /**
@@ -1984,8 +2035,17 @@ public class DoubleBarrierOption implements
 
     private static final class DoubleBarrierTrace1D {
 
+        /**
+         * The maturity.
+         */
         private final double maturity;
+        /**
+         * The time discretization.
+         */
         private final TimeDiscretization timeDiscretization;
+        /**
+         * The values.
+         */
         private final double[] values;
 
         private DoubleBarrierTrace1D(
@@ -2014,9 +2074,21 @@ public class DoubleBarrierOption implements
 
     private static final class DoubleBarrierTrace2D {
 
+        /**
+         * The maturity.
+         */
         private final double maturity;
+        /**
+         * The second grid.
+         */
         private final double[] secondGrid;
+        /**
+         * The time discretization.
+         */
         private final TimeDiscretization timeDiscretization;
+        /**
+         * The values.
+         */
         private final double[][] values; // [secondIndex][timeIndex]
 
         private DoubleBarrierTrace2D(
@@ -2092,9 +2164,21 @@ public class DoubleBarrierOption implements
     private static final class DoubleBarrierPreHitModel1D
             implements FiniteDifferenceEquityModel, FiniteDifferenceBoundary {
 
+        /**
+         * The delegate.
+         */
         private final FiniteDifferenceEquityModel delegate;
+        /**
+         * The discretization.
+         */
         private final SpaceTimeDiscretization discretization;
+        /**
+         * The lower trace.
+         */
         private final DoubleBarrierTrace1D lowerTrace;
+        /**
+         * The upper trace.
+         */
         private final DoubleBarrierTrace1D upperTrace;
 
         private DoubleBarrierPreHitModel1D(
@@ -2196,9 +2280,21 @@ public class DoubleBarrierOption implements
             extends FDMHestonModel
             implements FiniteDifferenceBoundary {
 
+        /**
+         * The base model.
+         */
         private final FDMHestonModel baseModel;
+        /**
+         * The discretization.
+         */
         private final SpaceTimeDiscretization discretization;
+        /**
+         * The lower trace.
+         */
         private final DoubleBarrierTrace2D lowerTrace;
+        /**
+         * The upper trace.
+         */
         private final DoubleBarrierTrace2D upperTrace;
 
         private DoubleBarrierPreHitHestonModel(
@@ -2307,9 +2403,21 @@ public class DoubleBarrierOption implements
             extends FDMSabrModel
             implements FiniteDifferenceBoundary {
 
+        /**
+         * The base model.
+         */
         private final FDMSabrModel baseModel;
+        /**
+         * The discretization.
+         */
         private final SpaceTimeDiscretization discretization;
+        /**
+         * The lower trace.
+         */
         private final DoubleBarrierTrace2D lowerTrace;
+        /**
+         * The upper trace.
+         */
         private final DoubleBarrierTrace2D upperTrace;
 
         private DoubleBarrierPreHitSabrModel(

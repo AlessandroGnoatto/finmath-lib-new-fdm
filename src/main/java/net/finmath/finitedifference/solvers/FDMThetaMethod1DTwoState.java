@@ -36,13 +36,34 @@ import net.finmath.modelling.products.BarrierType;
  */
 public class FDMThetaMethod1DTwoState implements FDMSolver {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-10;
 
+    /**
+     * The model.
+     */
     private final FiniteDifferenceEquityModel model;
+    /**
+     * The product.
+     */
     private final FiniteDifferenceOneDimensionalKnockInProduct product;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The active boundary provider.
+     */
     private final TwoStateActiveBoundaryProvider activeBoundaryProvider;
+    /**
+     * The activation policy.
+     */
     private final TwoStateActivationPolicy activationPolicy;
 
     /**

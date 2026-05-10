@@ -15,16 +15,49 @@ import java.util.function.DoubleBinaryOperator;
  */
 public final class FiniteDifferencePlotData2D {
 
+    /**
+     * The x min.
+     */
     private final double xMin;
+    /**
+     * The x max.
+     */
     private final double xMax;
+    /**
+     * The y min.
+     */
     private final double yMin;
+    /**
+     * The y max.
+     */
     private final double yMax;
+    /**
+     * The number of points x.
+     */
     private final int numberOfPointsX;
+    /**
+     * The number of points y.
+     */
     private final int numberOfPointsY;
+    /**
+     * The function.
+     */
     private final DoubleBinaryOperator function;
+    /**
+     * The title.
+     */
     private final String title;
+    /**
+     * The x axis label.
+     */
     private final String xAxisLabel;
+    /**
+     * The y axis label.
+     */
     private final String yAxisLabel;
+    /**
+     * The z axis label.
+     */
     private final String zAxisLabel;
 
     /**

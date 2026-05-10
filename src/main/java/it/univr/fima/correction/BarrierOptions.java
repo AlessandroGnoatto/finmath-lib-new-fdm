@@ -36,9 +36,21 @@ import net.finmath.functions.NormalDistribution;
 public class BarrierOptions {
 
     public enum BarrierType {
+        /**
+         * The down in.
+         */
         DOWN_IN,
+        /**
+         * The up in.
+         */
         UP_IN,
+        /**
+         * The down out.
+         */
         DOWN_OUT,
+        /**
+         * The up out.
+         */
         UP_OUT
     }
 
@@ -66,6 +78,9 @@ public class BarrierOptions {
         KOKI
     }
 
+    /**
+     * The pi.
+     */
     private static final double PI = 3.14159265358979323846264338327950;
 
     private BarrierOptions() {}

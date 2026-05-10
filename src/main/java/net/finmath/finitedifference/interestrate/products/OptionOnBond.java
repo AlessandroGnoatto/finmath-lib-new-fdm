@@ -49,11 +49,26 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class OptionOnBond implements FiniteDifferenceInterestRateProduct {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
 
+    /**
+     * The underlying bond.
+     */
     private final Bond underlyingBond;
+    /**
+     * The exercise date.
+     */
     private final double exerciseDate;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
 
     /**

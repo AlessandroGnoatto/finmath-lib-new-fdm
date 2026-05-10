@@ -22,8 +22,14 @@ import net.finmath.modelling.products.CallOrPut;
 public class EuropeanOptionCevModelBoundary
         implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMCevModel model;
 
     public EuropeanOptionCevModelBoundary(final FDMCevModel model) {

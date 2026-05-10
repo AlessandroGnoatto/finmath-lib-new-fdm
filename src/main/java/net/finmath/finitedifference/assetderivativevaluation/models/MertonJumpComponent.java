@@ -33,9 +33,21 @@ public class MertonJumpComponent extends AbstractStateIndependentJumpComponent {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * The intensity.
+     */
     private final double intensity;
+    /**
+     * The jump mean.
+     */
     private final double jumpMean;
+    /**
+     * The jump std dev.
+     */
     private final double jumpStdDev;
+    /**
+     * The normalization factor.
+     */
     private final double normalizationFactor;
 
     /**

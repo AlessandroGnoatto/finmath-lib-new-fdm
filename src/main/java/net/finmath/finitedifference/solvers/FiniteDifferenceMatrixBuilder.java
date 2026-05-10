@@ -26,10 +26,22 @@ import org.apache.commons.math3.linear.RealMatrix;
  */
 public class FiniteDifferenceMatrixBuilder {
 
+    /**
+     * The x.
+     */
     private final double[] x; // Grid points
+    /**
+     * The n.
+     */
     private final int n;
 
+    /**
+     * The t1.
+     */
     private final RealMatrix T1; // Matrix for the first derivative
+    /**
+     * The t2.
+     */
     private final RealMatrix T2; // Matrix for the second derivative
 
     /**

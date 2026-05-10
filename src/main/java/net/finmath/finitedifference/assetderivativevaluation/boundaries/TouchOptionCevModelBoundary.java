@@ -12,8 +12,14 @@ import net.finmath.modelling.products.BarrierType;
  */
 public class TouchOptionCevModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMCevModel model;
 
     public TouchOptionCevModelBoundary(final FDMCevModel model) {

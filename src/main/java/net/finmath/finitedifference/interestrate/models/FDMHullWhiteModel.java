@@ -102,12 +102,30 @@ import net.finmath.montecarlo.interestrate.models.covariance.ShortRateVolatility
  */
 public class FDMHullWhiteModel implements FiniteDifferenceInterestRateModel {
 
+    /**
+     * The zero tolerance.
+     */
     private static final double ZERO_TOLERANCE = 1E-12;
+    /**
+     * The forward difference step.
+     */
     private static final double FORWARD_DIFFERENCE_STEP = 1E-4;
 
+    /**
+     * The analytic model.
+     */
     private final AnalyticModel analyticModel;
+    /**
+     * The discount curve.
+     */
     private final DiscountCurve discountCurve;
+    /**
+     * The volatility model.
+     */
     private final ShortRateVolatilityModel volatilityModel;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**

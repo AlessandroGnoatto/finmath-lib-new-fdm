@@ -36,8 +36,17 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMBarrierSabrADI2D extends AbstractADI2D {
 
+    /**
+     * The sabr model.
+     */
     private final FDMSabrModel sabrModel;
+    /**
+     * The barrier mode.
+     */
     private final BarrierPDEMode barrierMode;
+    /**
+     * The pre hit specification.
+     */
     private final BarrierPreHitSpecification preHitSpecification;
 
     /**

@@ -74,16 +74,46 @@ public class DoubleBarrierBinaryOption implements
         FiniteDifferenceEquityEventProduct,
         FiniteDifferenceInternalStateConstraint {
 
+    /**
+     * The underlying name.
+     */
     private final String underlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The cash payoff.
+     */
     private final double cashPayoff;
+    /**
+     * The lower barrier.
+     */
     private final double lowerBarrier;
+    /**
+     * The upper barrier.
+     */
     private final double upperBarrier;
+    /**
+     * The double barrier type.
+     */
     private final DoubleBarrierType doubleBarrierType;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The monitoring type.
+     */
     private final MonitoringType monitoringType;
+    /**
+     * The monitoring times.
+     */
     private final double[] monitoringTimes;
 
+    /**
+     * The activated vector event state stack.
+     */
     private transient ProductEventStateStack<ActivatedVectorEventState> activatedVectorEventStateStack;
 
     /**

@@ -31,8 +31,14 @@ import net.finmath.modelling.products.DigitalPayoffType;
  */
 public class DigitalOptionHestonModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMHestonModel model;
 
     /**

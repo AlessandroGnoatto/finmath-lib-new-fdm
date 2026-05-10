@@ -23,14 +23,35 @@ import net.finmath.functions.NormalDistribution;
  */
 public class GaussianGrid extends AbstractGrid {
 
+    /**
+     * The number of steps.
+     */
     private int numberOfSteps;
+    /**
+     * The minimum value.
+     */
     private double minimumValue;
+    /**
+     * The maximum value.
+     */
     private double maximumValue;
 
+    /**
+     * The centering.
+     */
     private double centering;
+    /**
+     * The sigma.
+     */
     private double sigma;
 
+    /**
+     * The grid.
+     */
     private double[] grid;
+    /**
+     * The delta.
+     */
     private double[] delta;
 
     /**

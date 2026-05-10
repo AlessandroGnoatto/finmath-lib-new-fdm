@@ -278,8 +278,17 @@ public final class FiniteDifferenceValueInterpolator {
 
     private static final class Bracket {
 
+        /**
+         * The lower index.
+         */
         private final int lowerIndex;
+        /**
+         * The upper index.
+         */
         private final int upperIndex;
+        /**
+         * The upper weight.
+         */
         private final double upperWeight;
 
         private Bracket(

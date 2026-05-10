@@ -9,9 +9,18 @@ import java.util.Arrays;
  */
 public abstract class AbstractExercise implements Exercise {
 
+    /**
+     * The time tolerance.
+     */
     protected static final double TIME_TOLERANCE = 1E-12;
 
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The exercise times.
+     */
     private final double[] exerciseTimes;
 
     /**

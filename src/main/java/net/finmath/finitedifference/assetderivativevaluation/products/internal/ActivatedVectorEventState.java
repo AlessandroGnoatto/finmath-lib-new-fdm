@@ -25,6 +25,9 @@ import java.util.Map;
 public final class ActivatedVectorEventState {
 
     private final Map<Double, double[]> activatedVectorsAtEventTimes;
+    /**
+     * The time tolerance.
+     */
     private final double timeTolerance;
 
     /**

@@ -66,11 +66,29 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class WorstOfOption implements FiniteDifferenceEquityProduct {
 
+    /**
+     * The first underlying name.
+     */
     private final String firstUnderlyingName;
+    /**
+     * The second underlying name.
+     */
     private final String secondUnderlyingName;
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
 
     /**

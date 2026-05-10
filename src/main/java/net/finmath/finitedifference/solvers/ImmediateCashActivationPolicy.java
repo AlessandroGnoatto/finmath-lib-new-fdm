@@ -36,6 +36,9 @@ package net.finmath.finitedifference.solvers;
  */
 public class ImmediateCashActivationPolicy implements TwoStateActivationPolicy {
 
+    /**
+     * The payoff amount.
+     */
     private final double payoffAmount;
 
     /**

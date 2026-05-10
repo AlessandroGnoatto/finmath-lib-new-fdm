@@ -29,8 +29,14 @@ import net.finmath.modelling.products.BarrierType;
  */
 public class TouchOptionHestonModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMHestonModel model;
 
     public TouchOptionHestonModelBoundary(final FDMHestonModel model) {

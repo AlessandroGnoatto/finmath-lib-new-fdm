@@ -25,6 +25,9 @@ import net.finmath.finitedifference.interestrate.products.Swaption;
  */
 public class ResolvedSwaptionHullWhiteModelBoundary implements FiniteDifferenceInterestRateBoundary {
 
+    /**
+     * The delegate.
+     */
     private final SwaptionHullWhiteModelBoundary delegate;
 
     /**

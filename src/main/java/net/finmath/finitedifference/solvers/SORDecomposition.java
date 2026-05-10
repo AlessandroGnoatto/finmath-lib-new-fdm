@@ -20,18 +20,33 @@ import org.apache.commons.math3.linear.RealMatrix;
 public class SORDecomposition {
 
     // Diagonal part of the matrix A
+    /**
+     * The d.
+     */
     private final RealMatrix D;
 
     // Strictly lower triangular part of the matrix A
+    /**
+     * The l.
+     */
     private final RealMatrix L;
 
     // Strictly upper triangular part of the matrix A
+    /**
+     * The u.
+     */
     private final RealMatrix U;
 
     // Relaxation factor omega
+    /**
+     * The omega.
+     */
     private double omega;
 
     // Keep a reference copy of A for efficient SOR sweeps
+    /**
+     * The a.
+     */
     private final double[][] a;
 
     /**

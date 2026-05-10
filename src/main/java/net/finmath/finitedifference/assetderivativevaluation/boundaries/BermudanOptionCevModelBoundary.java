@@ -14,8 +14,14 @@ import net.finmath.modelling.products.CallOrPut;
 public class BermudanOptionCevModelBoundary
         implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMCevModel model;
 
     public BermudanOptionCevModelBoundary(final FDMCevModel model) {

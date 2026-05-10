@@ -36,11 +36,29 @@ import net.finmath.time.TimeDiscretization;
  */
 public class AsianOption extends AbstractAssetMonteCarloProduct {
 
+    /**
+     * The maturity.
+     */
     private final double maturity;
+    /**
+     * The strike.
+     */
     private final double strike;
+    /**
+     * The times for averaging.
+     */
     private final TimeDiscretization timesForAveraging;
+    /**
+     * The underlying index.
+     */
     private final Integer underlyingIndex;
+    /**
+     * The call or put.
+     */
     private final CallOrPut callOrPut;
+    /**
+     * The asian strike.
+     */
     private final AsianStrike asianStrike;
 
     /**

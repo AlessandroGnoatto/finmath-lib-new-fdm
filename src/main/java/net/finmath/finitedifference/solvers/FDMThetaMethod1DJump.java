@@ -57,12 +57,30 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMThetaMethod1DJump implements FDMSolver {
 
+    /**
+     * The default quadrature points per side.
+     */
     private static final int DEFAULT_QUADRATURE_POINTS_PER_SIDE = 200;
 
+    /**
+     * The model.
+     */
     private final FiniteDifferenceEquityModel model;
+    /**
+     * The product.
+     */
     private final FiniteDifferenceEquityProduct product;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
+    /**
+     * The exercise.
+     */
     private final Exercise exercise;
+    /**
+     * The quadrature points per side.
+     */
     private final int quadraturePointsPerSide;
 
     /**

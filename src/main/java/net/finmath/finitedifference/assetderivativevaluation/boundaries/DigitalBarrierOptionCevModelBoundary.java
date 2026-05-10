@@ -17,8 +17,14 @@ import net.finmath.modelling.products.DigitalPayoffType;
  */
 public class DigitalBarrierOptionCevModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMCevModel model;
 
     public DigitalBarrierOptionCevModelBoundary(final FDMCevModel model) {

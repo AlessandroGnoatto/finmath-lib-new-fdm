@@ -26,6 +26,9 @@ import java.util.ArrayDeque;
  */
 public final class ProductEventStateStack<T> {
 
+    /**
+     * The stack.
+     */
     private transient ThreadLocal<ArrayDeque<T>> stack;
 
     /**

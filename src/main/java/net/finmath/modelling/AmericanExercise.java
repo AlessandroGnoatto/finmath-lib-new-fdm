@@ -16,6 +16,9 @@ import net.finmath.time.FloatingpointDate;
  */
 public class AmericanExercise extends AbstractExercise {
 
+    /**
+     * The exercise start time.
+     */
     private final double exerciseStartTime;
 
     /**

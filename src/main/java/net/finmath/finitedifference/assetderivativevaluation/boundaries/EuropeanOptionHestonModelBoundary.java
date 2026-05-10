@@ -26,8 +26,14 @@ import net.finmath.modelling.products.CallOrPut;
  */
 public class EuropeanOptionHestonModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMHestonModel model;
 
     public EuropeanOptionHestonModelBoundary(final FDMHestonModel model) {

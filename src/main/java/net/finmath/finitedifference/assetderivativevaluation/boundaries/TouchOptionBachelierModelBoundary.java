@@ -12,8 +12,14 @@ import net.finmath.modelling.products.BarrierType;
  */
 public class TouchOptionBachelierModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMBachelierModel model;
 
     public TouchOptionBachelierModelBoundary(final FDMBachelierModel model) {

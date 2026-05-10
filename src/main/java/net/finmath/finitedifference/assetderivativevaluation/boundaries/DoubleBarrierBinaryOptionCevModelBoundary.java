@@ -14,8 +14,14 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
  */
 public class DoubleBarrierBinaryOptionCevModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMCevModel model;
 
     public DoubleBarrierBinaryOptionCevModelBoundary(final FDMCevModel model) {

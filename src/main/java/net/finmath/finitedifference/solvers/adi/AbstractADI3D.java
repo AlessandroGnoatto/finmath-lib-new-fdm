@@ -61,20 +61,56 @@ public abstract class AbstractADI3D implements FDMSolver {
         double applyAsDouble(double x0, double x1, double x2, double x3);
     }
 
+    /**
+     * The model.
+     */
     protected final FiniteDifferenceEquityModel model;
+    /**
+     * The product.
+     */
     protected final FiniteDifferenceEquityProduct product;
+    /**
+     * The space time discretization.
+     */
     protected final SpaceTimeDiscretization spaceTimeDiscretization;
+    /**
+     * The exercise.
+     */
     protected final Exercise exercise;
 
+    /**
+     * The theta.
+     */
     protected final double theta;
 
+    /**
+     * The x0 grid.
+     */
     protected final double[] x0Grid;
+    /**
+     * The x1 grid.
+     */
     protected final double[] x1Grid;
+    /**
+     * The x2 grid.
+     */
     protected final double[] x2Grid;
 
+    /**
+     * The n0.
+     */
     protected final int n0;
+    /**
+     * The n1.
+     */
     protected final int n1;
+    /**
+     * The n2.
+     */
     protected final int n2;
+    /**
+     * The n.
+     */
     protected final int n;
 
     protected AbstractADI3D(

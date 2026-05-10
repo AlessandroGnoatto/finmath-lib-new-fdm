@@ -26,6 +26,9 @@ import net.finmath.time.TimeDiscretization;
  */
 public class SpaceTimeDiscretization {
 
+	/**
+	 * The space grids.
+	 */
     private final HashMap<Integer, Grid> spaceGrids = new HashMap<>();
     public HashMap<Integer, Grid> getSpaceGrids() {
         return spaceGrids;
@@ -35,8 +38,17 @@ public class SpaceTimeDiscretization {
         return center;
     }
 
+    /**
+     * The time discretization.
+     */
     private final TimeDiscretization timeDiscretization;
+    /**
+     * The theta.
+     */
     private final double theta;
+    /**
+     * The center.
+     */
     private final double[] center;
 
     /**

@@ -16,23 +16,65 @@ import net.finmath.stochastic.RandomVariable;
 
 public class SabrModel extends AbstractProcessModel {
 
+    /**
+     * The initial value.
+     */
     private final RandomVariable initialValue;
+    /**
+     * The alpha.
+     */
     private final RandomVariable alpha;
+    /**
+     * The beta.
+     */
     private final RandomVariable beta;
+    /**
+     * The nu.
+     */
     private final RandomVariable nu;
+    /**
+     * The rho.
+     */
     private final RandomVariable rho;
+    /**
+     * The rho bar.
+     */
     private final RandomVariable rhoBar;
 
+    /**
+     * The discount curve for forward rate.
+     */
     private final DiscountCurve discountCurveForForwardRate;
+    /**
+     * The discount curve for dividend yield.
+     */
     private final DiscountCurve discountCurveForDividendYield;
+    /**
+     * The discount curve for discount rate.
+     */
     private final DiscountCurve discountCurveForDiscountRate;
 
+    /**
+     * The risk free rate.
+     */
     private final RandomVariable riskFreeRate;
+    /**
+     * The dividend yield rate.
+     */
     private final RandomVariable dividendYieldRate;
+    /**
+     * The discount rate.
+     */
     private final RandomVariable discountRate;
 
+    /**
+     * The random variable factory.
+     */
     private final RandomVariableFactory randomVariableFactory;
 
+    /**
+     * The initial state vector.
+     */
     private final RandomVariable[] initialStateVector = new RandomVariable[2];
 
     public SabrModel(

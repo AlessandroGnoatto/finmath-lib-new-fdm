@@ -30,10 +30,25 @@ import net.finmath.marketdata.model.volatilities.LocalVolatility;
  */
 public class FDMBlackScholesModel implements FiniteDifferenceEquityModel {
 
+    /**
+     * The initial value.
+     */
     private final double initialValue;
+    /**
+     * The risk free curve.
+     */
     private final DiscountCurve riskFreeCurve;
+    /**
+     * The volatility.
+     */
     private final LocalVolatility volatility;
+    /**
+     * The dividend yield curve.
+     */
     private final DiscountCurve dividendYieldCurve;
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**

@@ -73,6 +73,9 @@ import net.finmath.modelling.Exercise;
  */
 public class FDMAsianSabrADI3D extends AbstractADI3D {
 
+    /**
+     * The stencil builder.
+     */
     private final ADI3DStencilBuilder stencilBuilder;
 
     /**

@@ -38,11 +38,26 @@ import net.finmath.finitedifference.solvers.TridiagonalMatrix;
  */
 public class ADI2DStencilBuilder {
 
+    /**
+     * The model.
+     */
     private final FiniteDifferenceEquityModel model;
+    /**
+     * The x0 grid.
+     */
     private final double[] x0Grid;
+    /**
+     * The x1 grid.
+     */
     private final double[] x1Grid;
 
+    /**
+     * The n0.
+     */
     private final int n0;
+    /**
+     * The n1.
+     */
     private final int n1;
 
     public ADI2DStencilBuilder(
@@ -64,8 +79,17 @@ public class ADI2DStencilBuilder {
      * </pre>
      */
     public static final class DirectionalCoefficients {
+        /**
+         * The lower.
+         */
         private final double lower;
+        /**
+         * The diag.
+         */
         private final double diag;
+        /**
+         * The upper.
+         */
         private final double upper;
 
         public DirectionalCoefficients(

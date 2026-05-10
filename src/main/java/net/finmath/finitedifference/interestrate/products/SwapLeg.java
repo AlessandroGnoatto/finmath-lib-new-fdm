@@ -61,12 +61,30 @@ import net.finmath.time.Schedule;
  */
 public class SwapLeg implements FiniteDifferenceInterestRateProduct {
 
+    /**
+     * The time tolerance.
+     */
     private static final double TIME_TOLERANCE = 1E-12;
 
+    /**
+     * The leg schedule.
+     */
     private final Schedule legSchedule;
+    /**
+     * The forward curve name.
+     */
     private final String forwardCurveName;
+    /**
+     * The notionals.
+     */
     private final double[] notionals;
+    /**
+     * The spreads.
+     */
     private final double[] spreads;
+    /**
+     * The is notional exchanged.
+     */
     private final boolean isNotionalExchanged;
 
     /**

@@ -1,0 +1,4 @@
+src/main/java/net/finmath/modelling/products/AsianStrike.java:4: multiple JavadocVariable entries on one line
+src/main/java/net/finmath/finitedifference/grids/SpaceTimeDiscretization.java:29: could not parse 'private final HashMap<Integer, Grid> spaceGrids = new HashMap<>();'
+src/main/java/net/finmath/finitedifference/assetderivativevaluation/products/DigitalBarrierOption.java:95: could not parse 'private final Map<Double, double[]> activatedVectorsAtEventTimes;'
+src/main/java/net/finmath/finitedifference/assetderivativevaluation/products/internal/ActivatedVectorEventState.java:27: could not parse 'private final Map<Double, double[]> activatedVectorsAtEventTimes;'

@@ -38,13 +38,28 @@ import net.finmath.marketdata.model.curves.DiscountCurveInterpolation;
  */
 public class FDMBachelierModel implements FiniteDifferenceEquityModel {
 
+    /**
+     * The initial value.
+     */
     private final double initialValue;
 
+    /**
+     * The risk free curve.
+     */
     private final DiscountCurve riskFreeCurve;
+    /**
+     * The dividend yield curve.
+     */
     private final DiscountCurve dividendYieldCurve;
 
+    /**
+     * The volatility.
+     */
     private final double volatility;
 
+    /**
+     * The space time discretization.
+     */
     private final SpaceTimeDiscretization spaceTimeDiscretization;
 
     /**

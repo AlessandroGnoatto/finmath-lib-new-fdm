@@ -34,8 +34,14 @@ import net.finmath.finitedifference.boundaries.StandardBoundaryCondition;
  */
 public class DoubleBarrierOptionSabrModelBoundary implements FiniteDifferenceBoundary {
 
+    /**
+     * The epsilon.
+     */
     private static final double EPSILON = 1E-6;
 
+    /**
+     * The model.
+     */
     private final FDMSabrModel model;
 
     public DoubleBarrierOptionSabrModelBoundary(final FDMSabrModel model) {
