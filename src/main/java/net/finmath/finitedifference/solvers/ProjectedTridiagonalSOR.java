@@ -55,7 +55,7 @@ public final class ProjectedTridiagonalSOR {
      * @param matrix The tridiagonal system matrix.
      * @param rhs The right-hand side vector {@code b}.
      * @param obstacle The obstacle vector defining the lower bound constraint
-     * 		{@code x >= obstacle}.
+     *         {@code x >= obstacle}.
      * @param initialGuess The initial iterate used to start the PSOR iteration.
      * @param omega The relaxation parameter. Values in the interval
      * 		{@code (0, 2)} are typically used in practice.

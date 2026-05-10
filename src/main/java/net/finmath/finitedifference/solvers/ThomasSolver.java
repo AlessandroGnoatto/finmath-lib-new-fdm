@@ -50,7 +50,7 @@ public final class ThomasSolver {
      * non-singular tridiagonal system.
      *
      * @param lower The lower diagonal of the system matrix. Entry {@code lower[i]}
-     * 		represents the coefficient below the main diagonal in row {@code i}.
+     *         represents the coefficient below the main diagonal in row {@code i}.
      * 		The value {@code lower[0]} is not used.
      * @param diag The main diagonal of the system matrix. Entry {@code diag[i]}
      * 		represents the diagonal coefficient in row {@code i}.

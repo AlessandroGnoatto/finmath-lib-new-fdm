@@ -48,7 +48,7 @@ public class FDMHestonModel implements FiniteDifferenceEquityModel {
     // Heston parameters (risk-neutral)
     private final double kappa;
     private final double thetaV;
-    private final double sigma;	// vol-of-vol (often eta)
+    private final double sigma;    // vol-of-vol (often eta)
     private final double rho;
 
     private final SpaceTimeDiscretization spaceTimeDiscretization;

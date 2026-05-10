@@ -462,7 +462,7 @@ public class FDMMultiAssetBlackScholesModel implements FiniteDifferenceEquityMod
     }
 
     private static DiscountCurve createFlatDiscountCurve(final String name, final double rate) {
-        final double[] times = new double[] { 0.0, 1.0 };
+        final double[] times = new double[] {0.0, 1.0};
         final double[] givenAnnualizedZeroRates = new double[] {rate, rate };
 
         return DiscountCurveInterpolation.createDiscountCurveFromAnnualizedZeroRates(
