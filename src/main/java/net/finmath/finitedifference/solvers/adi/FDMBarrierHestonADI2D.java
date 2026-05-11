@@ -111,13 +111,13 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 			final DoubleBinaryOperator valueAtMaturity,
 			final DoubleTernaryOperator exerciseValue) {
 
-		final int timeLength = getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps() + 1;
-		final int numberOfTimeSteps = getSpaceTimeDiscretization().getTimeDiscretization().getNumberOfTimeSteps();
+		final int timeLength = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps() + 1;
+		final int numberOfTimeSteps = spaceTimeDiscretization.getTimeDiscretization().getNumberOfTimeSteps();
 
-		double[] u = new double[getN()];
-		for (int j = 0; j < getN1(); j++) {
-			for (int i = 0; i < getN0(); i++) {
-				u[flatten(i, j)] = valueAtMaturity.applyAsDouble(getX0Grid()[i], getX1Grid()[j]);
+		double[] u = new double[n];
+		for (int j = 0; j < n1; j++) {
+			for (int i = 0; i < n0; i++) {
+				u[flatten(i, j)] = valueAtMaturity.applyAsDouble(x0Grid[i], x1Grid[j]);
 			}
 		}
 
@@ -126,15 +126,15 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		applyBarrierTraceIfNeeded(time, u);
 		u = sanitize(u);
 
-		final RealMatrix solutionSurface = new Array2DRowRealMatrix(getN(), timeLength);
+		final RealMatrix solutionSurface = new Array2DRowRealMatrix(n, timeLength);
 		solutionSurface.setColumn(0, u.clone());
 
 		for (int m = 0; m < numberOfTimeSteps; m++) {
-			final double dt = getSpaceTimeDiscretization().getTimeDiscretization().getTimeStep(m);
+			final double dt = spaceTimeDiscretization.getTimeDiscretization().getTimeStep(m);
 
-			final double tauNext = getSpaceTimeDiscretization().getTimeDiscretization().getTime(m + 1);
+			final double tauNext = spaceTimeDiscretization.getTimeDiscretization().getTime(m + 1);
 			final double runningTimeNext =
-					getSpaceTimeDiscretization().getTimeDiscretization().getLastTime() - tauNext;
+					spaceTimeDiscretization.getTimeDiscretization().getLastTime() - tauNext;
 
 			u = performStableDouglasStep(u, runningTimeNext, dt);
 
@@ -170,33 +170,33 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 
 		final double[] out = rhs.clone();
 
-		for (int j = 0; j < getN1(); j++) {
+		for (int j = 0; j < n1; j++) {
 			final TridiagonalMatrix matrix =
-					getStencilBuilder().buildFirstDirectionLineMatrix(time, dt, getTheta(), j);
+					stencilBuilder.buildFirstDirectionLineMatrix(time, dt, theta, j);
 
-			final double[] lineRhs = new double[getN0()];
-			for (int i = 0; i < getN0(); i++) {
+			final double[] lineRhs = new double[n0];
+			for (int i = 0; i < n0; i++) {
 				lineRhs[i] = rhs[flatten(i, j)];
 			}
 
 			final double lowerBoundaryValue =
 					getLowerBoundaryValueForFirstDirection(time, j, lineRhs[0]);
 			final double upperBoundaryValue =
-					getUpperBoundaryValueForFirstDirection(time, j, lineRhs[getN0() - 1]);
+					getUpperBoundaryValueForFirstDirection(time, j, lineRhs[n0 - 1]);
 
 			overwriteBoundaryRow(matrix, lineRhs, 0, lowerBoundaryValue);
-			overwriteBoundaryRow(matrix, lineRhs, getN0() - 1, upperBoundaryValue);
+			overwriteBoundaryRow(matrix, lineRhs, n0 - 1, upperBoundaryValue);
 
 			overwriteBarrierTraceRow(matrix, lineRhs, j, time);
 
 			final double[] solved = ThomasSolver.solve(
-					matrix.lower,
-					matrix.diag,
-					matrix.upper,
+					matrix.getLowerDiagonal(),
+					matrix.getMainDiagonal(),
+					matrix.getUpperDiagonal(),
 					lineRhs
 			);
 
-			for (int i = 0; i < getN0(); i++) {
+			for (int i = 0; i < n0; i++) {
 				out[flatten(i, j)] = solved[i];
 			}
 		}
@@ -260,7 +260,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 
 		final int barrierRow = preHitSpecification.getBarrierSpotIndex();
 
-		for (int j = 0; j < getN1(); j++) {
+		for (int j = 0; j < n1; j++) {
 			u[flatten(barrierRow, j)] = getBarrierTraceValue(j, runningTime);
 		}
 	}
@@ -280,7 +280,7 @@ public class FDMBarrierHestonADI2D extends AbstractADI2D {
 		final double tau =
 				Math.max(
 						0.0,
-						getSpaceTimeDiscretization().getTimeDiscretization().getLastTime() - runningTime
+						spaceTimeDiscretization.getTimeDiscretization().getLastTime() - runningTime
 				);
 
 		return preHitSpecification.getActivatedTrace().getValue(secondIndex, tau);
